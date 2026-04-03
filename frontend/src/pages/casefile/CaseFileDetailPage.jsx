@@ -63,7 +63,7 @@ function CollapsibleCard({ title, color = "#0284C7", borderColor = "#BAE6FD", ba
   const [open, setOpen] = useState(false);
   const isOpen = open || forceOpen;
   return (
-    <div style={{ border: `1px solid ${borderColor}`, borderRadius: 12, marginBottom: 14, background, overflow: "hidden" }}>
+    <div className="fp-collapsible-card" style={{ border: `1px solid ${borderColor}`, borderRadius: 12, marginBottom: 14, background, overflow: "hidden" }}>
       <div
         onClick={forceOpen ? undefined : () => setOpen(o => !o)}
         style={{
@@ -1116,7 +1116,7 @@ export default function CaseFileDetailPage() {
   }
 
   const { audit, intake, build, delta, reasoning, outcome, project_updates, } = cf;
-console.log(isPrinting)
+
   return (
     <>
     <style>{`
@@ -1136,6 +1136,7 @@ console.log(isPrinting)
         .fp-print-only { display: block !important; }
         .fp-section-body { display: block !important; }
         .fp-collapsible-body { display: block !important; }
+        .fp-collapsible-card { overflow: visible !important; }
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         @page { margin: 16mm 14mm; size: A4; }
         .fp-meta-chips { margin-bottom: 12px !important; }
