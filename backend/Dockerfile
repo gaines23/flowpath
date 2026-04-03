@@ -33,8 +33,7 @@ RUN pip install --upgrade pip \
 
 COPY . .
 
-COPY entrypoint.prod.sh /entrypoint.prod.sh
-RUN chmod +x /entrypoint.prod.sh
+RUN chmod +x /app/entrypoint.prod.sh
 
 EXPOSE 8000
-ENTRYPOINT ["/entrypoint.prod.sh"]
+ENTRYPOINT ["/app/entrypoint.prod.sh"]
