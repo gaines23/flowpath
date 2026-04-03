@@ -49,7 +49,7 @@ def create_invite(request):
     invite = Invitation.objects.create(
         created_by=request.user,
         email=email,
-        expires_at=timezone.now() + timedelta(days=7),
+        expires_at=timezone.now() + timedelta(days=2),
     )
     serializer = InviteSerializer(invite)
     return Response(serializer.data, status=status.HTTP_201_CREATED)

@@ -269,7 +269,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Invite */}
-      <Card title="Invite a user" sub="Generate a one-time invite link. It expires after 7 days." theme={theme}>
+      <Card title="Invite a user" sub="Generate a one-time invite link. It expires after 2 days." theme={theme}>
         <div style={{ paddingTop: 4 }}>
           <button
             onClick={handleCreateInvite}
@@ -299,7 +299,7 @@ export default function SettingsPage() {
                 </button>
               </div>
               <p style={{ margin: "6px 0 0", fontSize: 11, color: theme.textFaint, fontFamily: F }}>
-                This link is single-use and expires in 7 days. Share it directly with the person you&apos;re inviting.
+                This link is single-use and expires in 2 days. Share it directly with the person you&apos;re inviting.
               </p>
             </div>
           )}
