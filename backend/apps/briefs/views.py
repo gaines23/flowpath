@@ -219,11 +219,13 @@ def stats(request):
 
     roadblock_types = []
     for rb_type, tool_counts in type_tool_counts.items():
-        top_tool = max(tool_counts, key=tool_counts.get) if tool_counts else None
         roadblock_types.append({
             "type": rb_type,
             "count": sum(tool_counts.values()),
-            "top_tool": top_tool,
+            "tools": [
+                {"tool": t, "count": c}
+                for t, c in sorted(tool_counts.items(), key=lambda x: x[1], reverse=True)
+            ],
         })
     roadblock_types.sort(key=lambda x: x["count"], reverse=True)
 

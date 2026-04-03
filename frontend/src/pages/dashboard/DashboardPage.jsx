@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList,
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList, Legend,
   PieChart, Pie, Cell, Label,
 } from "recharts";
 import { useCaseFiles, useCaseFileStats } from "../../hooks/useCaseFiles";
@@ -143,53 +143,94 @@ function HorizBarChart({ data, barColor, unit = "", height = 220, tickWidth = 13
   );
 }
 
-// ── Roadblock types chart (vertical bar) ──────────────────────────────────────
+// ── Roadblock types stacked bar chart ────────────────────────────────────────
 
 function RoadblockTypesChart({ types = [], loading }) {
-  const data = types.slice(0, 7).map((rb) => ({
-    name: labelFromKey(rb.type).replace(" Limitation", " Limit.").replace("Automation", "Auto."),
-    fullName: labelFromKey(rb.type),
-    value: rb.count,
-    topTool: rb.top_tool,
+  const rows = types.slice(0, 7);
+
+  // Collect top 7 tools by total count across all types; bucket the rest as "Other"
+  const toolTotals = {};
+  rows.forEach((rb) => rb.tools?.forEach(({ tool, count }) => {
+    toolTotals[tool] = (toolTotals[tool] || 0) + count;
   }));
+  const topTools = Object.entries(toolTotals)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 7)
+    .map(([tool]) => tool);
+
+  // Shape each row into { name, Tool1: n, Tool2: n, ..., Other: n }
+  const data = rows.map((rb) => {
+    const row = { name: labelFromKey(rb.type) };
+    let other = 0;
+    rb.tools?.forEach(({ tool, count }) => {
+      if (topTools.includes(tool)) row[tool] = count;
+      else other += count;
+    });
+    if (other > 0) row["Other"] = other;
+    return row;
+  });
+
+  const allKeys = [...topTools, ...(data.some((r) => r["Other"]) ? ["Other"] : [])];
+  const COLORS = ["#2563EB", "#059669", "#D97706", "#7C3AED", "#0891B2", "#DB2777", "#65A30D", "#9CA3AF"];
+  const tickWidth = 148;
 
   return (
     <Card style={{ padding: "20px 22px" }}>
-      <CardHeader title="Top Roadblock Types" sub="Count of roadblocks per category" />
+      <CardHeader title="Top Roadblock Types" sub="Stacked by tools affected" />
       {loading ? <Skeleton /> : data.length === 0 ? <Empty text="No roadblocks logged yet" /> : (
-        <ResponsiveContainer width="100%" height={240}>
-          <BarChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 48 }} barSize={28}>
+        <ResponsiveContainer width="100%" height={Math.max(220, rows.length * 42 + 40)}>
+          <BarChart
+            data={data}
+            layout="vertical"
+            margin={{ top: 0, right: 16, left: 0, bottom: 0 }}
+            barSize={16}
+          >
             <XAxis
-              dataKey="name"
-              tick={{ fontSize: 10, fill: "#6B7280", fontFamily: F }}
-              axisLine={false}
-              tickLine={false}
-              angle={-35}
-              textAnchor="end"
-              interval={0}
-            />
-            <YAxis
+              type="number"
               allowDecimals={false}
               tick={{ fontSize: 11, fill: "#9CA3AF", fontFamily: F }}
               axisLine={false}
               tickLine={false}
             />
+            <YAxis
+              type="category"
+              dataKey="name"
+              width={tickWidth}
+              tick={{ fontSize: 11, fill: "#6B7280", fontFamily: F }}
+              axisLine={false}
+              tickLine={false}
+            />
             <Tooltip
-              content={({ active, payload }) => {
+              content={({ active, payload, label }) => {
                 if (!active || !payload?.length) return null;
-                const d = payload[0].payload;
                 return (
-                  <div style={{ background: "#1F2937", color: "#F9FAFB", borderRadius: 8, padding: "8px 12px", fontSize: 12, fontFamily: F, boxShadow: "0 4px 12px rgba(0,0,0,0.2)" }}>
-                    <p style={{ margin: "0 0 2px", fontWeight: 700 }}>{d.fullName}</p>
-                    <p style={{ margin: 0, color: "#D1D5DB" }}>{d.value} roadblock{d.value !== 1 ? "s" : ""}{d.topTool ? ` · top tool: ${d.topTool}` : ""}</p>
+                  <div style={{ background: "#1F2937", color: "#F9FAFB", borderRadius: 8, padding: "10px 14px", fontSize: 12, fontFamily: F, boxShadow: "0 4px 12px rgba(0,0,0,0.2)" }}>
+                    <p style={{ margin: "0 0 6px", fontWeight: 700 }}>{label}</p>
+                    {[...payload].reverse().map((p) => (
+                      <p key={p.dataKey} style={{ margin: "2px 0", color: "#D1D5DB" }}>
+                        <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: p.fill, marginRight: 6 }} />
+                        {p.dataKey}: {p.value}
+                      </p>
+                    ))}
                   </div>
                 );
               }}
-              cursor={{ fill: "#FFF7ED" }}
+              cursor={{ fill: "#F9FAFB" }}
             />
-            <Bar dataKey="value" fill={ORANGE} radius={[6, 6, 0, 0]}>
-              <LabelList dataKey="value" position="top" style={{ fontSize: 11, fill: "#6B7280", fontFamily: F }} />
-            </Bar>
+            <Legend
+              iconType="circle"
+              iconSize={8}
+              formatter={(value) => <span style={{ fontSize: 11, color: "#6B7280", fontFamily: F }}>{value}</span>}
+            />
+            {allKeys.map((tool, i) => (
+              <Bar
+                key={tool}
+                dataKey={tool}
+                stackId="a"
+                fill={COLORS[i % COLORS.length]}
+                radius={i === allKeys.length - 1 ? [0, 4, 4, 0] : [0, 0, 0, 0]}
+              />
+            ))}
           </BarChart>
         </ResponsiveContainer>
       )}
@@ -281,7 +322,7 @@ function IndustryPieChart({ data, loading }) {
   ];
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
       {/* Donut with center label */}
       <div style={{ width: 170, height: 200, flexShrink: 0 }}>
         <ResponsiveContainer width="100%" height="100%">
@@ -356,7 +397,7 @@ function SatisfactionPanel({ byWorkflow = [], byIndustry = [], loading }) {
   return (
     <Card style={{ padding: "20px 22px" }}>
       <CardHeader title="Satisfaction Breakdown" sub="Average score (1–5) by workflow type · case file distribution by industry" />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32, alignItems: "start" }}>
         <div style={colStyle}>
           <p style={labelStyle}>By Workflow Type</p>
           {loading ? <Skeleton /> : wfData.length === 0 ? <Empty text="No data yet" /> : (
