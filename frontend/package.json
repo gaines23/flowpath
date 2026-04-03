@@ -10,11 +10,12 @@
     "lint": "eslint src --ext js,jsx --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.56.2",
+    "axios": "^1.7.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.1",
-    "@tanstack/react-query": "^5.56.2",
-    "axios": "^1.7.7"
+    "recharts": "^3.8.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.5",

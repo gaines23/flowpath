@@ -180,7 +180,7 @@ def roadblock_warnings(request):
 def stats(request):
     """
     GET /api/v1/briefs/stats/
-    Dashboard stats — total builds, avg satisfaction, roadblock count.
+    Dashboard stats — totals, satisfaction, roadblock analytics, scope creep signals.
     """
     from django.db.models import Avg, Count
 
@@ -190,22 +190,101 @@ def stats(request):
         total_roadblocks=Count("delta__roadblocks"),
     )
 
-    top_tools = (
+    # Top tools (existing — last 100 case files)
+    top_tools_qs = (
         CaseFile.objects.values_list("tools", flat=True)
         .exclude(tools=[])
         .order_by("-created_at")[:100]
     )
-
     tool_freq = {}
-    for tool_list in top_tools:
+    for tool_list in top_tools_qs:
         for tool in tool_list:
             tool_freq[tool] = tool_freq.get(tool, 0) + 1
-
     top_5_tools = sorted(tool_freq.items(), key=lambda x: x[1], reverse=True)[:5]
+
+    # 1. Average time cost of roadblocks (hours)
+    time_cost_agg = Roadblock.objects.filter(
+        time_cost_hours__isnull=False
+    ).aggregate(avg=Avg("time_cost_hours"))
+
+    # 2. Most common roadblock types — count + top affected tool per type
+    roadblocks_qs = Roadblock.objects.exclude(type="").values("type", "tools_affected")
+    type_tool_counts = {}  # {rb_type: {tool: count}}
+    for rb in roadblocks_qs:
+        rb_type = rb["type"]
+        if rb_type not in type_tool_counts:
+            type_tool_counts[rb_type] = {}
+        for tool in (rb["tools_affected"] or []):
+            type_tool_counts[rb_type][tool] = type_tool_counts[rb_type].get(tool, 0) + 1
+
+    roadblock_types = []
+    for rb_type, tool_counts in type_tool_counts.items():
+        roadblock_types.append({
+            "type": rb_type,
+            "count": sum(tool_counts.values()),
+            "tools": [
+                {"tool": t, "count": c}
+                for t, c in sorted(tool_counts.items(), key=lambda x: x[1], reverse=True)
+            ],
+        })
+    roadblock_types.sort(key=lambda x: x["count"], reverse=True)
+
+    # 3. Satisfaction by workflow type (SQL aggregation)
+    sat_by_workflow = list(
+        CaseFile.objects.exclude(workflow_type="")
+        .exclude(satisfaction_score__isnull=True)
+        .values("workflow_type")
+        .annotate(avg_sat=Avg("satisfaction_score"), count=Count("id"))
+        .order_by("-avg_sat")[:10]
+    )
+
+    # 4. Satisfaction by industry (Python aggregation — JSONField)
+    industry_scores = {}
+    for cf in CaseFile.objects.exclude(industries=[]).exclude(
+        satisfaction_score__isnull=True
+    ).values("industries", "satisfaction_score"):
+        for ind in (cf["industries"] or []):
+            if ind not in industry_scores:
+                industry_scores[ind] = []
+            industry_scores[ind].append(cf["satisfaction_score"])
+
+    sat_by_industry = sorted(
+        [
+            {"industry": ind, "avg_sat": round(sum(s) / len(s), 2), "count": len(s)}
+            for ind, s in industry_scores.items()
+        ],
+        key=lambda x: x["avg_sat"],
+        reverse=True,
+    )[:10]
+
+    # 5. Tools that appear most in scope-creep / diverged cases
+    scope_creep_tool_freq = {}
+    for tool_list in CaseFile.objects.filter(
+        delta__diverged=True
+    ).values_list("tools", flat=True):
+        for tool in (tool_list or []):
+            scope_creep_tool_freq[tool] = scope_creep_tool_freq.get(tool, 0) + 1
+
+    scope_creep_tools = [
+        {"tool": t, "count": c}
+        for t, c in sorted(scope_creep_tool_freq.items(), key=lambda x: x[1], reverse=True)[:8]
+    ]
 
     return Response({
         "total_case_files": data["total"],
         "avg_satisfaction": round(data["avg_satisfaction"] or 0, 2),
         "total_roadblocks": data["total_roadblocks"],
+        "avg_roadblock_hours": round(time_cost_agg["avg"] or 0, 1),
         "top_tools": [{"tool": t, "count": c} for t, c in top_5_tools],
+        "roadblock_types": roadblock_types,
+        "sat_by_workflow": [
+            {
+                "workflow_type": r["workflow_type"],
+                "avg_sat": round(r["avg_sat"], 2),
+                "count": r["count"],
+            }
+            for r in sat_by_workflow
+        ],
+        "sat_by_industry": sat_by_industry,
+        "scope_creep_tools": scope_creep_tools,
     })
