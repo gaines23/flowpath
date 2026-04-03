@@ -8,6 +8,7 @@ from django.conf import settings
 class RoadblockType(models.TextChoices):
     INTEGRATION_LIMITATION = "integration_limitation", "Integration Limitation"
     API_LIMITATION = "api_limitation", "API Limitation"
+    AUTOMATION_LIMITATION = "automation_limitation", "Automation Limitation"
     DATA_MAPPING_MISMATCH = "data_mapping_mismatch", "Data Mapping Mismatch"
     AUTH_COMPLEXITY = "auth_complexity", "Auth Complexity"
     TIMING_CONFLICT = "timing_conflict", "Timing Conflict"
@@ -52,6 +53,7 @@ class CaseFile(models.Model):
         related_name="case_files",
     )
     logged_by_name = models.CharField(max_length=255, blank=True)  # fallback if no user account
+    name = models.CharField(max_length=255, blank=True)  # user-given name for the case file
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -143,6 +145,8 @@ class BuildLayer(models.Model):
     automations = models.TextField(blank=True)
     integrations = models.JSONField(default=list)
     build_notes = models.TextField(blank=True)
+    # Structured multi-workflow build map
+    workflows = models.JSONField(default=list)
 
     class Meta:
         db_table = "build_layers"
@@ -159,6 +163,7 @@ class DeltaLayer(models.Model):
     diverged = models.BooleanField(null=True, blank=True)
     divergence_reason = models.TextField(blank=True)
     compromises = models.TextField(blank=True)
+    scope_creep = models.JSONField(default=list)
 
     class Meta:
         db_table = "delta_layers"
@@ -181,6 +186,21 @@ class Roadblock(models.Model):
     class Meta:
         db_table = "roadblocks"
         ordering = ["order"]
+
+
+# ── Project Updates ───────────────────────────────────────────────────────────
+
+class ProjectUpdate(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    case_file = models.ForeignKey(CaseFile, on_delete=models.CASCADE, related_name="project_updates")
+    content = models.TextField(blank=True)
+    attachments = models.JSONField(default=list)  # [{name, url}]
+    created_at = models.DateTimeField()
+    order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        db_table = "project_updates"
+        ordering = ["-created_at"]
 
 
 # ── Layer 5: Reasoning ────────────────────────────────────────────────────────

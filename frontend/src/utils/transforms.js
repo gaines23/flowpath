@@ -2,10 +2,11 @@
  * Transforms the local React form state (from workflow-intake.jsx)
  * into the shape expected by POST /api/v1/briefs/
  */
-export function formStateToCaseFilePayload(formData, loggedByName = "") {
-  const { audit, intake, build, delta, reasoning, outcome } = formData;
+export function formStateToCaseFilePayload(formData, loggedByName = "", name = "") {
+  const { audit, intake, build, delta, reasoning, outcome, projectUpdates } = formData;
 
   return {
+    name,
     logged_by_name: loggedByName,
 
     // Layer 1 – Audit
@@ -52,13 +53,26 @@ export function formStateToCaseFilePayload(formData, loggedByName = "") {
 
     // Layer 3 – Build
     build: {
-      spaces: build.spaces,
-      lists: build.lists,
-      statuses: build.statuses,
-      custom_fields: build.customFields,
-      automations: build.automations,
-      integrations: build.integrations,
       build_notes: build.buildNotes,
+      workflows: (build.workflows || []).map(wf => ({
+        name: wf.name,
+        notes: wf.notes,
+        pipeline: (wf.pipeline || []).filter(p => p.trim()),
+        lists: (wf.lists || []).map(l => ({
+          name: l.name,
+          statuses: l.statuses,
+          custom_fields: l.customFields,
+          automations: (l.automations || []).map(a => ({
+            platform: a.platform || "clickup",
+            third_party_platform: a.third_party_platform || "",
+            pipeline_phase: a.pipelinePhase || "",
+            triggers: (a.triggers || []).map(t => ({ type: t.type, detail: t.detail })),
+            actions: (a.actions || []).map(ac => ({ type: ac.type, detail: ac.detail })),
+            instructions: a.instructions,
+            use_agent: !!(a.instructions && a.instructions.trim().length > 0),
+          })),
+        })),
+      })),
     },
 
     // Layer 4 – Delta
@@ -73,6 +87,12 @@ export function formStateToCaseFilePayload(formData, loggedByName = "") {
         : null,
       divergence_reason: delta.divergenceReason,
       compromises: delta.compromises,
+      scope_creep: (delta.scopeCreep || []).map(s => ({
+        area: s.area || "",
+        reason: s.reason || "",
+        impact: s.impact || "",
+        communicated: s.communicated === "Yes" ? true : s.communicated === "No" ? false : s.communicated === "Partially" ? "partially" : null,
+      })),
       roadblocks: (delta.roadblocks || []).map((r, i) => ({
         type: r.type
           ? r.type.toLowerCase().replace(/ /g, "_")
@@ -104,6 +124,14 @@ export function formStateToCaseFilePayload(formData, loggedByName = "") {
       complexity: reasoning.complexity,
     },
 
+    // Project updates
+    project_updates: (projectUpdates || []).map((u, i) => ({
+      content: u.content || "",
+      attachments: (u.attachments || []).map(a => ({ name: a.name || "", url: a.url || "" })),
+      created_at: u.createdAt,
+      order: i,
+    })),
+
     // Layer 6 – Outcome
     outcome: {
       built: outcome.built?.toLowerCase() || "",
@@ -122,7 +150,7 @@ export function formStateToCaseFilePayload(formData, loggedByName = "") {
  * Transforms API response back into form state shape for editing.
  */
 export function caseFileToFormState(caseFile) {
-  const { audit, intake, build, delta, reasoning, outcome } = caseFile;
+  const { audit, intake, build, delta, reasoning, outcome, project_updates } = caseFile;
 
   return {
     audit: {
@@ -165,13 +193,26 @@ export function caseFileToFormState(caseFile) {
       priorAttempts: intake?.prior_attempts || "",
     },
     build: {
-      spaces: build?.spaces || "",
-      lists: build?.lists || "",
-      statuses: build?.statuses || "",
-      customFields: build?.custom_fields || "",
-      automations: build?.automations || "",
-      integrations: build?.integrations || [],
       buildNotes: build?.build_notes || "",
+      workflows: (build?.workflows || []).map(wf => ({
+        name: wf.name || "",
+        notes: wf.notes || "",
+        pipeline: (wf.pipeline || []).map(p => p || ""),
+        lists: (wf.lists || []).map(l => ({
+          name: l.name || "",
+          statuses: l.statuses || "",
+          customFields: l.custom_fields || "",
+          automations: (l.automations || []).map(a => ({
+            platform: a.platform || "clickup",
+            third_party_platform: a.third_party_platform || "",
+            pipelinePhase: a.pipeline_phase || "",
+            triggers: (a.triggers || []).map(t => ({ type: t.type || "", detail: t.detail || "" })),
+            actions: (a.actions || []).map(ac => ({ type: ac.type || "", detail: ac.detail || "" })),
+            instructions: a.instructions || "",
+            use_agent: a.use_agent ?? !!(a.instructions && a.instructions.trim().length > 0),
+          })),
+        })),
+      })),
     },
     delta: {
       userIntent: delta?.user_intent || "",
@@ -184,6 +225,12 @@ export function caseFileToFormState(caseFile) {
         : null,
       divergenceReason: delta?.divergence_reason || "",
       compromises: delta?.compromises || "",
+      scopeCreep: (delta?.scope_creep || []).map(s => ({
+        area: s.area || "",
+        reason: s.reason || "",
+        impact: s.impact || "",
+        communicated: s.communicated === true ? "Yes" : s.communicated === false ? "No" : s.communicated === "partially" ? "Partially" : null,
+      })),
       roadblocks: (delta?.roadblocks || []).map((r) => ({
         type: r.type
           ? r.type.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
@@ -212,6 +259,12 @@ export function caseFileToFormState(caseFile) {
       lessons: reasoning?.lessons || "",
       complexity: reasoning?.complexity || 3,
     },
+    projectUpdates: (project_updates || []).map(u => ({
+      id: u.id,
+      content: u.content || "",
+      attachments: (u.attachments || []).map(a => ({ name: a.name || "", url: a.url || "" })),
+      createdAt: u.created_at,
+    })),
     outcome: {
       built: outcome?.built
         ? outcome.built.charAt(0).toUpperCase() + outcome.built.slice(1)

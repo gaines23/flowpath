@@ -17,7 +17,7 @@ export default function CaseFileListPage() {
   const totalCount = data?.count || 0;
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this case file? This cannot be undone.")) return;
+    if (!window.confirm("Delete this project file? This cannot be undone.")) return;
     setDeleting(id);
     try {
       await deleteMutation.mutateAsync(id);
@@ -34,14 +34,14 @@ export default function CaseFileListPage() {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
         <div>
-          <h1 style={{ margin: "0 0 4px", fontSize: 26, fontFamily: "'Fraunces', serif" }}>Case Files</h1>
+          <h1 style={{ margin: "0 0 4px", fontSize: 26, fontFamily: "'Fraunces', serif" }}>Projects</h1>
           <p style={{ margin: 0, fontSize: 13, color: "#6B7280", fontFamily: F }}>
             {totalCount} build{totalCount !== 1 ? "s" : ""} documented
           </p>
         </div>
         <Link to="/case-files/new">
           <button style={{ padding: "10px 20px", background: BLUE, border: "none", borderRadius: 9, color: "#fff", fontSize: 13, fontWeight: 700, fontFamily: F, cursor: "pointer" }}>
-            + New Case File
+            + New Project File
           </button>
         </Link>
       </div>
@@ -72,13 +72,13 @@ export default function CaseFileListPage() {
 
       {/* List */}
       {isLoading ? (
-        <div style={{ padding: 60, textAlign: "center", color: "#9CA3AF", fontFamily: F }}>Loading case files…</div>
+        <div style={{ padding: 60, textAlign: "center", color: "#9CA3AF", fontFamily: F }}>Loading project files…</div>
       ) : isError ? (
         <div style={{ padding: 40, textAlign: "center", color: "#EF4444", fontFamily: F }}>Failed to load. Please refresh.</div>
       ) : caseFiles.length === 0 ? (
         <div style={{ padding: "60px 20px", textAlign: "center", background: "#fff", border: "1px solid #F0F0F0", borderRadius: 14 }}>
           <p style={{ fontSize: 16, color: "#6B7280", fontFamily: F }}>
-            {filters.search ? "No results match your search." : "No case files yet. Log your first build."}
+            {filters.search ? "No results match your search." : "No project files yet. Log your first build."}
           </p>
         </div>
       ) : (
@@ -115,10 +115,13 @@ export default function CaseFileListPage() {
               {/* Workflow + tags */}
               <div style={{ minWidth: 0 }}>
                 <Link to={`/case-files/${cf.id}`} style={{ textDecoration: "none" }}>
-                  <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 600, color: "#111827", fontFamily: F }}>
-                    {cf.workflow_type || "Untitled"}
+                  <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 600, color: "#111827", fontFamily: F }}>
+                    {cf.name || cf.workflow_type || "Untitled"}
                   </p>
                 </Link>
+                {cf.name && cf.workflow_type && (
+                  <p style={{ margin: "0 0 4px", fontSize: 12, color: "#6B7280", fontFamily: F }}>{cf.workflow_type}</p>
+                )}
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
                   {cf.tools?.slice(0, 3).map((t) => (
                     <span key={t} style={{ fontSize: 11, color: BLUE, background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 10, padding: "1px 7px", fontFamily: F }}>
@@ -160,7 +163,7 @@ export default function CaseFileListPage() {
                   disabled={deleting === cf.id}
                   style={{ padding: "5px 10px", background: "transparent", border: "1px solid #FECACA", borderRadius: 6, fontSize: 12, color: "#EF4444", fontFamily: F, cursor: "pointer" }}
                 >
-                  {deleting === cf.id ? "…" : "Del"}
+                  {deleting === cf.id ? "…" : "Delete"}
                 </button>
               </div>
             </div>

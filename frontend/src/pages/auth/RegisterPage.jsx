@@ -82,7 +82,7 @@ export default function RegisterPage() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
               <div>
                 <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#111827", fontFamily: F, marginBottom: 5 }}>First name</label>
-                <input type="text" value={form.first_name} onChange={set("first_name")} placeholder="Alex" style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} />
+                <input type="text" required value={form.first_name} onChange={set("first_name")} placeholder="Alex" style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} />
               </div>
               <div>
                 <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#111827", fontFamily: F, marginBottom: 5 }}>Last name</label>

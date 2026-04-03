@@ -16,12 +16,13 @@ export default function NewCaseFilePage() {
 
   const [apiError, setApiError] = useState(null);
 
-  const handleSubmit = async (formData, enteredBy) => {
+  const handleSubmit = async (formData, enteredBy, caseName) => {
     setApiError(null);
     try {
       const payload = formStateToCaseFilePayload(
         formData,
-        enteredBy || user?.full_name || user?.email || ""
+        enteredBy || user?.full_name || user?.email || "",
+        caseName || "",
       );
       const result = await createMutation.mutateAsync(payload);
       navigate(`/case-files/${result.id}`, {
@@ -59,6 +60,7 @@ export default function NewCaseFilePage() {
       <CaseFileForm
         onSubmit={handleSubmit}
         isSaving={createMutation.isPending}
+        initialEnteredBy={user?.full_name || user?.email || ""}
       />
     </div>
   );

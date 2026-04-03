@@ -13,10 +13,10 @@ export default function EditCaseFilePage() {
   const updateMutation = useUpdateCaseFile(id);
   const [apiError, setApiError] = useState(null);
 
-  const handleSubmit = async (formData, enteredBy) => {
+  const handleSubmit = async (formData, enteredBy, caseName) => {
     setApiError(null);
     try {
-      const payload = formStateToCaseFilePayload(formData, enteredBy);
+      const payload = formStateToCaseFilePayload(formData, enteredBy, caseName || "");
       await updateMutation.mutateAsync(payload);
       navigate(`/case-files/${id}`, { state: { justUpdated: true } });
     } catch (err) {
@@ -57,8 +57,12 @@ export default function EditCaseFilePage() {
       )}
       <CaseFileForm
         initialData={initialData}
+        initialName={caseFile.name || ""}
+        initialEnteredBy={caseFile.logged_by_name || ""}
         onSubmit={handleSubmit}
         isSaving={updateMutation.isPending}
+        isEditing
+        onCancel={() => navigate(`/case-files/${id}`)}
       />
     </div>
   );

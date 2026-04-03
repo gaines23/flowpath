@@ -8,7 +8,7 @@
  * This is the same form built in workflow-intake.jsx, refactored as a
  * reusable component that can be used for both Create and Edit flows.
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 // ── All data constants (same as workflow-intake.jsx) ──────────────────────────
 const INDUSTRY_MAP = {
@@ -42,6 +42,7 @@ const WORKFLOW_PROCESS_MAP = {
     {name:"PRINCE2",desc:"Structured project management with defined roles and stages"},
     {name:"Critical Path Method",desc:"Identify longest dependency chain to determine project duration"},
     {name:"PMBOK",desc:"PMI's process-based framework for project management"},
+    {name:"Program Delivery",desc:"Multi-cohort or recurring delivery of structured programs with defined curricula and completion criteria"},
   ],
   "Product Development": [
     {name:"Dual-Track Agile",desc:"Parallel discovery and delivery tracks"},
@@ -68,6 +69,7 @@ const WORKFLOW_PROCESS_MAP = {
     {name:"NPS Tracking",desc:"Net Promoter Score collection and response workflow"},
     {name:"Renewal / Upsell Workflow",desc:"Proactive account expansion and retention process"},
     {name:"RFP / Proposal Process",desc:"Structured response and approval workflow for bids"},
+    {name:"Milestones & Deliverables",desc:"Checkpoints marking major stage completions paired with the tangible or intangible outputs produced at each phase"},
   ],
   "People & HR": [
     {name:"Employee Onboarding",desc:"Day 1 through 90-day structured ramp plan"},
@@ -75,6 +77,7 @@ const WORKFLOW_PROCESS_MAP = {
     {name:"OKR Check-ins",desc:"Recurring goal progress reviews"},
     {name:"Headcount Planning",desc:"Hiring roadmap and role prioritization"},
     {name:"L&D Tracking",desc:"Learning and development program management"},
+    {name:"Cohort Management",desc:"Managing groups of participants across sessions, tracks, and completion milestones"},
     {name:"Offboarding",desc:"Structured exit process and knowledge transfer"},
   ],
   "Compliance & Risk": [
@@ -86,29 +89,65 @@ const WORKFLOW_PROCESS_MAP = {
   ],
 };
 
-const WORKFLOW_TYPES = ["Client Project Management","Sprint Planning","Sales Pipeline","Employee Onboarding","Client Onboarding","Reporting & Dashboards","Content Production","Support Ticketing","Product Roadmap","Campaign Management","Event Planning","Procurement / Vendor Mgmt","Bug Tracking","Design Review","Legal Matter Management","Grant Management","Construction Milestones","Clinical Trial Tracking"];
-const TOOLS = ["Slack","HubSpot","GitHub","Google Drive","Stripe","Notion","Jira","Salesforce","Zoom","Asana","Monday","Trello","Zapier","Make","Airtable","Figma","Linear","Intercom","Zendesk","QuickBooks","Xero","DocuSign","Loom","Miro","Confluence"];
-const PAIN_POINTS = ["Visibility","Accountability","Handoffs","Reporting","Capacity Planning","Communication","Deadline Tracking","Resource Allocation","Client Transparency","Cross-team Alignment","Process Consistency","Approval Bottlenecks"];
-const FAILURE_REASONS = ["Too complex for the team","Nobody using it consistently","Automations breaking","Wrong tool for the job","Integrations not working","Statuses don't match real workflow","Too many custom fields","Permissions/visibility issues","No ownership assigned","Outgrown the current setup","Poor onboarding — built wrong from start","Duplicate work across tools","No reporting / can't see progress","Manual steps still required"];
-const CURRENT_TOOLS_USED = ["ClickUp (prior setup)","Spreadsheets / Excel","Notion","Trello","Asana","Monday.com","Jira","Email threads","Slack channels","Whiteboard / sticky notes","MS Project","Basecamp","Smartsheet","Paper / manual","No system at all"];
-const ROADBLOCK_TYPES = ["Integration Limitation","API Limitation","Data Mapping Mismatch","Auth Complexity","Timing Conflict","Cost Ceiling","User Behavior Gap","Scope Creep Block"];
+export const WORKFLOW_TYPES = [
+  { name: "Bug Tracking",               desc: "Issue logging, reproduction, assignment, and fix verification" },
+  { name: "Campaign Management",        desc: "Multi-channel marketing campaign planning, execution, and performance tracking" },
+  { name: "Client Onboarding",          desc: "Intake and setup process for new clients, from signed contract to first delivery" },
+  { name: "Client Project Management",  desc: "Tracking deliverables, timelines, and communication for client-facing work" },
+  { name: "Clinical Trial Tracking",    desc: "Protocol adherence, participant management, and regulatory reporting" },
+  { name: "Construction Milestones",    desc: "Phase-based project tracking for build, inspection, and handoff" },
+  { name: "Content Production",         desc: "Brief-to-publish pipeline covering writing, design, review, and scheduling" },
+  { name: "Design Review",              desc: "Creative feedback loops, revision tracking, and approval workflows" },
+  { name: "Employee Onboarding",        desc: "Structured ramp covering tools, training, and 30/60/90-day milestones" },
+  { name: "Event Planning",             desc: "Logistics, vendor coordination, and timeline management for events" },
+  { name: "Grant Management",           desc: "Application tracking, reporting requirements, and fund disbursement" },
+  { name: "Legal Matter Management",    desc: "Case intake, document management, deadline tracking, and billing" },
+  { name: "Procurement / Vendor Mgmt",  desc: "Vendor selection, contract management, and purchase order workflows" },
+  { name: "Product Roadmap",            desc: "Feature prioritization, planning cycles, and cross-team alignment" },
+  { name: "Project Management",         desc: "General-purpose project tracking with tasks, milestones, owners, and deadlines" },
+  { name: "Reporting & Dashboards",     desc: "Recurring data collection, aggregation, and stakeholder reporting workflows" },
+  { name: "Sales Pipeline",             desc: "Stage-based deal management from lead qualification through close" },
+  { name: "Sprint Planning",            desc: "Agile iteration planning with task assignment, backlog grooming, and velocity tracking" },
+  { name: "Support Ticketing",          desc: "Issue intake, triage, assignment, and resolution tracking" },
+];
+
+export const TOOLS = ["ClickUp","Slack","HubSpot","GitHub","Google Drive","Google Sheets","Excel","Google Docs","Word","Stripe","Notion","Jira","Salesforce","Zoom","Asana","Monday","Trello","Zapier","Make","Airtable","Figma","Linear","Intercom","Zendesk","QuickBooks","Xero","DocuSign","Loom","Miro","Confluence", "SmartSheet"];
+export const PAIN_POINTS = ["Visibility","Accountability","Handoffs","Reporting","Capacity Planning","Communication","Deadline Tracking","Resource Allocation","Client Transparency","Cross-team Alignment","Process Consistency","Approval Bottlenecks"];
+export const FAILURE_REASONS = ["Too complex for the team","Nobody using it consistently","Automations breaking","Wrong tool for the job","Integrations not working","Statuses don't match real workflow","Too many custom fields","Permissions/visibility issues","No ownership assigned","Outgrown the current setup","Poor onboarding — built wrong from start","Duplicate work across tools","No reporting / can't see progress","Manual steps still required"];
+export const CURRENT_TOOLS_USED = ["ClickUp (prior setup)","Spreadsheets / Excel","Notion","Trello","Asana","Monday.com","Jira","Email threads","Slack channels","Whiteboard / sticky notes","MS Project","Basecamp","Smartsheet","Paper / manual","No system at all"];
+const ROADBLOCK_TYPES = ["Integration Limitation","API Limitation","Automation Limitation","Data Mapping Mismatch","Auth Complexity","Timing Conflict","Cost Ceiling","User Behavior Gap","Scope Creep Block"];
 const SEVERITIES = ["Low","Medium","High","Blocker"];
+
+export const THIRD_PARTY_PLATFORMS = ["Make","Zapier","HubSpot Workflows","n8n","Pabbly Connect","ActiveCampaign","Monday Automations","Other"];
+
+export const CLICKUP_TRIGGERS = [
+  "Task Created","Task Status Changed","Task Completed","Task Moved","Task Assigned","Task Unassigned",
+  "Task Due Date Arrives","Task Start Date Arrives","Task Due Date Changed","Task Priority Changed",
+  "Custom Field Changed","Custom Field Is","Comment Posted","Attachment Added","Tag Added","Tag Removed", "Task Type Is",
+  "Checklist Item Completed","Time Estimate Changed","Dependency Resolved","Form Submitted","Recurring Task Due",
+];
+export const CLICKUP_ACTIONS = [
+  "Change Status","Assign To","Unassign From","Set Priority","Set Due Date","Set Start Date",
+  "Move to List","Add to List","Copy Task","Create Subtask","Create Task","Post Comment","Send Email",
+  "Add Tag","Remove Tag","Set Custom Field","Start Time Tracking","Stop Time Tracking", "Change Task Type",
+  "Apply Template","Archive Task","Send Webhook",
+];
 
 const STEPS = [
   {id:"audit",     label:"Current State",    short:"Audit",     color:"#EA580C"},
   {id:"intake",    label:"Scenario",          short:"Scenario",  color:"#7C3AED"},
-  {id:"build",     label:"Build",             short:"Build",     color:"#0284C7"},
   {id:"delta",     label:"Intent vs Reality", short:"Delta",     color:"#DC2626"},
+  {id:"build",     label:"Build",             short:"Build",     color:"#0284C7"},
   {id:"reasoning", label:"Reasoning",         short:"Reasoning", color:"#059669"},
   {id:"outcome",   label:"Outcome",           short:"Outcome",   color:"#4F46E5"},
 ];
 
-const STEP_TITLES = ["Current State Audit","Scenario Intake","Build Documentation","Intent vs Reality","Decision Reasoning","Outcome Capture"];
+const STEP_TITLES = ["Current State Audit","Scenario Intake","Intent vs Reality","Build Documentation","Decision Reasoning","Outcome Capture"];
 const STEP_DESC = [
   "Document what the user already has — and exactly why it's failing.",
   "Capture the raw scenario and what the user is trying to solve.",
-  "Document what was actually built in ClickUp, field by field.",
   "Log the gap between what was wanted and what was delivered.",
+  "Document what was actually built in ClickUp, field by field.",
   "Record the reasoning behind every major decision.",
   "Capture the post-build result and long-term usage signal.",
 ];
@@ -116,7 +155,7 @@ const STEP_DESC = [
 const DEFAULT_STATE = {
   audit:     {hasExisting:null,overallAssessment:"",triedToFix:null,previousFixes:"",builds:[],patternSummary:""},
   intake:    {rawPrompt:"",industries:[],teamSize:"",workflowType:"",processFrameworks:[],tools:[],painPoints:[],priorAttempts:""},
-  build:     {spaces:"",lists:"",statuses:"",customFields:"",automations:"",integrations:[],buildNotes:""},
+  build:     {buildNotes:"",workflows:[]},
   delta:     {userIntent:"",successCriteria:"",actualBuild:"",diverged:null,divergenceReason:"",compromises:"",roadblocks:[]},
   reasoning: {whyStructure:"",alternatives:"",whyRejected:"",assumptions:"",whenOpposite:"",lessons:"",complexity:3},
   outcome:   {built:null,blockReason:"",changes:"",whatWorked:"",whatFailed:"",satisfaction:3,recommend:null,revisitWhen:""},
@@ -173,6 +212,55 @@ function Sel({ value, onChange, options, placeholder="Choose one…" }) {
   );
 }
 
+function SelDesc({ value, onChange, options, placeholder="Choose one…" }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const selected = options.find(o => o.name === value);
+
+  useEffect(() => {
+    function handle(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, []);
+
+  return (
+    <div ref={ref} style={{ position:"relative", width:"100%" }}>
+      <button type="button" onClick={() => setOpen(o => !o)} style={{
+        width:"100%", boxSizing:"border-box", fontFamily:F, fontSize:14,
+        color: value ? "#111827" : "#9CA3AF",
+        background:"#fff", border:`1.5px solid ${open ? BLUE : "#E5E7EB"}`,
+        borderRadius:10, padding:"10px 36px 10px 13px", outline:"none", cursor:"pointer",
+        textAlign:"left", boxShadow: open ? "0 0 0 3px #EFF6FF" : "none",
+        backgroundImage:"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%239CA3AF' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\")",
+        backgroundRepeat:"no-repeat", backgroundPosition:"right 12px center",
+      }}>
+        {value || placeholder}
+      </button>
+      {open && (
+        <div style={{
+          position:"absolute", top:"calc(100% + 4px)", left:0, right:0, zIndex:100,
+          background:"#fff", border:"1.5px solid #E5E7EB", borderRadius:12,
+          boxShadow:"0 8px 24px rgba(0,0,0,0.10)", maxHeight:320, overflowY:"auto",
+        }}>
+          {options.map(o => (
+            <button key={o.name} type="button" onClick={() => { onChange(o.name); setOpen(false); }} style={{
+              display:"block", width:"100%", textAlign:"left", padding:"10px 14px",
+              background: value === o.name ? "#EFF6FF" : "transparent",
+              border:"none", cursor:"pointer", fontFamily:F,
+            }}
+            onMouseEnter={e => { if (value !== o.name) e.currentTarget.style.background = "#F9FAFB"; }}
+            onMouseLeave={e => { if (value !== o.name) e.currentTarget.style.background = "transparent"; }}
+            >
+              <span style={{ display:"block", fontSize:13, fontWeight:600, color: value === o.name ? BLUE : "#111827" }}>{o.name}</span>
+              <span style={{ display:"block", fontSize:12, color:"#6B7280", marginTop:2, lineHeight:1.4 }}>{o.desc}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Chip({ label, active, color=BLUE, onClick }) {
   return (
     <button onClick={onClick} style={{ padding:"7px 14px", borderRadius:20, fontSize:12, fontWeight:500, fontFamily:F, cursor:"pointer", transition:"all 0.15s", border:active?`1.5px solid ${color}`:"1.5px solid #E5E7EB", background:active?color+"18":"#fff", color:active?color:"#6B7280", minHeight:36, WebkitTapHighlightColor:"transparent" }}>
@@ -181,9 +269,19 @@ function Chip({ label, active, color=BLUE, onClick }) {
   );
 }
 
-function ChipGroup({ options, selected, onChange, color=BLUE }) {
+export function ChipGroup({ options, selected, onChange, color=BLUE }) {
   const toggle = item => onChange(selected.includes(item)?selected.filter(i=>i!==item):[...selected,item]);
-  return <div style={{ display:"flex", flexWrap:"wrap", gap:7 }}>{options.map(o=><Chip key={o} label={o} active={selected.includes(o)} color={color} onClick={()=>toggle(o)}/>)}</div>;
+  return (
+    <div>
+      {selected.length>0 && (
+        <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:10, padding:"10px 12px", background:color+"10", border:`1px solid ${color}30`, borderRadius:8 }}>
+          <span style={{ fontSize:11, fontWeight:700, color, alignSelf:"center", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em" }}>Selected:</span>
+          {selected.map(s=><span key={s} onClick={()=>toggle(s)} style={{ fontSize:12, color, background:"#fff", border:`1px solid ${color}40`, borderRadius:12, padding:"3px 10px", cursor:"pointer", fontFamily:F, fontWeight:500 }}>{s} ×</span>)}
+        </div>
+      )}
+      <div style={{ display:"flex", flexWrap:"wrap", gap:7 }}>{options.map(o=><Chip key={o} label={o} active={selected.includes(o)} color={color} onClick={()=>toggle(o)}/>)}</div>
+    </div>
+  );
 }
 
 function TogGroup({ options, value, onChange, color=BLUE }) {
@@ -263,11 +361,17 @@ function Grid2({ children, w }) {
 // workflow-intake.jsx — they are reproduced here so this component is self-contained.
 // (In a real codebase these would be shared component imports from @components/form/)
 
-function IndustryPicker({ selected, onChange }) {
+export function IndustryPicker({ selected, onChange }) {
   const [open, setOpen] = useState(null);
   const toggle = item => onChange(selected.includes(item)?selected.filter(i=>i!==item):[...selected,item]);
   return (
     <div>
+      {selected.length>0 && (
+        <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:10, padding:"10px 12px", background:"#EFF6FF", border:"1px solid #BFDBFE", borderRadius:8 }}>
+          <span style={{ fontSize:11, fontWeight:700, color:BLUE, alignSelf:"center", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em" }}>Selected:</span>
+          {selected.map(s=><span key={s} onClick={()=>toggle(s)} style={{ fontSize:12, color:BLUE, background:"#fff", border:"1px solid #BFDBFE", borderRadius:12, padding:"3px 10px", cursor:"pointer", fontFamily:F, fontWeight:500 }}>{s} ×</span>)}
+        </div>
+      )}
       <div style={{ border:"1px solid #E5E7EB", borderRadius:12, overflow:"hidden" }}>
         {Object.entries(INDUSTRY_MAP).map(([grp,items],gi,arr)=>{
           const count = items.filter(i=>selected.includes(i)).length;
@@ -290,21 +394,21 @@ function IndustryPicker({ selected, onChange }) {
           );
         })}
       </div>
-      {selected.length>0 && (
-        <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginTop:10, padding:"10px 12px", background:"#EFF6FF", border:"1px solid #BFDBFE", borderRadius:8 }}>
-          <span style={{ fontSize:11, fontWeight:700, color:BLUE, alignSelf:"center", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em" }}>Selected:</span>
-          {selected.map(s=><span key={s} onClick={()=>toggle(s)} style={{ fontSize:12, color:BLUE, background:"#fff", border:"1px solid #BFDBFE", borderRadius:12, padding:"3px 10px", cursor:"pointer", fontFamily:F, fontWeight:500 }}>{s} ×</span>)}
-        </div>
-      )}
     </div>
   );
 }
 
-function FrameworkPicker({ selected, onChange }) {
+export function FrameworkPicker({ selected, onChange }) {
   const [open, setOpen] = useState(null);
   const toggle = name => onChange(selected.includes(name)?selected.filter(i=>i!==name):[...selected,name]);
   return (
     <div>
+      {selected.length>0 && (
+        <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:10, padding:"10px 12px", background:"#EFF6FF", border:"1px solid #BFDBFE", borderRadius:8 }}>
+          <span style={{ fontSize:11, fontWeight:700, color:BLUE, alignSelf:"center", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em" }}>Selected:</span>
+          {selected.map(s=><span key={s} onClick={()=>toggle(s)} style={{ fontSize:12, color:BLUE, background:"#fff", border:"1px solid #BFDBFE", borderRadius:12, padding:"3px 10px", cursor:"pointer", fontFamily:F, fontWeight:500 }}>{s} ×</span>)}
+        </div>
+      )}
       <div style={{ border:"1px solid #E5E7EB", borderRadius:12, overflow:"hidden" }}>
         {Object.entries(WORKFLOW_PROCESS_MAP).map(([cat,procs],ci,arr)=>{
           const count = procs.filter(p=>selected.includes(p.name)).length;
@@ -348,12 +452,6 @@ function FrameworkPicker({ selected, onChange }) {
           );
         })}
       </div>
-      {selected.length>0 && (
-        <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginTop:10, padding:"10px 12px", background:"#EFF6FF", border:"1px solid #BFDBFE", borderRadius:8 }}>
-          <span style={{ fontSize:11, fontWeight:700, color:BLUE, alignSelf:"center", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em" }}>Selected:</span>
-          {selected.map(s=><span key={s} onClick={()=>onChange(selected.filter(i=>i!==s))} style={{ fontSize:12, color:BLUE, background:"#fff", border:"1px solid #BFDBFE", borderRadius:12, padding:"3px 10px", cursor:"pointer", fontFamily:F, fontWeight:500 }}>{s} ×</span>)}
-        </div>
-      )}
     </div>
   );
 }
@@ -454,13 +552,17 @@ function BuildCard({ item, index, onChange, onRemove, w }) {
 
 // ── Step screens ──────────────────────────────────────────────────────────────
 
-function StepAudit({ data, set, w }) {
+function StepAudit({ data, set, w, caseName, setCaseName }) {
   const add=()=>set({...data,builds:[...data.builds,emptyBuild()]});
   const upd=(i,v)=>set({...data,builds:data.builds.map((b,idx)=>idx===i?v:b)});
   const rem=(i)=>set({...data,builds:data.builds.filter((_,idx)=>idx!==i)});
   return (
     <div>
       <Banner emoji="🔍" title="Before we recommend anything, let's understand what already exists." body="Documenting the current state — and exactly why it's failing — is the most important input for an accurate recommendation." color="#EA580C"/>
+      <Card accent="#EA580C">
+        <CardTitle sub="Give this project file a short, memorable name">Project name</CardTitle>
+        <TI value={caseName} onChange={setCaseName} placeholder="e.g. Company/Client Name"/>
+      </Card>
       <Card>
         <CardTitle>Does this client have an existing setup?</CardTitle>
         <TogGroup options={["Yes, they have something","No — starting from scratch"]} value={data.hasExisting} onChange={v=>set({...data,hasExisting:v})} color={BLUE}/>
@@ -512,7 +614,7 @@ function StepIntake({ data, set, w }) {
         <CardTitle>Team basics</CardTitle>
         <Grid2 w={w}>
           <Field label="Team size"><TI value={data.teamSize} onChange={v=>set({...data,teamSize:v})} placeholder="e.g. 6"/></Field>
-          <Field label="Primary workflow type"><Sel value={data.workflowType} onChange={v=>set({...data,workflowType:v})} options={WORKFLOW_TYPES}/></Field>
+          <Field label="Primary workflow type"><SelDesc value={data.workflowType} onChange={v=>set({...data,workflowType:v})} options={WORKFLOW_TYPES}/></Field>
         </Grid2>
       </Card>
       <Card>
@@ -535,20 +637,216 @@ function StepIntake({ data, set, w }) {
   );
 }
 
+const emptyTrigger = () => ({ type:"", detail:"" });
+const emptyAction = () => ({ type:"", detail:"" });
+const emptyAutomation = () => ({ platform:"clickup", pipelinePhase:"", triggers:[emptyTrigger()], actions:[emptyAction()], instructions:"", use_agent:false });
+const emptyList = () => ({ name:"", statuses:"", customFields:"", automations:[] });
+const emptyWorkflow = () => ({ name:"", notes:"", pipeline:[], lists:[emptyList()] });
+
+function AutomationCard({ auto, autoIdx, onChange, onRemove, canRemove, onMoveUp, onMoveDown, isFirst, isLast, color, pipelinePhases }) {
+  const updTrigger = (i,k,v) => onChange({ ...auto, triggers: auto.triggers.map((t,idx)=>idx===i?{...t,[k]:v}:t) });
+  const addTrigger = () => onChange({ ...auto, triggers:[...auto.triggers, emptyTrigger()] });
+  const remTrigger = i => onChange({ ...auto, triggers: auto.triggers.filter((_,idx)=>idx!==i) });
+  const updAction = (i,k,v) => onChange({ ...auto, actions: auto.actions.map((a,idx)=>idx===i?{...a,[k]:v}:a) });
+  const addAction = () => onChange({ ...auto, actions:[...auto.actions, emptyAction()] });
+  const remAction = i => onChange({ ...auto, actions: auto.actions.filter((_,idx)=>idx!==i) });
+  const validPhases = (pipelinePhases||[]).filter(p=>p.trim());
+  return (
+    <div style={{ border:`1px solid ${color}20`, borderLeft:`3px solid ${color}80`, borderRadius:9, padding:"14px 16px", marginBottom:10, background:"#fff" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <span style={{ fontSize:11, fontWeight:700, color, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>Automation {autoIdx+1}</span>
+          {auto.pipelinePhase && <span style={{ fontSize:10, fontWeight:700, color, background:color+"12", border:`1px solid ${color}30`, borderRadius:6, padding:"2px 8px", fontFamily:F }}>{auto.pipelinePhase}</span>}
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+          <button type="button" onClick={onMoveUp} disabled={isFirst} style={{ fontSize:13, color:isFirst?"#D1D5DB":"#6B7280", background:"none", border:"none", cursor:isFirst?"default":"pointer", padding:"2px 4px", lineHeight:1 }} title="Move up">▲</button>
+          <button type="button" onClick={onMoveDown} disabled={isLast} style={{ fontSize:13, color:isLast?"#D1D5DB":"#6B7280", background:"none", border:"none", cursor:isLast?"default":"pointer", padding:"2px 4px", lineHeight:1 }} title="Move down">▼</button>
+          {canRemove && <button type="button" onClick={onRemove} style={{ fontSize:12, color:"#EF4444", background:"none", border:"none", cursor:"pointer", fontFamily:F, marginLeft:4 }}>Remove</button>}
+        </div>
+      </div>
+      {/* Pipeline phase */}
+      {validPhases.length > 0 && (
+        <div style={{ marginBottom:12 }}>
+          <div style={{ fontSize:11, fontWeight:700, color:"#6B7280", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:8 }}>Pipeline phase <span style={{ fontWeight:400, textTransform:"none", letterSpacing:0 }}>(optional)</span></div>
+          <Sel value={auto.pipelinePhase||""} onChange={v=>onChange({...auto,pipelinePhase:v})} options={validPhases} placeholder="— none —"/>
+        </div>
+      )}
+      {/* Platform toggle */}
+      <div style={{ display:"flex", gap:0, marginBottom:14, border:"1.5px solid #E5E7EB", borderRadius:9, overflow:"hidden", width:"fit-content" }}>
+        {["clickup","third_party"].map(p=>{
+          const active = (auto.platform||"clickup")===p;
+          const label = p==="clickup" ? "ClickUp" : "3rd Party";
+          return (
+            <button key={p} type="button" onClick={()=>onChange({...auto,platform:p})}
+              style={{ padding:"6px 16px", fontSize:12, fontWeight:600, fontFamily:F, border:"none", cursor:"pointer", background:active?color:"#fff", color:active?"#fff":"#6B7280", transition:"all 0.15s" }}>
+              {label}
+            </button>
+          );
+        })}
+      </div>
+      {/* 3rd party platform picker */}
+      {(auto.platform||"clickup")==="third_party" && (
+        <div style={{ marginBottom:12 }}>
+          <div style={{ fontSize:11, fontWeight:700, color:"#6B7280", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:8 }}>Platform</div>
+          <Sel value={auto.third_party_platform||""} onChange={v=>onChange({...auto,third_party_platform:v})} options={THIRD_PARTY_PLATFORMS} placeholder="Select platform…"/>
+        </div>
+      )}
+      {/* Triggers */}
+      <div style={{ marginBottom:12 }}>
+        <div style={{ fontSize:11, fontWeight:700, color:"#6B7280", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:8 }}>Triggers</div>
+        {auto.triggers.map((t,ti)=>(
+          <div key={ti} style={{ display:"flex", gap:8, alignItems:"flex-start", marginBottom:8 }}>
+            <div style={{ flex:"0 0 190px" }}><Sel value={t.type} onChange={v=>updTrigger(ti,"type",v)} options={CLICKUP_TRIGGERS} placeholder="Select trigger…"/></div>
+            <div style={{ flex:1 }}><TI value={t.detail} onChange={v=>updTrigger(ti,"detail",v)} placeholder="e.g. to Done, from any status…"/></div>
+            {auto.triggers.length>1 && <button type="button" onClick={()=>remTrigger(ti)} style={{ fontSize:18, color:"#EF4444", background:"none", border:"none", cursor:"pointer", padding:"8px 4px", fontFamily:F, lineHeight:1 }}>×</button>}
+          </div>
+        ))}
+        <button type="button" onClick={addTrigger} style={{ fontSize:12, color, background:"none", border:`1px dashed ${color}50`, borderRadius:7, padding:"5px 12px", cursor:"pointer", fontFamily:F, marginBottom:4 }}>+ Add trigger</button>
+      </div>
+      {/* Actions — ClickUp only */}
+      {(auto.platform||"clickup")==="clickup" && (
+        <div style={{ marginBottom:12 }}>
+          <div style={{ fontSize:11, fontWeight:700, color:"#6B7280", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:8 }}>Actions</div>
+          {auto.actions.map((a,ai)=>(
+            <div key={ai} style={{ display:"flex", gap:8, alignItems:"flex-start", marginBottom:8 }}>
+              <div style={{ flex:"0 0 190px" }}><Sel value={a.type} onChange={v=>updAction(ai,"type",v)} options={CLICKUP_ACTIONS} placeholder="Select action…"/></div>
+              <div style={{ flex:1 }}><TI value={a.detail} onChange={v=>updAction(ai,"detail",v)} placeholder="e.g. to team lead, set to High…"/></div>
+              {auto.actions.length>1 && <button type="button" onClick={()=>remAction(ai)} style={{ fontSize:18, color:"#EF4444", background:"none", border:"none", cursor:"pointer", padding:"8px 4px", fontFamily:F, lineHeight:1 }}>×</button>}
+            </div>
+          ))}
+          <button type="button" onClick={addAction} style={{ fontSize:12, color, background:"none", border:`1px dashed ${color}50`, borderRadius:7, padding:"5px 12px", cursor:"pointer", fontFamily:F, marginBottom:4 }}>+ Add action</button>
+        </div>
+      )}
+      {/* Instructions / Actions for 3rd party */}
+      <div style={{ marginBottom:4 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <span style={{ fontSize:11, fontWeight:700, color:"#6B7280", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>
+              {(auto.platform||"clickup")==="clickup" ? "Agent / Automation Instructions" : "Actions / Instructions"}
+            </span>
+            {auto.use_agent && <span style={{ fontSize:10, fontWeight:700, color:"#7C3AED", background:"#F5F3FF", border:"1px solid #DDD6FE", borderRadius:6, padding:"2px 7px", fontFamily:F, letterSpacing:"0.04em" }}>AGENT ON</span>}
+          </div>
+          <span style={{ fontSize:11, color:"#9CA3AF", fontFamily:F }}>optional</span>
+        </div>
+        <textarea
+          value={auto.instructions}
+          onChange={e=>onChange({...auto, instructions:e.target.value, use_agent:e.target.value.trim().length>0})}
+          rows={5}
+          placeholder={(auto.platform||"clickup")==="clickup"
+            ? "# Agent / automation instructions\n# Describe the logic for this automation\n\nIF task.status == 'Done':\n  notify(assignee)\n  move_to_list('Completed')"
+            : "# 3rd party automation actions\n# e.g. Make scenario steps, Zapier actions\n\nStep 1: Watch for new ClickUp task\nStep 2: Create record in HubSpot\nStep 3: Send Slack notification"}
+          style={{
+            width:"100%", boxSizing:"border-box",
+            fontFamily:"'Fira Code','Cascadia Code','Consolas',monospace",
+            fontSize:13, color:"#FFFFFF", background:"#425eb2",
+            border:"1px solid #313244", borderRadius:8,
+            padding:"12px 14px", outline:"none", resize:"vertical", lineHeight:1.7,
+            caretColor:"#CDD6F4",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function WorkflowListCard({ list, listIdx, onChange, onRemove, canRemove, color, pipelinePhases }) {
+  const upd = (k,v) => onChange({ ...list, [k]: v });
+  const autos = list.automations||[];
+  const updAuto = (i,v) => upd("automations", autos.map((a,idx)=>idx===i?v:a));
+  const addAuto = () => upd("automations", [...autos, emptyAutomation()]);
+  const remAuto = i => upd("automations", autos.filter((_,idx)=>idx!==i));
+  const moveAuto = (i, dir) => {
+    const j = i + dir;
+    if (j < 0 || j >= autos.length) return;
+    const next = [...autos];
+    [next[i], next[j]] = [next[j], next[i]];
+    upd("automations", next);
+  };
+  return (
+    <div style={{ border:`1px solid ${color}30`, borderLeft:`3px solid ${color}`, borderRadius:10, padding:"14px 16px", marginBottom:10, background:`${color}04` }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+        <span style={{ fontSize:12, fontWeight:700, color, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>List {listIdx+1}</span>
+        {canRemove && <button type="button" onClick={onRemove} style={{ fontSize:12, color:"#EF4444", background:"none", border:"none", cursor:"pointer", fontFamily:F }}>Remove list</button>}
+      </div>
+      <Field label="List name"><TI value={list.name} onChange={v=>upd("name",v)} placeholder="e.g. Active Leads, Proposals, Onboarding"/></Field>
+      <Field label="Status flow" hint="e.g. New → Contacted → Qualified → Closed"><TI value={list.statuses} onChange={v=>upd("statuses",v)} placeholder="New → In Progress → Review → Done"/></Field>
+      <Field label="Custom fields"><TI rows={3} value={list.customFields} onChange={v=>upd("customFields",v)} placeholder={"Client Name — Text\nDue Date — Date\nPriority — Dropdown (High / Med / Low)"}/></Field>
+      <HR label={`automations (${autos.length})`}/>
+      {autos.map((auto,ai)=>(
+        <AutomationCard key={ai} auto={auto} autoIdx={ai} onChange={v=>updAuto(ai,v)} onRemove={()=>remAuto(ai)} canRemove={autos.length>0} onMoveUp={()=>moveAuto(ai,-1)} onMoveDown={()=>moveAuto(ai,1)} isFirst={ai===0} isLast={ai===autos.length-1} color={color} pipelinePhases={pipelinePhases}/>
+      ))}
+      <button type="button" onClick={addAuto} style={{ width:"100%", padding:"8px 0", background:"transparent", border:`1.5px dashed ${color}50`, borderRadius:9, color, fontSize:12, fontWeight:600, fontFamily:F, cursor:"pointer", marginTop:4 }}>
+        + Add automation
+      </button>
+    </div>
+  );
+}
+
+function WorkflowBuildCard({ wf, wfIdx, onChange, onRemove, w }) {
+  const color = "#0284C7";
+  const updList = (i,v) => onChange({ ...wf, lists: wf.lists.map((l,idx)=>idx===i?v:l) });
+  const addList = () => onChange({ ...wf, lists: [...wf.lists, emptyList()] });
+  const remList = i => onChange({ ...wf, lists: wf.lists.filter((_,idx)=>idx!==i) });
+  return (
+    <Card accent={color} style={{ marginBottom:16 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:14 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <span style={{ width:24, height:24, borderRadius:6, background:color, color:"#fff", fontSize:12, fontWeight:700, fontFamily:F, display:"inline-flex", alignItems:"center", justifyContent:"center" }}>{wfIdx+1}</span>
+          <span style={{ fontSize:14, fontWeight:700, color:"#111827", fontFamily:F }}>{wf.name||`Workflow ${wfIdx+1}`}</span>
+        </div>
+        <button type="button" onClick={onRemove} style={{ fontSize:12, color:"#EF4444", background:"none", border:"none", cursor:"pointer", fontFamily:F, flexShrink:0 }}>Remove workflow</button>
+      </div>
+      <Field label="Workflow name"><TI value={wf.name} onChange={v=>onChange({...wf,name:v})} placeholder="e.g. Sales Space Pipeline, Workspace Workflow"/></Field>
+      <Field label="Notes" hint="optional"><TI rows={2} value={wf.notes} onChange={v=>onChange({...wf,notes:v})} placeholder="Edge cases, dependencies, context…"/></Field>
+      <HR label={`pipeline phases (${(wf.pipeline||[]).length})`}/>
+      <div style={{ marginBottom:8 }}>
+        {(wf.pipeline||[]).map((phase,pi)=>(
+          <div key={pi} style={{ display:"flex", gap:6, alignItems:"center", marginBottom:6 }}>
+            <span style={{ fontSize:11, fontWeight:700, color:"#9CA3AF", fontFamily:F, minWidth:22, textAlign:"right" }}>{pi+1}.</span>
+            <div style={{ flex:1 }}><TI value={phase} onChange={v=>onChange({...wf,pipeline:(wf.pipeline||[]).map((p,idx)=>idx===pi?v:p)})} placeholder={`Phase ${pi+1} name…`}/></div>
+            <button type="button" onClick={()=>{const n=[...(wf.pipeline||[])];[n[pi],n[pi-1]]=[n[pi-1],n[pi]];onChange({...wf,pipeline:n});}} disabled={pi===0} style={{ fontSize:13, color:pi===0?"#D1D5DB":"#6B7280", background:"none", border:"none", cursor:pi===0?"default":"pointer", padding:"4px 2px" }} title="Move up">▲</button>
+            <button type="button" onClick={()=>{const n=[...(wf.pipeline||[])];[n[pi],n[pi+1]]=[n[pi+1],n[pi]];onChange({...wf,pipeline:n});}} disabled={pi===(wf.pipeline||[]).length-1} style={{ fontSize:13, color:pi===(wf.pipeline||[]).length-1?"#D1D5DB":"#6B7280", background:"none", border:"none", cursor:pi===(wf.pipeline||[]).length-1?"default":"pointer", padding:"4px 2px" }} title="Move down">▼</button>
+            <button type="button" onClick={()=>onChange({...wf,pipeline:(wf.pipeline||[]).filter((_,idx)=>idx!==pi)})} style={{ fontSize:16, color:"#EF4444", background:"none", border:"none", cursor:"pointer", padding:"4px 2px", lineHeight:1 }}>×</button>
+          </div>
+        ))}
+        {(wf.pipeline||[]).length===0 && <p style={{ margin:"0 0 6px", fontSize:12, color:"#9CA3AF", fontFamily:F }}>No pipeline phases yet.</p>}
+        <button type="button" onClick={()=>onChange({...wf,pipeline:[...(wf.pipeline||[]),""]}) } style={{ fontSize:12, color, background:"none", border:`1px dashed ${color}50`, borderRadius:7, padding:"5px 12px", cursor:"pointer", fontFamily:F }}>+ Add phase</button>
+      </div>
+      <HR label={`lists (${wf.lists.length})`}/>
+      {wf.lists.map((l,i)=>(
+        <WorkflowListCard key={i} list={l} listIdx={i} onChange={v=>updList(i,v)} onRemove={()=>remList(i)} canRemove={wf.lists.length>1} color={color} pipelinePhases={wf.pipeline||[]}/>
+      ))}
+      <button type="button" onClick={addList} style={{ width:"100%", padding:"9px 0", background:"transparent", border:`1.5px dashed ${color}50`, borderRadius:9, color, fontSize:12, fontWeight:600, fontFamily:F, cursor:"pointer", marginTop:4 }}>
+        + Add list to this workflow
+      </button>
+    </Card>
+  );
+}
+
 function StepBuild({ data, set, w }) {
+  const workflows = data.workflows || [];
+  const addWf = () => set({ ...data, workflows: [...workflows, emptyWorkflow()] });
+  const updWf = (i,v) => set({ ...data, workflows: workflows.map((wf,idx)=>idx===i?v:wf) });
+  const remWf = i => set({ ...data, workflows: workflows.filter((_,idx)=>idx!==i) });
   return (
     <div>
-      <Banner emoji="🏗️" title="Document the recommended workflow structure." body="Be specific enough that someone could build this in ClickUp without asking a single follow-up question." color="#0284C7"/>
-      <Card>
-        <CardTitle>Workspace structure</CardTitle>
-        <Field label="Spaces" hint="comma separated"><TI value={data.spaces} onChange={v=>set({...data,spaces:v})} placeholder="e.g. Client Projects, Internal Ops"/></Field>
-        <Field label="Lists"><TI value={data.lists} onChange={v=>set({...data,lists:v})} placeholder="e.g. Active Clients, Proposals, Invoicing"/></Field>
-        <Field label="Status flow"><TI value={data.statuses} onChange={v=>set({...data,statuses:v})} placeholder="e.g. New → In Progress → Review → Done"/></Field>
-      </Card>
-      <Card><CardTitle>Custom fields</CardTitle><TI rows={5} value={data.customFields} onChange={v=>set({...data,customFields:v})} placeholder={"Client Name — Text\nDue Date — Date\nPriority — Dropdown (High / Med / Low)"}/></Card>
-      <Card><CardTitle sub="Trigger + action for each">Automations</CardTitle><TI rows={5} value={data.automations} onChange={v=>set({...data,automations:v})} placeholder={"When status → Done: notify client lead\nWhen due date < 2 days: assign to team lead"}/></Card>
-      <Card><CardTitle sub="Every tool wired into this workflow">Integrations</CardTitle><ChipGroup options={TOOLS} selected={data.integrations} onChange={v=>set({...data,integrations:v})} color="#0284C7"/></Card>
-      <Card><CardTitle>Build notes</CardTitle><TI rows={3} value={data.buildNotes} onChange={v=>set({...data,buildNotes:v})} placeholder="Edge cases, dependencies, shortcuts…"/></Card>
+      <Banner emoji="🏗️" title="Map each workflow build in detail." body="Add one workflow per distinct space or flow. Each workflow has its own lists — and each list has its own statuses, custom fields, and automations." color="#0284C7"/>
+      {workflows.length === 0 ? (
+        <div style={{ padding:"40px 24px", textAlign:"center", background:"#fff", border:"1.5px dashed #BFDBFE", borderRadius:14, marginBottom:14 }}>
+          <p style={{ margin:"0 0 16px", fontSize:14, color:"#6B7280", fontFamily:F }}>No workflows yet. Add one to start mapping the build.</p>
+          <button type="button" onClick={addWf} style={{ padding:"10px 24px", background:"#0284C7", border:"none", borderRadius:10, color:"#fff", fontSize:13, fontWeight:700, fontFamily:F, cursor:"pointer" }}>+ Add first workflow</button>
+        </div>
+      ) : (
+        <>
+          {workflows.map((wf,i)=>(
+            <WorkflowBuildCard key={i} wf={wf} wfIdx={i} onChange={v=>updWf(i,v)} onRemove={()=>remWf(i)} w={w}/>
+          ))}
+          <button type="button" onClick={addWf} style={{ width:"100%", padding:"11px 0", background:"transparent", border:"1.5px dashed #BFDBFE", borderRadius:10, color:"#0284C7", fontSize:13, fontWeight:600, fontFamily:F, cursor:"pointer", marginBottom:14 }}>
+            + Add another workflow
+          </button>
+        </>
+      )}
+      <Card><CardTitle hint="optional">Overall build notes</CardTitle><TI rows={3} value={data.buildNotes} onChange={v=>set({...data,buildNotes:v})} placeholder="General notes that apply across all workflows…"/></Card>
     </div>
   );
 }
@@ -672,10 +970,11 @@ function MobileStepDrawer({ step, setStep, cs, open, onClose }) {
 }
 
 // ── Main CaseFileForm ─────────────────────────────────────────────────────────
-export default function CaseFileForm({ onSubmit, isSaving, initialData }) {
+export default function CaseFileForm({ onSubmit, isSaving, initialData, initialName, initialEnteredBy, isEditing, onCancel }) {
   const [step, setStep] = useState(0);
   const [data, setData] = useState(initialData || DEFAULT_STATE);
-  const [enteredBy, setEnteredBy] = useState("");
+  const [enteredBy, setEnteredBy] = useState(initialEnteredBy || "");
+  const [caseName, setCaseName] = useState(initialName || "");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const w = useWidth();
 
@@ -686,7 +985,7 @@ export default function CaseFileForm({ onSubmit, isSaving, initialData }) {
 
   const setSD = (key, val) => setData(d => ({ ...d, [key]: val }));
 
-  const handleSave = () => onSubmit(data, enteredBy);
+  const handleSave = () => onSubmit(data, enteredBy, caseName);
 
   return (
     <div style={{ background:"#F9FAFB", minHeight:"100vh" }}>
@@ -698,7 +997,7 @@ export default function CaseFileForm({ onSubmit, isSaving, initialData }) {
           {/* Top row */}
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", height: isMobile ? 52 : 60 }}>
             <div>
-              <p style={{ margin:0, fontSize:11, fontWeight:700, color:"#9CA3AF", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.08em" }}>New case file</p>
+              <p style={{ margin:0, fontSize:11, fontWeight:700, color:"#9CA3AF", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.08em" }}>{isEditing ? "Edit project file" : "New case file"}</p>
               <p style={{ margin:0, fontSize:14, fontWeight:700, color:"#111827", fontFamily:F }}>{STEP_TITLES[step]}</p>
             </div>
             {isMobile ? (
@@ -760,10 +1059,10 @@ export default function CaseFileForm({ onSubmit, isSaving, initialData }) {
           </div>
         )}
 
-        {step===0 && <StepAudit   data={data.audit}     set={v=>setSD("audit",v)}     w={w}/>}
+        {step===0 && <StepAudit   data={data.audit}     set={v=>setSD("audit",v)}     w={w} caseName={caseName} setCaseName={setCaseName}/>}
         {step===1 && <StepIntake  data={data.intake}    set={v=>setSD("intake",v)}    w={w}/>}
-        {step===2 && <StepBuild   data={data.build}     set={v=>setSD("build",v)}     w={w}/>}
-        {step===3 && <StepDelta   data={data.delta}     set={v=>setSD("delta",v)}     w={w}/>}
+        {step===2 && <StepDelta   data={data.delta}     set={v=>setSD("delta",v)}     w={w}/>}
+        {step===3 && <StepBuild   data={data.build}     set={v=>setSD("build",v)}     w={w}/>}
         {step===4 && <StepReasoning data={data.reasoning} set={v=>setSD("reasoning",v)} w={w}/>}
         {step===5 && <StepOutcome data={data.outcome}   set={v=>setSD("outcome",v)}   w={w}/>}
       </div>
@@ -771,10 +1070,17 @@ export default function CaseFileForm({ onSubmit, isSaving, initialData }) {
       {/* ── Sticky footer ────────────────────────────────────────────────── */}
       <div style={{ position:"fixed", bottom:0, left:0, right:0, background:"#fff", borderTop:"1px solid #F0F0F0", padding:`12px ${isMobile?16:24}px`, boxShadow:"0 -4px 16px rgba(0,0,0,0.06)", zIndex:20 }}>
         <div style={{ maxWidth:820, margin:"0 auto", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          <button onClick={()=>setStep(s=>s-1)} disabled={step===0}
-            style={{ padding:`11px ${isMobile?18:24}px`, border:"1.5px solid #E5E7EB", borderRadius:10, background:"#fff", color:step===0?"#D1D5DB":"#374151", fontSize:13, fontWeight:600, cursor:step===0?"not-allowed":"pointer", fontFamily:F, opacity:step===0?0.45:1, minHeight:44 }}>
-            ← Back
-          </button>
+          {step === 0 && onCancel ? (
+            <button onClick={onCancel}
+              style={{ padding:`11px ${isMobile?18:24}px`, border:"1.5px solid #E5E7EB", borderRadius:10, background:"#fff", color:"#374151", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:F, minHeight:44 }}>
+              Cancel
+            </button>
+          ) : (
+            <button onClick={()=>setStep(s=>s-1)} disabled={step===0}
+              style={{ padding:`11px ${isMobile?18:24}px`, border:"1.5px solid #E5E7EB", borderRadius:10, background:"#fff", color:step===0?"#D1D5DB":"#374151", fontSize:13, fontWeight:600, cursor:step===0?"not-allowed":"pointer", fontFamily:F, opacity:step===0?0.45:1, minHeight:44 }}>
+              ← Back
+            </button>
+          )}
 
           {!isMobile && (
             <div style={{ display:"flex", gap:5, alignItems:"center" }}>
@@ -791,7 +1097,7 @@ export default function CaseFileForm({ onSubmit, isSaving, initialData }) {
           ) : (
             <button onClick={handleSave} disabled={isSaving}
               style={{ padding:`11px ${isMobile?22:28}px`, border:"none", borderRadius:10, background:isSaving?"#6EE7B7":"#059669", color:"#fff", fontSize:13, fontWeight:700, cursor:isSaving?"not-allowed":"pointer", fontFamily:F, boxShadow:"0 2px 10px rgba(5,150,105,0.35)", minHeight:44 }}>
-              {isSaving ? "Saving…" : "Save Case File ✓"}
+              {isSaving ? "Saving…" : "Save Project File ✓"}
             </button>
           )}
         </div>
