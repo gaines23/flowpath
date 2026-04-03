@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { flushSync } from "react-dom";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { useCaseFile, useDeleteCaseFile, useUpdateCaseFile, useShareCaseFile, useToggleCaseFileStatus } from "../../hooks/useCaseFiles";
 import { formatDate, satisfactionLabel, formStateToCaseFilePayload, caseFileToFormState } from "../../utils/transforms";
@@ -17,10 +18,10 @@ const STEP_COLORS = {
   outcome: "#4F46E5",
 };
 
-function Section({ title, emoji, color, children, collapsible = false }) {
+function Section({ title, emoji, color, children, collapsible = false, forceOpen = false }) {
   const { theme } = useTheme();
   const [open, setOpen] = useState(false);
-  const bodyVisible = !collapsible || open;
+  const bodyVisible = !collapsible || open || forceOpen;
   return (
     <div style={{ marginBottom: 20 }}>
       <div
@@ -34,12 +35,12 @@ function Section({ title, emoji, color, children, collapsible = false }) {
           borderLeft: `1px solid ${color}25`,
           borderRight: `1px solid ${color}25`,
           borderBottom: bodyVisible ? undefined : `1px solid ${color}25`,
-          cursor: collapsible ? "pointer" : "default",
-          userSelect: collapsible ? "none" : undefined,
+          cursor: collapsible && !forceOpen ? "pointer" : "default",
+          userSelect: collapsible && !forceOpen ? "none" : undefined,
         }}>
         <span style={{ fontSize: 18 }}>{emoji}</span>
         <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color, fontFamily: F }}>{title}</span>
-        {collapsible && (
+        {collapsible && !forceOpen && (
           <span style={{ fontSize: 11, color, opacity: 0.5 }}>{open ? "▲" : "▼"}</span>
         )}
       </div>
@@ -51,6 +52,31 @@ function Section({ title, emoji, color, children, collapsible = false }) {
         borderRadius: "0 0 12px 12px",
         padding: "20px 18px",
       }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function CollapsibleCard({ title, color = "#0284C7", borderColor = "#BAE6FD", background = "#0284C710", badge, children, forceOpen = false }) {
+  const { theme } = useTheme();
+  const [open, setOpen] = useState(false);
+  const isOpen = open || forceOpen;
+  return (
+    <div style={{ border: `1px solid ${borderColor}`, borderRadius: 12, marginBottom: 14, background, overflow: "hidden" }}>
+      <div
+        onClick={forceOpen ? undefined : () => setOpen(o => !o)}
+        style={{
+          display: "flex", alignItems: "center", gap: 10,
+          padding: "12px 16px",
+          cursor: forceOpen ? "default" : "pointer",
+          userSelect: forceOpen ? "none" : "none",
+        }}>
+        {badge}
+        <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: theme.text, fontFamily: F }}>{title}</span>
+        {!forceOpen && <span style={{ fontSize: 11, color, opacity: 0.6 }}>{isOpen ? "▲" : "▼"}</span>}
+      </div>
+      <div className="fp-collapsible-body" style={{ display: isOpen ? undefined : "none", padding: "0 16px 14px" }}>
         {children}
       </div>
     </div>
@@ -1019,11 +1045,22 @@ export default function CaseFileDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [apiError, setApiError] = useState(null);
   const [showShare, setShowShare] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
   const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 900);
   useEffect(() => {
     const fn = () => setW(window.innerWidth);
     window.addEventListener("resize", fn);
     return () => window.removeEventListener("resize", fn);
+  }, []);
+  useEffect(() => {
+    const onBefore = () => setIsPrinting(true);
+    const onAfter = () => setIsPrinting(false);
+    window.addEventListener("beforeprint", onBefore);
+    window.addEventListener("afterprint", onAfter);
+    return () => {
+      window.removeEventListener("beforeprint", onBefore);
+      window.removeEventListener("afterprint", onAfter);
+    };
   }, []);
 
   const { data: cf, isLoading, isError } = useCaseFile(id);
@@ -1079,7 +1116,7 @@ export default function CaseFileDetailPage() {
   }
 
   const { audit, intake, build, delta, reasoning, outcome, project_updates, } = cf;
-
+console.log(isPrinting)
   return (
     <>
     <style>{`
@@ -1098,6 +1135,7 @@ export default function CaseFileDetailPage() {
         .fp-no-print { display: none !important; }
         .fp-print-only { display: block !important; }
         .fp-section-body { display: block !important; }
+        .fp-collapsible-body { display: block !important; }
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         @page { margin: 16mm 14mm; size: A4; }
         .fp-meta-chips { margin-bottom: 12px !important; }
@@ -1185,7 +1223,8 @@ export default function CaseFileDetailPage() {
               const date = new Date().toISOString().slice(0, 10);
               const prev = document.title;
               document.title = `${name}_${date}_Flowpath`;
-              window.onafterprint = () => { document.title = prev; window.onafterprint = null; };
+              flushSync(() => setIsPrinting(true));
+              window.onafterprint = () => { document.title = prev; window.onafterprint = null; setIsPrinting(false); };
               window.print();
             }} style={{ padding: "9px 16px", background: theme.surface, border: `1.5px solid ${theme.borderInput}`, borderRadius: 9, color: theme.textSec, fontSize: 13, fontWeight: 600, fontFamily: F, cursor: "pointer", whiteSpace: "nowrap" }}>
               Export PDF
@@ -1281,7 +1320,7 @@ export default function CaseFileDetailPage() {
 
       {/* ── Layer 1: Audit ──────────────────────────────────────────────── */}
       {audit && (
-        <Section title="Current State Audit" emoji="🔍" color={STEP_COLORS.audit} collapsible>
+        <Section title="Current State Audit" emoji="🔍" color={STEP_COLORS.audit} collapsible forceOpen={isPrinting}>
           <Row label="Has existing setup" value={audit.has_existing === true ? "Yes" : audit.has_existing === false ? "No — greenfield" : "—"} />
           <Row label="Overall assessment" value={audit.overall_assessment} fullWidth />
           <Row label="Tried to fix before" value={audit.tried_to_fix === true ? "Yes" : audit.tried_to_fix === false ? "No" : null} />
@@ -1305,7 +1344,7 @@ export default function CaseFileDetailPage() {
 
       {/* ── Layer 2: Intake ─────────────────────────────────────────────── */}
       {intake && (
-        <Section title="Scenario Intake" emoji="📋" color={STEP_COLORS.intake} collapsible>
+        <Section title="Scenario Intake" emoji="📋" color={STEP_COLORS.intake} collapsible forceOpen={isPrinting}>
           {intake.raw_prompt && (
             <div style={{ padding: "12px 14px", background: theme.surfaceAlt, border: `1px solid ${theme.border}`, borderRadius: 8, marginBottom: 14 }}>
               <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: theme.textFaint, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em" }}>Raw prompt</p>
@@ -1344,13 +1383,14 @@ export default function CaseFileDetailPage() {
 
       {/* ── Layer 3: Build ──────────────────────────────────────────────── */}
       {build && (
-        <Section title="Build Documentation" emoji="🏗️" color={STEP_COLORS.build} collapsible>
+        <Section title="Build Documentation" emoji="🏗️" color={STEP_COLORS.build} collapsible forceOpen={isPrinting}>
           {build.workflows?.length > 0 ? build.workflows.map((wf, wi) => (
-            <div key={wi} style={{ border: "1px solid #BAE6FD", borderRadius: 12, padding: "14px 16px", marginBottom: 14, background: "#0284C710" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                <span style={{ width: 24, height: 24, borderRadius: 6, background: "#0284C7", color: "#fff", fontSize: 12, fontWeight: 700, fontFamily: F, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{wi + 1}</span>
-                <span style={{ fontSize: 14, fontWeight: 700, color: theme.text, fontFamily: F }}>{wf.name || `Workflow ${wi + 1}`}</span>
-              </div>
+            <CollapsibleCard
+              key={wi}
+              title={wf.name || `Workflow ${wi + 1}`}
+              badge={<span style={{ width: 24, height: 24, borderRadius: 6, background: "#0284C7", color: "#fff", fontSize: 12, fontWeight: 700, fontFamily: F, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{wi + 1}</span>}
+              forceOpen={isPrinting}
+            >
               {wf.notes && <p style={{ margin: "0 0 12px", fontSize: 13, color: theme.textSec, fontFamily: F, lineHeight: 1.6, fontStyle: "italic" }}>{wf.notes}</p>}
               {wf.lists?.length > 0 && wf.lists.map((l, li) => (
                 <div key={li} style={{ border: `1px solid ${theme.borderInput}`, borderLeft: "3px solid #0284C7", borderRadius: 9, padding: "12px 14px", marginBottom: 8, background: theme.surface }}>
@@ -1412,7 +1452,7 @@ export default function CaseFileDetailPage() {
                   )}
                 </div>
               ))}
-            </div>
+            </CollapsibleCard>
           )) : (
             <p style={{ fontSize: 13, color: theme.textFaint, fontFamily: F, fontStyle: "italic" }}>No workflows documented.</p>
           )}
@@ -1422,7 +1462,7 @@ export default function CaseFileDetailPage() {
 
       {/* ── Layer 4: Delta ──────────────────────────────────────────────── */}
       {delta && (
-        <Section title="Intent vs Reality" emoji="⚖️" color={STEP_COLORS.delta} collapsible>
+        <Section title="Intent vs Reality" emoji="⚖️" color={STEP_COLORS.delta} collapsible forceOpen={isPrinting}>
           <Row label="User intent " value={delta.user_intent} fullWidth />
           <Row label="Success criteria " value={delta.success_criteria} fullWidth />
           <Row label="What was built " value={delta.actual_build} fullWidth />
@@ -1442,7 +1482,7 @@ export default function CaseFileDetailPage() {
 
       {/* ── Layer 5: Reasoning ─────────────────────────────────────────── */}
       {reasoning && (
-        <Section title="Decision Reasoning" emoji="🧠" color={STEP_COLORS.reasoning} collapsible>
+        <Section title="Decision Reasoning" emoji="🧠" color={STEP_COLORS.reasoning} collapsible forceOpen={isPrinting}>
           <Row label="Why this structure" value={reasoning.why_structure} fullWidth />
           <Row label="Alternatives considered" value={reasoning.alternatives} fullWidth />
           <Row label="Why rejected" value={reasoning.why_rejected} fullWidth />
@@ -1469,7 +1509,7 @@ export default function CaseFileDetailPage() {
 
       {/* ── Layer 6: Outcome ───────────────────────────────────────────── */}
       {outcome && (
-        <Section title="Outcome Capture" emoji="✅" color={STEP_COLORS.outcome} collapsible>
+        <Section title="Outcome Capture" emoji="✅" color={STEP_COLORS.outcome} collapsible forceOpen={isPrinting}>
           <Row label="Did they build it" value={outcome.built ? outcome.built.charAt(0).toUpperCase() + outcome.built.slice(1) : null} />
           <Row label="Block reason" value={outcome.block_reason} fullWidth />
           <Row label="What changed" value={outcome.changes} fullWidth />
