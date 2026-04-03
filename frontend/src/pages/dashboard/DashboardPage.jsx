@@ -1,18 +1,101 @@
 import { Link } from "react-router-dom";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList,
+  PieChart, Pie, Cell, Legend,
+} from "recharts";
 import { useCaseFiles, useCaseFileStats } from "../../hooks/useCaseFiles";
 import { useAuth } from "../../hooks/useAuth";
-import { formatDate, truncate, satisfactionLabel } from "../../utils/transforms";
+import { formatDate, satisfactionLabel } from "../../utils/transforms";
 
 const F = "'Plus Jakarta Sans', sans-serif";
 const BLUE = "#2563EB";
+const GREEN = "#059669";
+const ORANGE = "#EA580C";
+const AMBER = "#D97706";
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function getTimeOfDay() {
+  const h = new Date().getHours();
+  if (h < 12) return "morning";
+  if (h < 17) return "afternoon";
+  return "evening";
+}
+
+function labelFromKey(key = "") {
+  return key
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+// ── Shared primitives ─────────────────────────────────────────────────────────
+
+function Card({ children, style = {} }) {
+  return (
+    <div style={{
+      background: "#fff",
+      border: "1px solid #F0F0F0",
+      borderRadius: 12,
+      boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+      ...style,
+    }}>
+      {children}
+    </div>
+  );
+}
+
+function CardHeader({ title, sub }) {
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#374151", fontFamily: F }}>{title}</p>
+      {sub && <p style={{ margin: "3px 0 0", fontSize: 11, color: "#9CA3AF", fontFamily: F }}>{sub}</p>}
+    </div>
+  );
+}
+
+function Skeleton() {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 8 }}>
+      {[80, 65, 90, 50, 72].map((w, i) => (
+        <div key={i} style={{ height: 14, background: "#F3F4F6", borderRadius: 6, width: `${w}%` }} />
+      ))}
+    </div>
+  );
+}
+
+function Empty({ text }) {
+  return (
+    <div style={{ padding: "28px 0", textAlign: "center" }}>
+      <p style={{ margin: 0, fontSize: 12, color: "#D1D5DB", fontFamily: F }}>{text}</p>
+    </div>
+  );
+}
+
+// ── Custom tooltip ────────────────────────────────────────────────────────────
+
+function ChartTooltip({ active, payload, label, unit = "" }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{
+      background: "#1F2937", color: "#F9FAFB", borderRadius: 8,
+      padding: "8px 12px", fontSize: 12, fontFamily: F, boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+    }}>
+      <p style={{ margin: "0 0 2px", fontWeight: 700 }}>{label}</p>
+      <p style={{ margin: 0, color: "#D1D5DB" }}>{payload[0].value}{unit}</p>
+    </div>
+  );
+}
+
+// ── Stat card ─────────────────────────────────────────────────────────────────
 
 function StatCard({ label, value, sub, color = BLUE }) {
   return (
-    <div style={{ background: "#fff", border: "1px solid #F0F0F0", borderRadius: 12, padding: "20px 22px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+    <Card style={{ padding: "20px 22px" }}>
       <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, color: "#9CA3AF", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.07em" }}>{label}</p>
       <p style={{ margin: "0 0 4px", fontSize: 28, fontWeight: 700, color, fontFamily: "'Fraunces', serif", letterSpacing: "-0.02em" }}>{value}</p>
       {sub && <p style={{ margin: 0, fontSize: 12, color: "#9CA3AF", fontFamily: F }}>{sub}</p>}
-    </div>
+    </Card>
   );
 }
 
@@ -26,6 +109,233 @@ function SatisfactionDot({ score }) {
   );
 }
 
+// ── Horizontal bar chart wrapper ──────────────────────────────────────────────
+// Generic component: data = [{name, value, ...}], barColor or colorFn
+
+function HorizBarChart({ data, barColor, unit = "", height = 220, tickWidth = 130 }) {
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <BarChart
+        data={data}
+        layout="vertical"
+        margin={{ top: 0, right: 16, left: 0, bottom: 0 }}
+        barSize={12}
+      >
+        <XAxis
+          type="number"
+          tick={{ fontSize: 11, fill: "#9CA3AF", fontFamily: F }}
+          axisLine={false}
+          tickLine={false}
+          allowDecimals={false}
+        />
+        <YAxis
+          type="category"
+          dataKey="name"
+          width={tickWidth}
+          tick={{ fontSize: 11, fill: "#6B7280", fontFamily: F }}
+          axisLine={false}
+          tickLine={false}
+        />
+        <Tooltip content={<ChartTooltip unit={unit} />} cursor={{ fill: "#F9FAFB" }} />
+        <Bar dataKey="value" radius={[0, 6, 6, 0]} fill={barColor} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ── Roadblock types chart (vertical bar) ──────────────────────────────────────
+
+function RoadblockTypesChart({ types = [], loading }) {
+  const data = types.slice(0, 7).map((rb) => ({
+    name: labelFromKey(rb.type).replace(" Limitation", " Limit.").replace("Automation", "Auto."),
+    fullName: labelFromKey(rb.type),
+    value: rb.count,
+    topTool: rb.top_tool,
+  }));
+
+  return (
+    <Card style={{ padding: "20px 22px" }}>
+      <CardHeader title="Top Roadblock Types" sub="Count of roadblocks per category" />
+      {loading ? <Skeleton /> : data.length === 0 ? <Empty text="No roadblocks logged yet" /> : (
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 48 }} barSize={28}>
+            <XAxis
+              dataKey="name"
+              tick={{ fontSize: 10, fill: "#6B7280", fontFamily: F }}
+              axisLine={false}
+              tickLine={false}
+              angle={-35}
+              textAnchor="end"
+              interval={0}
+            />
+            <YAxis
+              allowDecimals={false}
+              tick={{ fontSize: 11, fill: "#9CA3AF", fontFamily: F }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <Tooltip
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null;
+                const d = payload[0].payload;
+                return (
+                  <div style={{ background: "#1F2937", color: "#F9FAFB", borderRadius: 8, padding: "8px 12px", fontSize: 12, fontFamily: F, boxShadow: "0 4px 12px rgba(0,0,0,0.2)" }}>
+                    <p style={{ margin: "0 0 2px", fontWeight: 700 }}>{d.fullName}</p>
+                    <p style={{ margin: 0, color: "#D1D5DB" }}>{d.value} roadblock{d.value !== 1 ? "s" : ""}{d.topTool ? ` · top tool: ${d.topTool}` : ""}</p>
+                  </div>
+                );
+              }}
+              cursor={{ fill: "#FFF7ED" }}
+            />
+            <Bar dataKey="value" fill={ORANGE} radius={[6, 6, 0, 0]}>
+              <LabelList dataKey="value" position="top" style={{ fontSize: 11, fill: "#6B7280", fontFamily: F }} />
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      )}
+    </Card>
+  );
+}
+
+// ── Scope creep chart ─────────────────────────────────────────────────────────
+
+function ScopeCreepChart({ tools = [], loading }) {
+  const data = tools.map((t) => ({ name: t.tool, value: t.count }));
+
+  return (
+    <Card style={{ padding: "20px 22px" }}>
+      <CardHeader title="Scope Creep by Tool" sub="Tools most often present in diverged builds" />
+      {loading ? <Skeleton /> : data.length === 0 ? <Empty text="No diverged builds recorded" /> : (
+        <HorizBarChart data={data} barColor={AMBER} unit=" cases" height={Math.max(180, data.length * 36)} tickWidth={110} />
+      )}
+    </Card>
+  );
+}
+
+// ── Satisfaction charts ───────────────────────────────────────────────────────
+
+function SatTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  const score = payload[0].value;
+  return (
+    <div style={{
+      background: "#1F2937", color: "#F9FAFB", borderRadius: 8,
+      padding: "8px 12px", fontSize: 12, fontFamily: F, boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+    }}>
+      <p style={{ margin: "0 0 2px", fontWeight: 700 }}>{label}</p>
+      <p style={{ margin: 0, color: "#D1D5DB" }}>{score} / 5 · {payload[0].payload.count} file{payload[0].payload.count !== 1 ? "s" : ""}</p>
+    </div>
+  );
+}
+
+function SatBarChart({ data, height = 200, tickWidth = 130 }) {
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <BarChart
+        data={data}
+        layout="vertical"
+        margin={{ top: 0, right: 32, left: 0, bottom: 0 }}
+        barSize={12}
+      >
+        <XAxis
+          type="number"
+          domain={[0, 5]}
+          ticks={[1, 2, 3, 4, 5]}
+          tick={{ fontSize: 11, fill: "#9CA3AF", fontFamily: F }}
+          axisLine={false}
+          tickLine={false}
+        />
+        <YAxis
+          type="category"
+          dataKey="name"
+          width={tickWidth}
+          tick={{ fontSize: 11, fill: "#6B7280", fontFamily: F }}
+          axisLine={false}
+          tickLine={false}
+        />
+        <Tooltip content={<SatTooltip />} cursor={{ fill: "#F9FAFB" }} />
+        <Bar dataKey="value" radius={[0, 6, 6, 0]} fill={BLUE}>
+          <LabelList dataKey="value" position="right" style={{ fontSize: 11, fill: "#6B7280", fontFamily: F }} formatter={(v) => `${v}/5`} />
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+const PIE_COLORS = ["#2563EB", "#059669", "#D97706", "#EA580C", "#7C3AED", "#0891B2", "#DB2777", "#65A30D", "#DC2626", "#9333EA"];
+
+function IndustryPieChart({ data, loading }) {
+  if (loading) return <Skeleton />;
+  if (!data?.length) return <Empty text="No data yet" />;
+
+  const pieData = data.map((r) => ({ name: r.industry, value: r.count, avg_sat: r.avg_sat }));
+
+  return (
+    <ResponsiveContainer width="100%" height={260}>
+      <PieChart>
+        <Pie
+          data={pieData}
+          dataKey="value"
+          nameKey="name"
+          cx="50%"
+          cy="50%"
+          innerRadius={55}
+          outerRadius={90}
+          paddingAngle={3}
+        >
+          {pieData.map((_, i) => (
+            <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+          ))}
+        </Pie>
+        <Tooltip
+          content={({ active, payload }) => {
+            if (!active || !payload?.length) return null;
+            const d = payload[0].payload;
+            return (
+              <div style={{ background: "#1F2937", color: "#F9FAFB", borderRadius: 8, padding: "8px 12px", fontSize: 12, fontFamily: F, boxShadow: "0 4px 12px rgba(0,0,0,0.2)" }}>
+                <p style={{ margin: "0 0 2px", fontWeight: 700 }}>{d.name}</p>
+                <p style={{ margin: 0, color: "#D1D5DB" }}>{d.value} file{d.value !== 1 ? "s" : ""} · avg {d.avg_sat}/5</p>
+              </div>
+            );
+          }}
+        />
+        <Legend
+          iconType="circle"
+          iconSize={8}
+          formatter={(value) => <span style={{ fontSize: 11, color: "#6B7280", fontFamily: F }}>{value}</span>}
+        />
+      </PieChart>
+    </ResponsiveContainer>
+  );
+}
+
+function SatisfactionPanel({ byWorkflow = [], byIndustry = [], loading }) {
+  const wfData = byWorkflow.map((r) => ({ name: r.workflow_type, value: r.avg_sat, count: r.count }));
+
+  const colStyle = { flex: 1, minWidth: 0 };
+  const labelStyle = { margin: "0 0 14px", fontSize: 11, fontWeight: 700, color: "#9CA3AF", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em" };
+
+  return (
+    <Card style={{ padding: "20px 22px" }}>
+      <CardHeader title="Satisfaction Breakdown" sub="Average score (1–5) by workflow type · case file distribution by industry" />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
+        <div style={colStyle}>
+          <p style={labelStyle}>By Workflow Type</p>
+          {loading ? <Skeleton /> : wfData.length === 0 ? <Empty text="No data yet" /> : (
+            <SatBarChart data={wfData} height={Math.max(160, wfData.length * 36)} tickWidth={130} />
+          )}
+        </div>
+        <div style={colStyle}>
+          <p style={labelStyle}>By Industry</p>
+          <IndustryPieChart data={byIndustry} loading={loading} />
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const { data: stats, isLoading: statsLoading } = useCaseFileStats();
@@ -34,12 +344,12 @@ export default function DashboardPage() {
   const recent = recentData?.results || [];
 
   return (
-    <div style={{ padding: "32px 32px 80px", maxWidth: 1000 }}>
+    <div style={{ padding: "32px 32px 80px", maxWidth: 1100 }}>
 
       {/* Header */}
       <div style={{ marginBottom: 32 }}>
         <h1 style={{ margin: "0 0 6px", fontSize: 26, fontFamily: "'Fraunces', serif" }}>
-          Good {getTimeOfDay()}, {user?.first_name || "there"} 👋
+          Good {getTimeOfDay()}, {user?.first_name || "there"}
         </h1>
         <p style={{ margin: 0, fontSize: 14, color: "#6B7280", fontFamily: F }}>
           Here's what the knowledge base looks like today.
@@ -47,7 +357,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stat cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 36 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 28 }}>
         <StatCard
           label="Total case files"
           value={statsLoading ? "—" : stats?.total_case_files ?? 0}
@@ -57,20 +367,41 @@ export default function DashboardPage() {
           label="Avg satisfaction"
           value={statsLoading ? "—" : stats?.avg_satisfaction ? `${stats.avg_satisfaction}/5` : "—"}
           sub="across all outcomes"
-          color="#059669"
+          color={GREEN}
         />
         <StatCard
           label="Roadblocks logged"
           value={statsLoading ? "—" : stats?.total_roadblocks ?? 0}
           sub="known failure patterns"
-          color="#EA580C"
+          color={ORANGE}
+        />
+        <StatCard
+          label="Avg hours lost"
+          value={statsLoading ? "—" : stats?.avg_roadblock_hours ? `${stats.avg_roadblock_hours}h` : "—"}
+          sub="per roadblock"
+          color={AMBER}
+        />
+      </div>
+
+      {/* Roadblock types + Scope creep */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+        <RoadblockTypesChart types={stats?.roadblock_types} loading={statsLoading} />
+        <ScopeCreepChart tools={stats?.scope_creep_tools} loading={statsLoading} />
+      </div>
+
+      {/* Satisfaction breakdown */}
+      <div style={{ marginBottom: 28 }}>
+        <SatisfactionPanel
+          byWorkflow={stats?.sat_by_workflow}
+          byIndustry={stats?.sat_by_industry}
+          loading={statsLoading}
         />
       </div>
 
       {/* Top tools */}
       {stats?.top_tools?.length > 0 && (
-        <div style={{ background: "#fff", border: "1px solid #F0F0F0", borderRadius: 12, padding: "20px 22px", marginBottom: 28, boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-          <p style={{ margin: "0 0 14px", fontSize: 13, fontWeight: 700, color: "#374151", fontFamily: F }}>Most common tools in case files</p>
+        <Card style={{ padding: "20px 22px", marginBottom: 28 }}>
+          <CardHeader title="Most common tools" />
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {stats.top_tools.map(({ tool, count }) => (
               <span key={tool} style={{ padding: "5px 12px", background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 20, fontSize: 12, color: BLUE, fontFamily: F, fontWeight: 600 }}>
@@ -78,7 +409,7 @@ export default function DashboardPage() {
               </span>
             ))}
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Recent case files */}
@@ -90,8 +421,7 @@ export default function DashboardPage() {
       {listLoading ? (
         <div style={{ padding: 40, textAlign: "center", color: "#9CA3AF", fontFamily: F }}>Loading…</div>
       ) : recent.length === 0 ? (
-        <div style={{ padding: "40px 20px", textAlign: "center", background: "#fff", border: "1px solid #F0F0F0", borderRadius: 12 }}>
-          <p style={{ margin: "0 0 12px", fontSize: 20 }}>📋</p>
+        <Card style={{ padding: "40px 20px", textAlign: "center" }}>
           <p style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 600, color: "#374151", fontFamily: F }}>No case files yet</p>
           <p style={{ margin: "0 0 20px", fontSize: 13, color: "#9CA3AF", fontFamily: F }}>Start documenting workflow builds to train the system.</p>
           <Link to="/case-files/new">
@@ -99,23 +429,24 @@ export default function DashboardPage() {
               Log first build
             </button>
           </Link>
-        </div>
+        </Card>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {recent.slice(0, 8).map((cf) => (
             <Link key={cf.id} to={`/case-files/${cf.id}`} style={{ textDecoration: "none" }}>
-              <div style={{
-                background: "#fff",
-                border: "1px solid #F0F0F0",
-                borderRadius: 12,
-                padding: "16px 20px",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-                transition: "border-color 0.15s, box-shadow 0.15s",
-                gap: 16,
-              }}
+              <div
+                style={{
+                  background: "#fff",
+                  border: "1px solid #F0F0F0",
+                  borderRadius: 12,
+                  padding: "16px 20px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                  transition: "border-color 0.15s, box-shadow 0.15s",
+                  gap: 16,
+                }}
                 onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#BFDBFE"; e.currentTarget.style.boxShadow = "0 2px 8px rgba(37,99,235,0.08)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#F0F0F0"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.04)"; }}
               >
@@ -133,7 +464,7 @@ export default function DashboardPage() {
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
                   {cf.roadblock_count > 0 && (
-                    <span style={{ fontSize: 12, color: "#EA580C", fontFamily: F, fontWeight: 600 }}>
+                    <span style={{ fontSize: 12, color: ORANGE, fontFamily: F, fontWeight: 600 }}>
                       {cf.roadblock_count} roadblock{cf.roadblock_count !== 1 ? "s" : ""}
                     </span>
                   )}
@@ -147,11 +478,4 @@ export default function DashboardPage() {
       )}
     </div>
   );
-}
-
-function getTimeOfDay() {
-  const h = new Date().getHours();
-  if (h < 12) return "morning";
-  if (h < 17) return "afternoon";
-  return "evening";
 }
