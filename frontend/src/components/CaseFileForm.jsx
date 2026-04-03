@@ -806,42 +806,51 @@ function WorkflowListCard({ list, listIdx, onChange, onRemove, canRemove, color,
 
 function WorkflowBuildCard({ wf, wfIdx, onChange, onRemove, w }) {
   const { theme } = useTheme();
+  const [collapsed, setCollapsed] = useState(false);
   const color = "#0284C7";
   const updList = (i,v) => onChange({ ...wf, lists: wf.lists.map((l,idx)=>idx===i?v:l) });
   const addList = () => onChange({ ...wf, lists: [...wf.lists, emptyList()] });
   const remList = i => onChange({ ...wf, lists: wf.lists.filter((_,idx)=>idx!==i) });
   return (
     <Card accent={color} style={{ marginBottom:16 }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:14 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <span style={{ width:24, height:24, borderRadius:6, background:color, color:"#fff", fontSize:12, fontWeight:700, fontFamily:F, display:"inline-flex", alignItems:"center", justifyContent:"center" }}>{wfIdx+1}</span>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom: collapsed ? 0 : 14 }}>
+        <button type="button" onClick={()=>setCollapsed(c=>!c)} style={{ display:"flex", alignItems:"center", gap:10, background:"none", border:"none", cursor:"pointer", padding:0, flex:1, textAlign:"left" }}>
+          <span style={{ width:24, height:24, borderRadius:6, background:color, color:"#fff", fontSize:12, fontWeight:700, fontFamily:F, display:"inline-flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{wfIdx+1}</span>
           <span style={{ fontSize:14, fontWeight:700, color:theme.text, fontFamily:F }}>{wf.name||`Workflow ${wfIdx+1}`}</span>
-        </div>
+          <span style={{ fontSize:11, color:theme.textFaint, fontFamily:F, marginLeft:4 }}>
+            {collapsed ? `${wf.lists.length} list${wf.lists.length!==1?"s":""}` : ""}
+          </span>
+          <span style={{ fontSize:12, color:theme.textMuted, marginLeft:"auto", paddingRight:8, transition:"transform 0.2s", display:"inline-block", transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)" }}>▾</span>
+        </button>
         <button type="button" onClick={onRemove} style={{ fontSize:12, color:"#EF4444", background:"none", border:"none", cursor:"pointer", fontFamily:F, flexShrink:0 }}>Remove workflow</button>
       </div>
-      <Field label="Workflow name"><TI value={wf.name} onChange={v=>onChange({...wf,name:v})} placeholder="e.g. Sales Space Pipeline, Workspace Workflow"/></Field>
-      <Field label="Notes" hint="optional"><TI rows={2} value={wf.notes} onChange={v=>onChange({...wf,notes:v})} placeholder="Edge cases, dependencies, context…"/></Field>
-      <HR label={`pipeline phases (${(wf.pipeline||[]).length})`}/>
-      <div style={{ marginBottom:8 }}>
-        {(wf.pipeline||[]).map((phase,pi)=>(
-          <div key={pi} style={{ display:"flex", gap:6, alignItems:"center", marginBottom:6 }}>
-            <span style={{ fontSize:11, fontWeight:700, color:"#9CA3AF", fontFamily:F, minWidth:22, textAlign:"right" }}>{pi+1}.</span>
-            <div style={{ flex:1 }}><TI value={phase} onChange={v=>onChange({...wf,pipeline:(wf.pipeline||[]).map((p,idx)=>idx===pi?v:p)})} placeholder={`Phase ${pi+1} name…`}/></div>
-            <button type="button" onClick={()=>{const n=[...(wf.pipeline||[])];[n[pi],n[pi-1]]=[n[pi-1],n[pi]];onChange({...wf,pipeline:n});}} disabled={pi===0} style={{ fontSize:13, color:pi===0?theme.borderInput:theme.textMuted, background:"none", border:"none", cursor:pi===0?"default":"pointer", padding:"4px 2px" }} title="Move up">▲</button>
-            <button type="button" onClick={()=>{const n=[...(wf.pipeline||[])];[n[pi],n[pi+1]]=[n[pi+1],n[pi]];onChange({...wf,pipeline:n});}} disabled={pi===(wf.pipeline||[]).length-1} style={{ fontSize:13, color:pi===(wf.pipeline||[]).length-1?theme.borderInput:theme.textMuted, background:"none", border:"none", cursor:pi===(wf.pipeline||[]).length-1?"default":"pointer", padding:"4px 2px" }} title="Move down">▼</button>
-            <button type="button" onClick={()=>onChange({...wf,pipeline:(wf.pipeline||[]).filter((_,idx)=>idx!==pi)})} style={{ fontSize:16, color:"#EF4444", background:"none", border:"none", cursor:"pointer", padding:"4px 2px", lineHeight:1 }}>×</button>
+      {!collapsed && (
+        <>
+          <Field label="Workflow name"><TI value={wf.name} onChange={v=>onChange({...wf,name:v})} placeholder="e.g. Sales Space Pipeline, Workspace Workflow"/></Field>
+          <Field label="Notes" hint="optional"><TI rows={2} value={wf.notes} onChange={v=>onChange({...wf,notes:v})} placeholder="Edge cases, dependencies, context…"/></Field>
+          <HR label={`pipeline phases (${(wf.pipeline||[]).length})`}/>
+          <div style={{ marginBottom:8 }}>
+            {(wf.pipeline||[]).map((phase,pi)=>(
+              <div key={pi} style={{ display:"flex", gap:6, alignItems:"center", marginBottom:6 }}>
+                <span style={{ fontSize:11, fontWeight:700, color:"#9CA3AF", fontFamily:F, minWidth:22, textAlign:"right" }}>{pi+1}.</span>
+                <div style={{ flex:1 }}><TI value={phase} onChange={v=>onChange({...wf,pipeline:(wf.pipeline||[]).map((p,idx)=>idx===pi?v:p)})} placeholder={`Phase ${pi+1} name…`}/></div>
+                <button type="button" onClick={()=>{const n=[...(wf.pipeline||[])];[n[pi],n[pi-1]]=[n[pi-1],n[pi]];onChange({...wf,pipeline:n});}} disabled={pi===0} style={{ fontSize:13, color:pi===0?theme.borderInput:theme.textMuted, background:"none", border:"none", cursor:pi===0?"default":"pointer", padding:"4px 2px" }} title="Move up">▲</button>
+                <button type="button" onClick={()=>{const n=[...(wf.pipeline||[])];[n[pi],n[pi+1]]=[n[pi+1],n[pi]];onChange({...wf,pipeline:n});}} disabled={pi===(wf.pipeline||[]).length-1} style={{ fontSize:13, color:pi===(wf.pipeline||[]).length-1?theme.borderInput:theme.textMuted, background:"none", border:"none", cursor:pi===(wf.pipeline||[]).length-1?"default":"pointer", padding:"4px 2px" }} title="Move down">▼</button>
+                <button type="button" onClick={()=>onChange({...wf,pipeline:(wf.pipeline||[]).filter((_,idx)=>idx!==pi)})} style={{ fontSize:16, color:"#EF4444", background:"none", border:"none", cursor:"pointer", padding:"4px 2px", lineHeight:1 }}>×</button>
+              </div>
+            ))}
+            {(wf.pipeline||[]).length===0 && <p style={{ margin:"0 0 6px", fontSize:12, color:theme.textFaint, fontFamily:F }}>No pipeline phases yet.</p>}
+            <button type="button" onClick={()=>onChange({...wf,pipeline:[...(wf.pipeline||[]),""]}) } style={{ fontSize:12, color, background:"none", border:`1px dashed ${color}50`, borderRadius:7, padding:"5px 12px", cursor:"pointer", fontFamily:F }}>+ Add phase</button>
           </div>
-        ))}
-        {(wf.pipeline||[]).length===0 && <p style={{ margin:"0 0 6px", fontSize:12, color:theme.textFaint, fontFamily:F }}>No pipeline phases yet.</p>}
-        <button type="button" onClick={()=>onChange({...wf,pipeline:[...(wf.pipeline||[]),""]}) } style={{ fontSize:12, color, background:"none", border:`1px dashed ${color}50`, borderRadius:7, padding:"5px 12px", cursor:"pointer", fontFamily:F }}>+ Add phase</button>
-      </div>
-      <HR label={`lists (${wf.lists.length})`}/>
-      {wf.lists.map((l,i)=>(
-        <WorkflowListCard key={i} list={l} listIdx={i} onChange={v=>updList(i,v)} onRemove={()=>remList(i)} canRemove={wf.lists.length>1} color={color} pipelinePhases={wf.pipeline||[]}/>
-      ))}
-      <button type="button" onClick={addList} style={{ width:"100%", padding:"9px 0", background:"transparent", border:`1.5px dashed ${color}50`, borderRadius:9, color, fontSize:12, fontWeight:600, fontFamily:F, cursor:"pointer", marginTop:4 }}>
-        + Add list to this workflow
-      </button>
+          <HR label={`lists (${wf.lists.length})`}/>
+          {wf.lists.map((l,i)=>(
+            <WorkflowListCard key={i} list={l} listIdx={i} onChange={v=>updList(i,v)} onRemove={()=>remList(i)} canRemove={wf.lists.length>1} color={color} pipelinePhases={wf.pipeline||[]}/>
+          ))}
+          <button type="button" onClick={addList} style={{ width:"100%", padding:"9px 0", background:"transparent", border:`1.5px dashed ${color}50`, borderRadius:9, color, fontSize:12, fontWeight:600, fontFamily:F, cursor:"pointer", marginTop:4 }}>
+            + Add list to this workflow
+          </button>
+        </>
+      )}
     </Card>
   );
 }

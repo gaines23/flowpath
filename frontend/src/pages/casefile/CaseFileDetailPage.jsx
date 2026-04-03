@@ -502,6 +502,170 @@ function EditProjectUpdateCard({ item, onChange, onRemove }) {
   );
 }
 
+function EditWorkflowBuildCard({ wf, wfIdx, onChange, onRemove, initialCollapsed = true }) {
+  const [collapsed, setCollapsed] = useState(initialCollapsed);
+  const { theme } = useTheme();
+  const color = "#0284C7";
+  const pipeline = wf.pipeline||[];
+  const validPhases = pipeline.filter(p=>p.trim());
+  const updList = (li,v) => onChange({...wf,lists:(wf.lists||[]).map((l,idx)=>idx===li?v:l)});
+  const addList = () => onChange({...wf,lists:[...(wf.lists||[]),{name:"",statuses:"",customFields:"",automations:[]}]});
+  const remList = li => onChange({...wf,lists:(wf.lists||[]).filter((_,idx)=>idx!==li)});
+  return (
+    <div style={{ border:"1px solid #BAE6FD", borderRadius:12, marginBottom:14, overflow:"hidden" }}>
+      <button type="button" onClick={()=>setCollapsed(c=>!c)} style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"13px 16px", background:"#0284C710", border:"none", cursor:"pointer", borderBottom:collapsed?"none":"1px solid #BAE6FD", minHeight:52 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <span style={{ width:24, height:24, borderRadius:6, background:color, color:"#fff", fontSize:12, fontWeight:700, fontFamily:F, display:"inline-flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{wfIdx+1}</span>
+          <span style={{ fontSize:13, fontWeight:700, color:theme.text, fontFamily:F }}>{wf.name||`Workflow ${wfIdx+1}`}</span>
+          {collapsed && <span style={{ fontSize:11, color:theme.textFaint, fontFamily:F }}>{(wf.lists||[]).length} list{(wf.lists||[]).length!==1?"s":""}</span>}
+        </div>
+        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+          <button type="button" onClick={e=>{e.stopPropagation();onRemove();}} style={{ fontSize:12, color:"#EF4444", background:"#FEF2F2", border:"1px solid #FECACA", borderRadius:7, padding:"5px 11px", cursor:"pointer", fontFamily:F, fontWeight:600 }}>Remove</button>
+          <span style={{ color:theme.textFaint, fontSize:11 }}>{collapsed?"▼":"▲"}</span>
+        </div>
+      </button>
+      {!collapsed && (
+        <div style={{ padding:"14px 16px", background:"#0284C710" }}>
+          <ERow label="Workflow name"><EInput value={wf.name} onChange={v=>onChange({...wf,name:v})} placeholder="e.g. Sales Space Pipeline"/></ERow>
+          <ERow label="Notes" fullWidth><ETextarea value={wf.notes} onChange={v=>onChange({...wf,notes:v})} placeholder="Context, dependencies…" rows={2}/></ERow>
+          {/* Pipeline phases */}
+          <div style={{ margin:"12px 0 4px", fontSize:11, fontWeight:700, color, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>Pipeline phases ({pipeline.length})</div>
+          <div style={{ marginBottom:10 }}>
+            {pipeline.map((phase,pi)=>(
+              <div key={pi} style={{ display:"flex", gap:6, alignItems:"center", marginBottom:6 }}>
+                <span style={{ fontSize:11, fontWeight:700, color:theme.textFaint, fontFamily:F, minWidth:22, textAlign:"right" }}>{pi+1}.</span>
+                <div style={{ flex:1 }}><EInput value={phase} onChange={v=>onChange({...wf,pipeline:pipeline.map((p,idx)=>idx===pi?v:p)})} placeholder={`Phase ${pi+1} name…`}/></div>
+                <button type="button" onClick={()=>{const n=[...pipeline];[n[pi],n[pi-1]]=[n[pi-1],n[pi]];onChange({...wf,pipeline:n});}} disabled={pi===0} style={{ fontSize:13, color:pi===0?theme.borderInput:theme.textMuted, background:"none", border:"none", cursor:pi===0?"default":"pointer", padding:"4px 2px" }} title="Move up">▲</button>
+                <button type="button" onClick={()=>{const n=[...pipeline];[n[pi],n[pi+1]]=[n[pi+1],n[pi]];onChange({...wf,pipeline:n});}} disabled={pi===pipeline.length-1} style={{ fontSize:13, color:pi===pipeline.length-1?theme.borderInput:theme.textMuted, background:"none", border:"none", cursor:pi===pipeline.length-1?"default":"pointer", padding:"4px 2px" }} title="Move down">▼</button>
+                <button type="button" onClick={()=>onChange({...wf,pipeline:pipeline.filter((_,idx)=>idx!==pi)})} style={{ fontSize:16, color:"#EF4444", background:"none", border:"none", cursor:"pointer", padding:"4px 2px", lineHeight:1 }}>×</button>
+              </div>
+            ))}
+            {pipeline.length===0 && <p style={{ margin:"0 0 6px", fontSize:12, color:theme.textFaint, fontFamily:F }}>No pipeline phases yet.</p>}
+            <button type="button" onClick={()=>onChange({...wf,pipeline:[...pipeline,""]})} style={{ fontSize:12, color, background:"none", border:"1px dashed #BAE6FD", borderRadius:7, padding:"5px 12px", cursor:"pointer", fontFamily:F }}>+ Add phase</button>
+          </div>
+          <div style={{ margin:"12px 0 8px", fontSize:11, fontWeight:700, color, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>Lists ({(wf.lists||[]).length})</div>
+          {(wf.lists||[]).map((l,li)=>{
+            const lautos = l.automations||[];
+            const updAuto = (ai,v) => updList(li,{...l,automations:lautos.map((a,idx)=>idx===ai?v:a)});
+            const addAuto = () => updList(li,{...l,automations:[...lautos,{platform:"clickup",pipelinePhase:"",triggers:[{type:"",detail:""}],actions:[{type:"",detail:""}],instructions:""}]});
+            const remAuto = ai => updList(li,{...l,automations:lautos.filter((_,idx)=>idx!==ai)});
+            const moveAuto = (ai, dir) => {
+              const j = ai + dir;
+              if (j < 0 || j >= lautos.length) return;
+              const next = [...lautos];
+              [next[ai], next[j]] = [next[j], next[ai]];
+              updList(li,{...l,automations:next});
+            };
+            return (
+              <div key={li} style={{ border:`1px solid ${theme.borderInput}`, borderLeft:"3px solid #0284C7", borderRadius:9, padding:"12px 14px", marginBottom:8, background:theme.surface }}>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
+                  <span style={{ fontSize:12, fontWeight:700, color, fontFamily:F }}>List {li+1}</span>
+                  {(wf.lists||[]).length>1 && <button type="button" onClick={()=>remList(li)} style={{ fontSize:12, color:"#EF4444", background:"none", border:"none", cursor:"pointer", fontFamily:F }}>Remove</button>}
+                </div>
+                <ERow label="List name"><EInput value={l.name} onChange={v=>updList(li,{...l,name:v})} placeholder="e.g. Active Leads"/></ERow>
+                <ERow label="Status flow"><EInput value={l.statuses} onChange={v=>updList(li,{...l,statuses:v})} placeholder="New → In Progress → Done"/></ERow>
+                <ERow label="Custom fields" fullWidth><ETextarea value={l.customFields} onChange={v=>updList(li,{...l,customFields:v})} placeholder={"Client Name — Text\nPriority — Dropdown"} rows={3}/></ERow>
+                <div style={{ margin:"12px 0 6px", fontSize:11, fontWeight:700, color, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>Automations ({lautos.length})</div>
+                {lautos.map((auto,ai)=>(
+                  <div key={ai} style={{ border:`1px solid ${theme.borderInput}`, borderLeft:"3px solid #0284C780", borderRadius:8, padding:"12px 14px", marginBottom:8, background:theme.surfaceAlt }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                        <span style={{ fontSize:11, fontWeight:700, color, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>Automation {ai+1}</span>
+                        {auto.pipelinePhase && <span style={{ fontSize:10, fontWeight:700, color, background:"#E0F2FE", border:"1px solid #BAE6FD", borderRadius:6, padding:"2px 8px", fontFamily:F }}>{auto.pipelinePhase}</span>}
+                      </div>
+                      <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                        <button type="button" onClick={()=>moveAuto(ai,-1)} disabled={ai===0} style={{ fontSize:13, color:ai===0?theme.borderInput:theme.textMuted, background:"none", border:"none", cursor:ai===0?"default":"pointer", padding:"2px 4px", lineHeight:1 }} title="Move up">▲</button>
+                        <button type="button" onClick={()=>moveAuto(ai,1)} disabled={ai===lautos.length-1} style={{ fontSize:13, color:ai===lautos.length-1?theme.borderInput:theme.textMuted, background:"none", border:"none", cursor:ai===lautos.length-1?"default":"pointer", padding:"2px 4px", lineHeight:1 }} title="Move down">▼</button>
+                        <button type="button" onClick={()=>remAuto(ai)} style={{ fontSize:12, color:"#EF4444", background:"none", border:"none", cursor:"pointer", fontFamily:F, marginLeft:4 }}>Remove</button>
+                      </div>
+                    </div>
+                    {validPhases.length > 0 && (
+                      <div style={{ marginBottom:10 }}>
+                        <div style={{ fontSize:11, fontWeight:600, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:6 }}>Pipeline phase <span style={{ fontWeight:400, textTransform:"none", letterSpacing:0 }}>(optional)</span></div>
+                        <ESelect value={auto.pipelinePhase||""} onChange={v=>updAuto(ai,{...auto,pipelinePhase:v})} options={validPhases}/>
+                      </div>
+                    )}
+                    <div style={{ display:"flex", gap:0, marginBottom:12, border:`1.5px solid ${theme.borderInput}`, borderRadius:9, overflow:"hidden", width:"fit-content" }}>
+                      {["clickup","third_party"].map(p=>{
+                        const active=(auto.platform||"clickup")===p;
+                        return (
+                          <button key={p} type="button" onClick={()=>updAuto(ai,{...auto,platform:p})}
+                            style={{ padding:"6px 16px", fontSize:12, fontWeight:600, fontFamily:F, border:"none", cursor:"pointer", background:active?color:theme.surface, color:active?"#fff":theme.textMuted }}>
+                            {p==="clickup"?"ClickUp":"3rd Party"}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {(auto.platform||"clickup")==="third_party" && (
+                      <div style={{ marginBottom:10 }}>
+                        <div style={{ fontSize:11, fontWeight:600, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:6 }}>Platform</div>
+                        <ESelect value={auto.third_party_platform||""} onChange={v=>updAuto(ai,{...auto,third_party_platform:v})} options={THIRD_PARTY_PLATFORMS}/>
+                      </div>
+                    )}
+                    <div style={{ marginBottom:10 }}>
+                      <div style={{ fontSize:11, fontWeight:600, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:6 }}>Triggers</div>
+                      {(auto.triggers||[]).map((t,ti)=>(
+                        <div key={ti} style={{ display:"flex", gap:8, alignItems:"flex-start", marginBottom:6 }}>
+                          <div style={{ flex:"0 0 180px" }}><ESelect value={t.type} onChange={v=>updAuto(ai,{...auto,triggers:auto.triggers.map((tr,idx)=>idx===ti?{...tr,type:v}:tr)})} options={CLICKUP_TRIGGERS}/></div>
+                          <div style={{ flex:1 }}><EInput value={t.detail} onChange={v=>updAuto(ai,{...auto,triggers:auto.triggers.map((tr,idx)=>idx===ti?{...tr,detail:v}:tr)})} placeholder="e.g. to Done…"/></div>
+                          {auto.triggers.length>1 && <button type="button" onClick={()=>updAuto(ai,{...auto,triggers:auto.triggers.filter((_,idx)=>idx!==ti)})} style={{ fontSize:16, color:"#EF4444", background:"none", border:"none", cursor:"pointer", padding:"6px 4px", fontFamily:F }}>×</button>}
+                        </div>
+                      ))}
+                      <button type="button" onClick={()=>updAuto(ai,{...auto,triggers:[...auto.triggers,{type:"",detail:""}]})} style={{ fontSize:12, color, background:"none", border:"1px dashed #BAE6FD", borderRadius:6, padding:"4px 10px", cursor:"pointer", fontFamily:F }}>+ trigger</button>
+                    </div>
+                    {(auto.platform||"clickup")==="clickup" && (
+                      <div style={{ marginBottom:10 }}>
+                        <div style={{ fontSize:11, fontWeight:600, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:6 }}>Actions</div>
+                        {(auto.actions||[]).map((a,ai2)=>(
+                          <div key={ai2} style={{ display:"flex", gap:8, alignItems:"flex-start", marginBottom:6 }}>
+                            <div style={{ flex:"0 0 180px" }}><ESelect value={a.type} onChange={v=>updAuto(ai,{...auto,actions:auto.actions.map((ac,idx)=>idx===ai2?{...ac,type:v}:ac)})} options={CLICKUP_ACTIONS}/></div>
+                            <div style={{ flex:1 }}><EInput value={a.detail} onChange={v=>updAuto(ai,{...auto,actions:auto.actions.map((ac,idx)=>idx===ai2?{...ac,detail:v}:ac)})} placeholder="e.g. to team lead…"/></div>
+                            {auto.actions.length>1 && <button type="button" onClick={()=>updAuto(ai,{...auto,actions:auto.actions.filter((_,idx)=>idx!==ai2)})} style={{ fontSize:16, color:"#EF4444", background:"none", border:"none", cursor:"pointer", padding:"6px 4px", fontFamily:F }}>×</button>}
+                          </div>
+                        ))}
+                        <button type="button" onClick={()=>updAuto(ai,{...auto,actions:[...auto.actions,{type:"",detail:""}]})} style={{ fontSize:12, color, background:"none", border:"1px dashed #BAE6FD", borderRadius:6, padding:"4px 10px", cursor:"pointer", fontFamily:F }}>+ action</button>
+                      </div>
+                    )}
+                    <div style={{ marginBottom:4 }}>
+                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                          <span style={{ fontSize:11, fontWeight:700, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>
+                            {(auto.platform||"clickup")==="clickup" ? "Agent / Automation Instructions" : "Actions / Instructions"}
+                          </span>
+                          {auto.use_agent && <span style={{ fontSize:10, fontWeight:700, color:"#7C3AED", background:"#F5F3FF", border:"1px solid #DDD6FE", borderRadius:6, padding:"2px 7px", fontFamily:F, letterSpacing:"0.04em" }}>AGENT ON</span>}
+                        </div>
+                        <span style={{ fontSize:11, color:theme.textFaint, fontFamily:F }}>optional</span>
+                      </div>
+                      <textarea
+                        value={auto.instructions}
+                        onChange={e=>updAuto(ai,{...auto, instructions:e.target.value, use_agent:e.target.value.trim().length>0})}
+                        rows={5}
+                        placeholder={(auto.platform||"clickup")==="clickup"
+                          ? "# Agent / automation instructions\n# Describe the logic for this automation\n\nIF task.status == 'Done':\n  notify(assignee)\n  move_to_list('Completed')"
+                          : "# 3rd party automation actions\n# e.g. Make scenario steps, Zapier actions\n\nStep 1: Watch for new ClickUp task\nStep 2: Create record in HubSpot\nStep 3: Send Slack notification"}
+                        style={{
+                          width:"100%", boxSizing:"border-box",
+                          fontFamily:"'Fira Code','Cascadia Code','Consolas',monospace",
+                          fontSize:13, color:"#CDD6F4", background:"#1E1E2E",
+                          border:"1px solid #313244", borderRadius:8,
+                          padding:"12px 14px", outline:"none", resize:"vertical", lineHeight:1.7,
+                          caretColor:"#CDD6F4",
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+                <button type="button" onClick={addAuto} style={{ width:"100%", padding:"7px 0", background:"transparent", border:"1.5px dashed #0284C750", borderRadius:8, color, fontSize:12, fontWeight:600, fontFamily:F, cursor:"pointer", marginTop:4 }}>+ Add automation</button>
+              </div>
+            );
+          })}
+          <button type="button" onClick={addList} style={{ width:"100%", padding:"8px 0", background:"transparent", border:"1.5px dashed #BAE6FD", borderRadius:8, color, fontSize:12, fontWeight:600, fontFamily:F, cursor:"pointer" }}>+ Add list</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Inline edit view ──────────────────────────────────────────────────────────
 
 const ROADBLOCK_TYPE_OPTIONS = ["Integration Limitation","API Limitation","Automation Limitation","Data Mapping Mismatch","Auth Complexity","Timing Conflict","Cost Ceiling","User Behavior Gap","Scope Creep Block"];
@@ -512,6 +676,7 @@ function CaseFileEditView({ cf, onSave, onCancel, isSaving, apiError }) {
   const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 900);
   const [puOpen, setPuOpen] = useState(false);
   const [scOpen, setScOpen] = useState(false);
+  const [expandedWorkflowIdx, setExpandedWorkflowIdx] = useState(null);
   useEffect(() => {
     const fn = () => setW(window.innerWidth);
     window.addEventListener("resize", fn);
@@ -669,166 +834,14 @@ function CaseFileEditView({ cf, onSave, onCancel, isSaving, apiError }) {
 
       {/* ── Build ──────────────────────────────────────────────────────────── */}
       <Section title="Build Documentation" emoji="🏗️" color={STEP_COLORS.build} collapsible>
-        {(build.workflows||[]).map((wf,wi)=>{
-          const updWf = v => setBuild("workflows")((build.workflows||[]).map((w,idx)=>idx===wi?v:w));
-          const updList = (li,v) => updWf({...wf,lists:(wf.lists||[]).map((l,idx)=>idx===li?v:l)});
-          const addList = () => updWf({...wf,lists:[...(wf.lists||[]),{name:"",statuses:"",customFields:"",automations:[]}]});
-          const remList = li => updWf({...wf,lists:(wf.lists||[]).filter((_,idx)=>idx!==li)});
-          const pipeline = wf.pipeline||[];
-          const validPhases = pipeline.filter(p=>p.trim());
-          return (
-            <div key={wi} style={{ border:"1px solid #BAE6FD", borderRadius:12, padding:"14px 16px", marginBottom:14, background:"#0284C710" }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
-                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                  <span style={{ width:24, height:24, borderRadius:6, background:"#0284C7", color:"#fff", fontSize:12, fontWeight:700, fontFamily:F, display:"inline-flex", alignItems:"center", justifyContent:"center" }}>{wi+1}</span>
-                  <span style={{ fontSize:13, fontWeight:700, color:theme.text, fontFamily:F }}>{wf.name||`Workflow ${wi+1}`}</span>
-                </div>
-                <button type="button" onClick={()=>setBuild("workflows")((build.workflows||[]).filter((_,idx)=>idx!==wi))} style={{ fontSize:12, color:"#EF4444", background:"none", border:"none", cursor:"pointer", fontFamily:F }}>Remove</button>
-              </div>
-              <ERow label="Workflow name"><EInput value={wf.name} onChange={v=>updWf({...wf,name:v})} placeholder="e.g. Sales Space Pipeline"/></ERow>
-              <ERow label="Notes" fullWidth><ETextarea value={wf.notes} onChange={v=>updWf({...wf,notes:v})} placeholder="Context, dependencies…" rows={2}/></ERow>
-              {/* Pipeline phases */}
-              <div style={{ margin:"12px 0 4px", fontSize:11, fontWeight:700, color:"#0284C7", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>Pipeline phases ({pipeline.length})</div>
-              <div style={{ marginBottom:10 }}>
-                {pipeline.map((phase,pi)=>(
-                  <div key={pi} style={{ display:"flex", gap:6, alignItems:"center", marginBottom:6 }}>
-                    <span style={{ fontSize:11, fontWeight:700, color:theme.textFaint, fontFamily:F, minWidth:22, textAlign:"right" }}>{pi+1}.</span>
-                    <div style={{ flex:1 }}><EInput value={phase} onChange={v=>updWf({...wf,pipeline:pipeline.map((p,idx)=>idx===pi?v:p)})} placeholder={`Phase ${pi+1} name…`}/></div>
-                    <button type="button" onClick={()=>{const n=[...pipeline];[n[pi],n[pi-1]]=[n[pi-1],n[pi]];updWf({...wf,pipeline:n});}} disabled={pi===0} style={{ fontSize:13, color:pi===0?theme.borderInput:theme.textMuted, background:"none", border:"none", cursor:pi===0?"default":"pointer", padding:"4px 2px" }} title="Move up">▲</button>
-                    <button type="button" onClick={()=>{const n=[...pipeline];[n[pi],n[pi+1]]=[n[pi+1],n[pi]];updWf({...wf,pipeline:n});}} disabled={pi===pipeline.length-1} style={{ fontSize:13, color:pi===pipeline.length-1?theme.borderInput:theme.textMuted, background:"none", border:"none", cursor:pi===pipeline.length-1?"default":"pointer", padding:"4px 2px" }} title="Move down">▼</button>
-                    <button type="button" onClick={()=>updWf({...wf,pipeline:pipeline.filter((_,idx)=>idx!==pi)})} style={{ fontSize:16, color:"#EF4444", background:"none", border:"none", cursor:"pointer", padding:"4px 2px", lineHeight:1 }}>×</button>
-                  </div>
-                ))}
-                {pipeline.length===0 && <p style={{ margin:"0 0 6px", fontSize:12, color:theme.textFaint, fontFamily:F }}>No pipeline phases yet.</p>}
-                <button type="button" onClick={()=>updWf({...wf,pipeline:[...pipeline,""]})} style={{ fontSize:12, color:"#0284C7", background:"none", border:"1px dashed #BAE6FD", borderRadius:7, padding:"5px 12px", cursor:"pointer", fontFamily:F }}>+ Add phase</button>
-              </div>
-              <div style={{ margin:"12px 0 8px", fontSize:11, fontWeight:700, color:"#0284C7", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>Lists ({(wf.lists||[]).length})</div>
-              {(wf.lists||[]).map((l,li)=>{
-                const lautos = l.automations||[];
-                const updAuto = (ai,v) => updList(li,{...l,automations:lautos.map((a,idx)=>idx===ai?v:a)});
-                const addAuto = () => updList(li,{...l,automations:[...lautos,{platform:"clickup",pipelinePhase:"",triggers:[{type:"",detail:""}],actions:[{type:"",detail:""}],instructions:""}]});
-                const remAuto = ai => updList(li,{...l,automations:lautos.filter((_,idx)=>idx!==ai)});
-                const moveAuto = (ai, dir) => {
-                  const j = ai + dir;
-                  if (j < 0 || j >= lautos.length) return;
-                  const next = [...lautos];
-                  [next[ai], next[j]] = [next[j], next[ai]];
-                  updList(li,{...l,automations:next});
-                };
-                return (
-                  <div key={li} style={{ border:`1px solid ${theme.borderInput}`, borderLeft:"3px solid #0284C7", borderRadius:9, padding:"12px 14px", marginBottom:8, background:theme.surface }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
-                      <span style={{ fontSize:12, fontWeight:700, color:"#0284C7", fontFamily:F }}>List {li+1}</span>
-                      {(wf.lists||[]).length>1 && <button type="button" onClick={()=>remList(li)} style={{ fontSize:12, color:"#EF4444", background:"none", border:"none", cursor:"pointer", fontFamily:F }}>Remove</button>}
-                    </div>
-                    <ERow label="List name"><EInput value={l.name} onChange={v=>updList(li,{...l,name:v})} placeholder="e.g. Active Leads"/></ERow>
-                    <ERow label="Status flow"><EInput value={l.statuses} onChange={v=>updList(li,{...l,statuses:v})} placeholder="New → In Progress → Done"/></ERow>
-                    <ERow label="Custom fields" fullWidth><ETextarea value={l.customFields} onChange={v=>updList(li,{...l,customFields:v})} placeholder={"Client Name — Text\nPriority — Dropdown"} rows={3}/></ERow>
-                    <div style={{ margin:"12px 0 6px", fontSize:11, fontWeight:700, color:"#0284C7", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>Automations ({lautos.length})</div>
-                    {lautos.map((auto,ai)=>(
-                      <div key={ai} style={{ border:`1px solid ${theme.borderInput}`, borderLeft:"3px solid #0284C780", borderRadius:8, padding:"12px 14px", marginBottom:8, background:theme.surfaceAlt }}>
-                        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
-                          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                            <span style={{ fontSize:11, fontWeight:700, color:"#0284C7", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>Automation {ai+1}</span>
-                            {auto.pipelinePhase && <span style={{ fontSize:10, fontWeight:700, color:"#0284C7", background:"#E0F2FE", border:"1px solid #BAE6FD", borderRadius:6, padding:"2px 8px", fontFamily:F }}>{auto.pipelinePhase}</span>}
-                          </div>
-                          <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                            <button type="button" onClick={()=>moveAuto(ai,-1)} disabled={ai===0} style={{ fontSize:13, color:ai===0?theme.borderInput:theme.textMuted, background:"none", border:"none", cursor:ai===0?"default":"pointer", padding:"2px 4px", lineHeight:1 }} title="Move up">▲</button>
-                            <button type="button" onClick={()=>moveAuto(ai,1)} disabled={ai===lautos.length-1} style={{ fontSize:13, color:ai===lautos.length-1?theme.borderInput:theme.textMuted, background:"none", border:"none", cursor:ai===lautos.length-1?"default":"pointer", padding:"2px 4px", lineHeight:1 }} title="Move down">▼</button>
-                            <button type="button" onClick={()=>remAuto(ai)} style={{ fontSize:12, color:"#EF4444", background:"none", border:"none", cursor:"pointer", fontFamily:F, marginLeft:4 }}>Remove</button>
-                          </div>
-                        </div>
-                        {/* Pipeline phase */}
-                        {validPhases.length > 0 && (
-                          <div style={{ marginBottom:10 }}>
-                            <div style={{ fontSize:11, fontWeight:600, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:6 }}>Pipeline phase <span style={{ fontWeight:400, textTransform:"none", letterSpacing:0 }}>(optional)</span></div>
-                            <ESelect value={auto.pipelinePhase||""} onChange={v=>updAuto(ai,{...auto,pipelinePhase:v})} options={validPhases}/>
-                          </div>
-                        )}
-                        {/* Platform toggle */}
-                        <div style={{ display:"flex", gap:0, marginBottom:12, border:`1.5px solid ${theme.borderInput}`, borderRadius:9, overflow:"hidden", width:"fit-content" }}>
-                          {["clickup","third_party"].map(p=>{
-                            const active=(auto.platform||"clickup")===p;
-                            return (
-                              <button key={p} type="button" onClick={()=>updAuto(ai,{...auto,platform:p})}
-                                style={{ padding:"6px 16px", fontSize:12, fontWeight:600, fontFamily:F, border:"none", cursor:"pointer", background:active?"#0284C7":theme.surface, color:active?"#fff":theme.textMuted }}>
-                                {p==="clickup"?"ClickUp":"3rd Party"}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        {/* 3rd party platform picker */}
-                        {(auto.platform||"clickup")==="third_party" && (
-                          <div style={{ marginBottom:10 }}>
-                            <div style={{ fontSize:11, fontWeight:600, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:6 }}>Platform</div>
-                            <ESelect value={auto.third_party_platform||""} onChange={v=>updAuto(ai,{...auto,third_party_platform:v})} options={THIRD_PARTY_PLATFORMS}/>
-                          </div>
-                        )}
-                        {/* Triggers */}
-                        <div style={{ marginBottom:10 }}>
-                          <div style={{ fontSize:11, fontWeight:600, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:6 }}>Triggers</div>
-                          {(auto.triggers||[]).map((t,ti)=>(
-                            <div key={ti} style={{ display:"flex", gap:8, alignItems:"flex-start", marginBottom:6 }}>
-                              <div style={{ flex:"0 0 180px" }}><ESelect value={t.type} onChange={v=>updAuto(ai,{...auto,triggers:auto.triggers.map((tr,idx)=>idx===ti?{...tr,type:v}:tr)})} options={CLICKUP_TRIGGERS}/></div>
-                              <div style={{ flex:1 }}><EInput value={t.detail} onChange={v=>updAuto(ai,{...auto,triggers:auto.triggers.map((tr,idx)=>idx===ti?{...tr,detail:v}:tr)})} placeholder="e.g. to Done…"/></div>
-                              {auto.triggers.length>1 && <button type="button" onClick={()=>updAuto(ai,{...auto,triggers:auto.triggers.filter((_,idx)=>idx!==ti)})} style={{ fontSize:16, color:"#EF4444", background:"none", border:"none", cursor:"pointer", padding:"6px 4px", fontFamily:F }}>×</button>}
-                            </div>
-                          ))}
-                          <button type="button" onClick={()=>updAuto(ai,{...auto,triggers:[...auto.triggers,{type:"",detail:""}]})} style={{ fontSize:12, color:"#0284C7", background:"none", border:"1px dashed #BAE6FD", borderRadius:6, padding:"4px 10px", cursor:"pointer", fontFamily:F }}>+ trigger</button>
-                        </div>
-                        {/* Actions — ClickUp only */}
-                        {(auto.platform||"clickup")==="clickup" && (
-                          <div style={{ marginBottom:10 }}>
-                            <div style={{ fontSize:11, fontWeight:600, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:6 }}>Actions</div>
-                            {(auto.actions||[]).map((a,ai2)=>(
-                              <div key={ai2} style={{ display:"flex", gap:8, alignItems:"flex-start", marginBottom:6 }}>
-                                <div style={{ flex:"0 0 180px" }}><ESelect value={a.type} onChange={v=>updAuto(ai,{...auto,actions:auto.actions.map((ac,idx)=>idx===ai2?{...ac,type:v}:ac)})} options={CLICKUP_ACTIONS}/></div>
-                                <div style={{ flex:1 }}><EInput value={a.detail} onChange={v=>updAuto(ai,{...auto,actions:auto.actions.map((ac,idx)=>idx===ai2?{...ac,detail:v}:ac)})} placeholder="e.g. to team lead…"/></div>
-                                {auto.actions.length>1 && <button type="button" onClick={()=>updAuto(ai,{...auto,actions:auto.actions.filter((_,idx)=>idx!==ai2)})} style={{ fontSize:16, color:"#EF4444", background:"none", border:"none", cursor:"pointer", padding:"6px 4px", fontFamily:F }}>×</button>}
-                              </div>
-                            ))}
-                            <button type="button" onClick={()=>updAuto(ai,{...auto,actions:[...auto.actions,{type:"",detail:""}]})} style={{ fontSize:12, color:"#0284C7", background:"none", border:"1px dashed #BAE6FD", borderRadius:6, padding:"4px 10px", cursor:"pointer", fontFamily:F }}>+ action</button>
-                          </div>
-                        )}
-                        {/* Instructions */}
-                        <div style={{ marginBottom:4 }}>
-                          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
-                            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                              <span style={{ fontSize:11, fontWeight:700, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>
-                                {(auto.platform||"clickup")==="clickup" ? "Agent / Automation Instructions" : "Actions / Instructions"}
-                              </span>
-                              {auto.use_agent && <span style={{ fontSize:10, fontWeight:700, color:"#7C3AED", background:"#F5F3FF", border:"1px solid #DDD6FE", borderRadius:6, padding:"2px 7px", fontFamily:F, letterSpacing:"0.04em" }}>AGENT ON</span>}
-                            </div>
-                            <span style={{ fontSize:11, color:theme.textFaint, fontFamily:F }}>optional</span>
-                          </div>
-                          <textarea
-                            value={auto.instructions}
-                            onChange={e=>updAuto(ai,{...auto, instructions:e.target.value, use_agent:e.target.value.trim().length>0})}
-                            rows={5}
-                            placeholder={(auto.platform||"clickup")==="clickup"
-                              ? "# Agent / automation instructions\n# Describe the logic for this automation\n\nIF task.status == 'Done':\n  notify(assignee)\n  move_to_list('Completed')"
-                              : "# 3rd party automation actions\n# e.g. Make scenario steps, Zapier actions\n\nStep 1: Watch for new ClickUp task\nStep 2: Create record in HubSpot\nStep 3: Send Slack notification"}
-                            style={{
-                              width:"100%", boxSizing:"border-box",
-                              fontFamily:"'Fira Code','Cascadia Code','Consolas',monospace",
-                              fontSize:13, color:"#CDD6F4", background:"#1E1E2E",
-                              border:"1px solid #313244", borderRadius:8,
-                              padding:"12px 14px", outline:"none", resize:"vertical", lineHeight:1.7,
-                              caretColor:"#CDD6F4",
-                            }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                    <button type="button" onClick={addAuto} style={{ width:"100%", padding:"7px 0", background:"transparent", border:"1.5px dashed #0284C750", borderRadius:8, color:"#0284C7", fontSize:12, fontWeight:600, fontFamily:F, cursor:"pointer", marginTop:4 }}>+ Add automation</button>
-                  </div>
-                );
-              })}
-              <button type="button" onClick={addList} style={{ width:"100%", padding:"8px 0", background:"transparent", border:"1.5px dashed #BAE6FD", borderRadius:8, color:"#0284C7", fontSize:12, fontWeight:600, fontFamily:F, cursor:"pointer" }}>+ Add list</button>
-            </div>
-          );
-        })}
-        <button type="button" onClick={()=>setBuild("workflows")([...(build.workflows||[]),{name:"",notes:"",pipeline:[],lists:[{name:"",statuses:"",customFields:"",automations:[]}]}])} style={{ width:"100%", padding:"10px 0", background:"transparent", border:"1.5px dashed #BAE6FD", borderRadius:10, color:"#0284C7", fontSize:13, fontWeight:600, fontFamily:F, cursor:"pointer", marginBottom:10 }}>+ Add workflow</button>
+        {(build.workflows||[]).map((wf,wi)=>(
+          <EditWorkflowBuildCard key={wi} wf={wf} wfIdx={wi}
+            initialCollapsed={wi !== expandedWorkflowIdx}
+            onChange={v=>setBuild("workflows")((build.workflows||[]).map((w,idx)=>idx===wi?v:w))}
+            onRemove={()=>setBuild("workflows")((build.workflows||[]).filter((_,idx)=>idx!==wi))}
+          />
+        ))}
+        <button type="button" onClick={()=>{const newIdx=(build.workflows||[]).length;setBuild("workflows")([...(build.workflows||[]),{name:"",notes:"",pipeline:[],lists:[{name:"",statuses:"",customFields:"",automations:[]}]}]);setExpandedWorkflowIdx(newIdx);}} style={{ width:"100%", padding:"10px 0", background:"transparent", border:"1.5px dashed #BAE6FD", borderRadius:10, color:"#0284C7", fontSize:13, fontWeight:600, fontFamily:F, cursor:"pointer", marginBottom:10 }}>+ Add workflow</button>
         <ERow label="Build notes" fullWidth><ETextarea value={build.buildNotes} onChange={setBuild("buildNotes")} placeholder="General notes across all workflows..." rows={3}/></ERow>
       </Section>
 
