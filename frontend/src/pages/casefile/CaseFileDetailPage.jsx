@@ -17,23 +17,34 @@ const STEP_COLORS = {
   outcome: "#4F46E5",
 };
 
-function Section({ title, emoji, color, children }) {
+function Section({ title, emoji, color, children, collapsible = false }) {
   const { theme } = useTheme();
+  const [open, setOpen] = useState(false);
+  const bodyVisible = !collapsible || open;
   return (
     <div style={{ marginBottom: 20 }}>
-      <div style={{
-        display: "flex", alignItems: "center", gap: 10,
-        padding: "14px 18px",
-        background: color + "0A",
-        borderRadius: "12px 12px 0 0",
-        borderTop: `3px solid ${color}`,
-        borderLeft: `1px solid ${color}25`,
-        borderRight: `1px solid ${color}25`,
-      }}>
+      <div
+        onClick={collapsible ? () => setOpen(o => !o) : undefined}
+        style={{
+          display: "flex", alignItems: "center", gap: 10,
+          padding: "14px 18px",
+          background: color + "0A",
+          borderRadius: bodyVisible ? "12px 12px 0 0" : 12,
+          borderTop: `3px solid ${color}`,
+          borderLeft: `1px solid ${color}25`,
+          borderRight: `1px solid ${color}25`,
+          borderBottom: bodyVisible ? undefined : `1px solid ${color}25`,
+          cursor: collapsible ? "pointer" : "default",
+          userSelect: collapsible ? "none" : undefined,
+        }}>
         <span style={{ fontSize: 18 }}>{emoji}</span>
-        <span style={{ fontSize: 14, fontWeight: 700, color, fontFamily: F }}>{title}</span>
+        <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color, fontFamily: F }}>{title}</span>
+        {collapsible && (
+          <span style={{ fontSize: 11, color, opacity: 0.5 }}>{open ? "▲" : "▼"}</span>
+        )}
       </div>
-      <div style={{
+      <div className="fp-section-body" style={{
+        display: bodyVisible ? undefined : "none",
         background: theme.surface,
         border: `1px solid ${color}20`,
         borderTop: "none",
@@ -371,7 +382,7 @@ function EditBuildCard({ build, index, onChange, onRemove }) {
 const COMM_COLORS = { Yes:"#059669", No:"#DC2626", Partially:"#D97706" };
 
 function EditScopeCreepCard({ item, index, onChange, onRemove }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const { theme } = useTheme();
   const cc = COMM_COLORS[item.communicated] || "#9CA3AF";
   return (
@@ -408,7 +419,7 @@ function EditScopeCreepCard({ item, index, onChange, onRemove }) {
 }
 
 function EditProjectUpdateCard({ item, onChange, onRemove }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const { theme } = useTheme();
   const dateLabel = item.createdAt
     ? (() => { const [y,m,d] = item.createdAt.slice(0,10).split("-"); return new Date(+y,+m-1,+d).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); })()
@@ -473,6 +484,8 @@ function CaseFileEditView({ cf, onSave, onCancel, isSaving, apiError }) {
   const [data, setData] = useState(()=>caseFileToFormState(cf));
   const [caseName, setCaseName] = useState(cf.name||"");
   const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 900);
+  const [puOpen, setPuOpen] = useState(false);
+  const [scOpen, setScOpen] = useState(false);
   useEffect(() => {
     const fn = () => setW(window.innerWidth);
     window.addEventListener("resize", fn);
@@ -542,7 +555,7 @@ function CaseFileEditView({ cf, onSave, onCancel, isSaving, apiError }) {
       </div>
 
       {/* ── Audit ──────────────────────────────────────────────────────────── */}
-      <Section title="Current State Audit" emoji="🔍" color={STEP_COLORS.audit}>
+      <Section title="Current State Audit" emoji="🔍" color={STEP_COLORS.audit} collapsible>
         <ERow label="Has existing setup">
           <EToggle value={audit.hasExisting} options={["Yes, they have something","No — starting from scratch"]} onChange={setAudit("hasExisting")}/>
         </ERow>
@@ -574,7 +587,7 @@ function CaseFileEditView({ cf, onSave, onCancel, isSaving, apiError }) {
       </Section>
 
       {/* ── Intake ─────────────────────────────────────────────────────────── */}
-      <Section title="Scenario Intake" emoji="📋" color={STEP_COLORS.intake}>
+      <Section title="Scenario Intake" emoji="📋" color={STEP_COLORS.intake} collapsible>
 
         {/* Raw scenario prompt */}
         <div style={{ background:theme.surface, border:`1px solid ${theme.border}`, borderTop:"3px solid #7C3AED", borderRadius:10, padding:"18px 18px 16px", marginBottom:14 }}>
@@ -629,7 +642,7 @@ function CaseFileEditView({ cf, onSave, onCancel, isSaving, apiError }) {
       </Section>
 
       {/* ── Build ──────────────────────────────────────────────────────────── */}
-      <Section title="Build Documentation" emoji="🏗️" color={STEP_COLORS.build}>
+      <Section title="Build Documentation" emoji="🏗️" color={STEP_COLORS.build} collapsible>
         {(build.workflows||[]).map((wf,wi)=>{
           const updWf = v => setBuild("workflows")((build.workflows||[]).map((w,idx)=>idx===wi?v:w));
           const updList = (li,v) => updWf({...wf,lists:(wf.lists||[]).map((l,idx)=>idx===li?v:l)});
@@ -794,7 +807,7 @@ function CaseFileEditView({ cf, onSave, onCancel, isSaving, apiError }) {
       </Section>
 
       {/* ── Delta ──────────────────────────────────────────────────────────── */}
-      <Section title="Intent vs Reality" emoji="⚖️" color={STEP_COLORS.delta}>
+      <Section title="Intent vs Reality" emoji="⚖️" color={STEP_COLORS.delta} collapsible>
         <ERow label="User intent " fullWidth><ETextarea value={delta.userIntent} onChange={setDelta("userIntent")} placeholder="What the user wanted..." rows={3}/></ERow>
         <ERow label="Success criteria " fullWidth><ETextarea value={delta.successCriteria} onChange={setDelta("successCriteria")} placeholder="What success looks like..." rows={2}/></ERow>
         <ERow label="What was built " fullWidth><ETextarea value={delta.actualBuild} onChange={setDelta("actualBuild")} placeholder="What was actually delivered..." rows={3}/></ERow>
@@ -813,7 +826,7 @@ function CaseFileEditView({ cf, onSave, onCancel, isSaving, apiError }) {
       </Section>
 
       {/* ── Reasoning ──────────────────────────────────────────────────────── */}
-      <Section title="Decision Reasoning" emoji="🧠" color={STEP_COLORS.reasoning}>
+      <Section title="Decision Reasoning" emoji="🧠" color={STEP_COLORS.reasoning} collapsible>
         <ERow label="Why this structure" fullWidth><ETextarea value={reasoning.whyStructure} onChange={setRsn("whyStructure")} placeholder="Why did you build it this way?" rows={3}/></ERow>
         <ERow label="Alternatives" fullWidth><ETextarea value={reasoning.alternatives} onChange={setRsn("alternatives")} placeholder="What else was considered?" rows={2}/></ERow>
         <ERow label="Why rejected" fullWidth><ETextarea value={reasoning.whyRejected} onChange={setRsn("whyRejected")} placeholder="Why were alternatives rejected?" rows={2}/></ERow>
@@ -824,7 +837,7 @@ function CaseFileEditView({ cf, onSave, onCancel, isSaving, apiError }) {
       </Section>
 
       {/* ── Outcome ────────────────────────────────────────────────────────── */}
-      <Section title="Outcome Capture" emoji="✅" color={STEP_COLORS.outcome}>
+      <Section title="Outcome Capture" emoji="✅" color={STEP_COLORS.outcome} collapsible>
         <ERow label="Did they build it"><EToggle value={outcome.built} options={["Yes","Partially","No"]} onChange={setOutcome("built")}/></ERow>
         <ERow label="Block reason" fullWidth><ETextarea value={outcome.blockReason} onChange={setOutcome("blockReason")} placeholder="What blocked the build?" rows={2}/></ERow>
         <ERow label="What changed" fullWidth><ETextarea value={outcome.changes} onChange={setOutcome("changes")} placeholder="What changed from the original plan?" rows={2}/></ERow>
@@ -843,41 +856,55 @@ function CaseFileEditView({ cf, onSave, onCancel, isSaving, apiError }) {
       <div style={{ width:480, flexShrink:0, position:"sticky", top:24, paddingTop:28, paddingBottom:24, maxHeight:"calc(100vh - 48px)", overflowY:"auto" }}>
 
         {/* Project Updates */}
-        <div style={{ background:theme.surface, border:`1px solid ${theme.border}`, borderRadius:14, padding:"16px 16px 12px", marginBottom:16, boxShadow:"0 1px 4px rgba(0,0,0,0.04)" }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
-            <div>
+        <div style={{ background:theme.surface, border:`1px solid ${theme.border}`, borderRadius:14, marginBottom:16, boxShadow:"0 1px 4px rgba(0,0,0,0.04)", overflow:"hidden" }}>
+          <button type="button" onClick={()=>setPuOpen(o=>!o)} style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 16px", background:"none", border:"none", cursor:"pointer", borderBottom: puOpen ? `1px solid ${theme.border}` : "none" }}>
+            <div style={{ textAlign:"left" }}>
               <p style={{ margin:0, fontSize:13, fontWeight:700, color:theme.text, fontFamily:F }}>Project Updates</p>
               <p style={{ margin:"2px 0 0", fontSize:11, color:theme.textFaint, fontFamily:F }}>Timestamped notes & attachments</p>
             </div>
-            <button type="button" onClick={addPu} style={{ fontSize:12, fontWeight:600, color:"#0284C7", background:"#E0F2FE", border:"1px solid #BAE6FD", borderRadius:8, padding:"6px 10px", cursor:"pointer", fontFamily:F, flexShrink:0 }}>+ Add</button>
-          </div>
-          {(projectUpdates||[]).length === 0
-            ? <p style={{ fontSize:12, color:"#D1D5DB", fontFamily:F, textAlign:"center", padding:"12px 0", margin:0 }}>No updates yet</p>
-            : (projectUpdates||[]).map((pu,i)=>(
-                <EditProjectUpdateCard key={i} item={pu}
-                  onChange={v=>setData(d=>{const items=[...(d.projectUpdates||[])];items[i]=v;return {...d,projectUpdates:items};})}
-                  onRemove={()=>remPu(i)}/>
-              ))
-          }
+            <div style={{ display:"flex", gap:8, alignItems:"center", flexShrink:0 }}>
+              <button type="button" onClick={e=>{e.stopPropagation();setPuOpen(true);addPu();}} style={{ fontSize:12, fontWeight:600, color:"#0284C7", background:"#E0F2FE", border:"1px solid #BAE6FD", borderRadius:8, padding:"6px 10px", cursor:"pointer", fontFamily:F }}>+ Add</button>
+              <span style={{ fontSize:11, color:theme.textFaint }}>{puOpen ? "▲" : "▼"}</span>
+            </div>
+          </button>
+          {puOpen && (
+            <div style={{ padding:"12px 16px" }}>
+              {(projectUpdates||[]).length === 0
+                ? <p style={{ fontSize:12, color:"#D1D5DB", fontFamily:F, textAlign:"center", padding:"12px 0", margin:0 }}>No updates yet</p>
+                : (projectUpdates||[]).map((pu,i)=>(
+                    <EditProjectUpdateCard key={i} item={pu}
+                      onChange={v=>setData(d=>{const items=[...(d.projectUpdates||[])];items[i]=v;return {...d,projectUpdates:items};})}
+                      onRemove={()=>remPu(i)}/>
+                  ))
+              }
+            </div>
+          )}
         </div>
 
         {/* Scope Creep */}
-        <div style={{ background:theme.surface, border:`1px solid ${theme.border}`, borderRadius:14, padding:"16px 16px 12px", boxShadow:"0 1px 4px rgba(0,0,0,0.04)" }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
-            <div>
+        <div style={{ background:theme.surface, border:`1px solid ${theme.border}`, borderRadius:14, boxShadow:"0 1px 4px rgba(0,0,0,0.04)", overflow:"hidden" }}>
+          <button type="button" onClick={()=>setScOpen(o=>!o)} style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 16px", background:"none", border:"none", cursor:"pointer", borderBottom: scOpen ? `1px solid ${theme.border}` : "none" }}>
+            <div style={{ textAlign:"left" }}>
               <p style={{ margin:0, fontSize:13, fontWeight:700, color:theme.text, fontFamily:F }}>Scope Creep</p>
               <p style={{ margin:"2px 0 0", fontSize:11, color:theme.textFaint, fontFamily:F }}>Unplanned additions to the build</p>
             </div>
-            <button type="button" onClick={addSc} style={{ fontSize:12, fontWeight:600, color:"#D97706", background:"#FEF3C7", border:"1px solid #FDE68A", borderRadius:8, padding:"6px 10px", cursor:"pointer", fontFamily:F, flexShrink:0 }}>+ Add</button>
-          </div>
-          {(delta.scopeCreep||[]).length === 0
-            ? <p style={{ fontSize:12, color:"#D1D5DB", fontFamily:F, textAlign:"center", padding:"12px 0", margin:0 }}>No scope creep logged</p>
-            : (delta.scopeCreep||[]).map((sc,i)=>(
-                <EditScopeCreepCard key={i} item={sc} index={i}
-                  onChange={v=>setData(d=>{const items=[...(d.delta.scopeCreep||[])];items[i]=v;return {...d,delta:{...d.delta,scopeCreep:items}};})}
-                  onRemove={()=>remSc(i)}/>
-              ))
-          }
+            <div style={{ display:"flex", gap:8, alignItems:"center", flexShrink:0 }}>
+              <button type="button" onClick={e=>{e.stopPropagation();setScOpen(true);addSc();}} style={{ fontSize:12, fontWeight:600, color:"#D97706", background:"#FEF3C7", border:"1px solid #FDE68A", borderRadius:8, padding:"6px 10px", cursor:"pointer", fontFamily:F }}>+ Add</button>
+              <span style={{ fontSize:11, color:theme.textFaint }}>{scOpen ? "▲" : "▼"}</span>
+            </div>
+          </button>
+          {scOpen && (
+            <div style={{ padding:"12px 16px" }}>
+              {(delta.scopeCreep||[]).length === 0
+                ? <p style={{ fontSize:12, color:"#D1D5DB", fontFamily:F, textAlign:"center", padding:"12px 0", margin:0 }}>No scope creep logged</p>
+                : (delta.scopeCreep||[]).map((sc,i)=>(
+                    <EditScopeCreepCard key={i} item={sc} index={i}
+                      onChange={v=>setData(d=>{const items=[...(d.delta.scopeCreep||[])];items[i]=v;return {...d,delta:{...d.delta,scopeCreep:items}};})}
+                      onRemove={()=>remSc(i)}/>
+                  ))
+              }
+            </div>
+          )}
         </div>
 
       </div>
@@ -1069,6 +1096,7 @@ export default function CaseFileDetailPage() {
         }
         .fp-no-print { display: none !important; }
         .fp-print-only { display: block !important; }
+        .fp-section-body { display: block !important; }
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         @page { margin: 16mm 14mm; size: A4; }
         .fp-meta-chips { margin-bottom: 12px !important; }
@@ -1221,7 +1249,7 @@ export default function CaseFileDetailPage() {
 
       {/* ── Layer 1: Audit ──────────────────────────────────────────────── */}
       {audit && (
-        <Section title="Current State Audit" emoji="🔍" color={STEP_COLORS.audit}>
+        <Section title="Current State Audit" emoji="🔍" color={STEP_COLORS.audit} collapsible>
           <Row label="Has existing setup" value={audit.has_existing === true ? "Yes" : audit.has_existing === false ? "No — greenfield" : "—"} />
           <Row label="Overall assessment" value={audit.overall_assessment} fullWidth />
           <Row label="Tried to fix before" value={audit.tried_to_fix === true ? "Yes" : audit.tried_to_fix === false ? "No" : null} />
@@ -1245,7 +1273,7 @@ export default function CaseFileDetailPage() {
 
       {/* ── Layer 2: Intake ─────────────────────────────────────────────── */}
       {intake && (
-        <Section title="Scenario Intake" emoji="📋" color={STEP_COLORS.intake}>
+        <Section title="Scenario Intake" emoji="📋" color={STEP_COLORS.intake} collapsible>
           {intake.raw_prompt && (
             <div style={{ padding: "12px 14px", background: theme.surfaceAlt, border: `1px solid ${theme.border}`, borderRadius: 8, marginBottom: 14 }}>
               <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: theme.textFaint, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em" }}>Raw prompt</p>
@@ -1284,7 +1312,7 @@ export default function CaseFileDetailPage() {
 
       {/* ── Layer 3: Build ──────────────────────────────────────────────── */}
       {build && (
-        <Section title="Build Documentation" emoji="🏗️" color={STEP_COLORS.build}>
+        <Section title="Build Documentation" emoji="🏗️" color={STEP_COLORS.build} collapsible>
           {build.workflows?.length > 0 ? build.workflows.map((wf, wi) => (
             <div key={wi} style={{ border: "1px solid #BAE6FD", borderRadius: 12, padding: "14px 16px", marginBottom: 14, background: "#0284C710" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
@@ -1362,7 +1390,7 @@ export default function CaseFileDetailPage() {
 
       {/* ── Layer 4: Delta ──────────────────────────────────────────────── */}
       {delta && (
-        <Section title="Intent vs Reality" emoji="⚖️" color={STEP_COLORS.delta}>
+        <Section title="Intent vs Reality" emoji="⚖️" color={STEP_COLORS.delta} collapsible>
           <Row label="User intent " value={delta.user_intent} fullWidth />
           <Row label="Success criteria " value={delta.success_criteria} fullWidth />
           <Row label="What was built " value={delta.actual_build} fullWidth />
@@ -1382,7 +1410,7 @@ export default function CaseFileDetailPage() {
 
       {/* ── Layer 5: Reasoning ─────────────────────────────────────────── */}
       {reasoning && (
-        <Section title="Decision Reasoning" emoji="🧠" color={STEP_COLORS.reasoning}>
+        <Section title="Decision Reasoning" emoji="🧠" color={STEP_COLORS.reasoning} collapsible>
           <Row label="Why this structure" value={reasoning.why_structure} fullWidth />
           <Row label="Alternatives considered" value={reasoning.alternatives} fullWidth />
           <Row label="Why rejected" value={reasoning.why_rejected} fullWidth />
@@ -1409,7 +1437,7 @@ export default function CaseFileDetailPage() {
 
       {/* ── Layer 6: Outcome ───────────────────────────────────────────── */}
       {outcome && (
-        <Section title="Outcome Capture" emoji="✅" color={STEP_COLORS.outcome}>
+        <Section title="Outcome Capture" emoji="✅" color={STEP_COLORS.outcome} collapsible>
           <Row label="Did they build it" value={outcome.built ? outcome.built.charAt(0).toUpperCase() + outcome.built.slice(1) : null} />
           <Row label="Block reason" value={outcome.block_reason} fullWidth />
           <Row label="What changed" value={outcome.changes} fullWidth />
