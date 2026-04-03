@@ -572,99 +572,178 @@ function EditWorkflowBuildCard({ wf, wfIdx, onChange, onRemove, initialCollapsed
                 <ERow label="Custom fields" fullWidth><ETextarea value={l.customFields} onChange={v=>updList(li,{...l,customFields:v})} placeholder={"Client Name — Text\nPriority — Dropdown"} rows={3}/></ERow>
                 <div style={{ margin:"12px 0 6px", fontSize:11, fontWeight:700, color, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>Automations ({lautos.length})</div>
                 {lautos.map((auto,ai)=>(
-                  <div key={ai} style={{ border:`1px solid ${theme.borderInput}`, borderLeft:"3px solid #0284C780", borderRadius:8, padding:"12px 14px", marginBottom:8, background:theme.surfaceAlt }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
-                      <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                        <span style={{ fontSize:11, fontWeight:700, color, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>Automation {ai+1}</span>
-                        {auto.pipelinePhase && <span style={{ fontSize:10, fontWeight:700, color, background:"#E0F2FE", border:"1px solid #BAE6FD", borderRadius:6, padding:"2px 8px", fontFamily:F }}>{auto.pipelinePhase}</span>}
-                      </div>
-                      <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                        <button type="button" onClick={()=>moveAuto(ai,-1)} disabled={ai===0} style={{ fontSize:13, color:ai===0?theme.borderInput:theme.textMuted, background:"none", border:"none", cursor:ai===0?"default":"pointer", padding:"2px 4px", lineHeight:1 }} title="Move up">▲</button>
-                        <button type="button" onClick={()=>moveAuto(ai,1)} disabled={ai===lautos.length-1} style={{ fontSize:13, color:ai===lautos.length-1?theme.borderInput:theme.textMuted, background:"none", border:"none", cursor:ai===lautos.length-1?"default":"pointer", padding:"2px 4px", lineHeight:1 }} title="Move down">▼</button>
-                        <button type="button" onClick={()=>remAuto(ai)} style={{ fontSize:12, color:"#EF4444", background:"none", border:"none", cursor:"pointer", fontFamily:F, marginLeft:4 }}>Remove</button>
-                      </div>
-                    </div>
-                    {validPhases.length > 0 && (
-                      <div style={{ marginBottom:10 }}>
-                        <div style={{ fontSize:11, fontWeight:600, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:6 }}>Pipeline phase <span style={{ fontWeight:400, textTransform:"none", letterSpacing:0 }}>(optional)</span></div>
-                        <ESelect value={auto.pipelinePhase||""} onChange={v=>updAuto(ai,{...auto,pipelinePhase:v})} options={validPhases}/>
-                      </div>
-                    )}
-                    <div style={{ display:"flex", gap:0, marginBottom:12, border:`1.5px solid ${theme.borderInput}`, borderRadius:9, overflow:"hidden", width:"fit-content" }}>
-                      {["clickup","third_party"].map(p=>{
-                        const active=(auto.platform||"clickup")===p;
-                        return (
-                          <button key={p} type="button" onClick={()=>updAuto(ai,{...auto,platform:p})}
-                            style={{ padding:"6px 16px", fontSize:12, fontWeight:600, fontFamily:F, border:"none", cursor:"pointer", background:active?color:theme.surface, color:active?"#fff":theme.textMuted }}>
-                            {p==="clickup"?"ClickUp":"3rd Party"}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {(auto.platform||"clickup")==="third_party" && (
-                      <div style={{ marginBottom:10 }}>
-                        <div style={{ fontSize:11, fontWeight:600, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:6 }}>Platform</div>
-                        <ESelect value={auto.third_party_platform||""} onChange={v=>updAuto(ai,{...auto,third_party_platform:v})} options={THIRD_PARTY_PLATFORMS}/>
-                      </div>
-                    )}
-                    <div style={{ marginBottom:10 }}>
-                      <div style={{ fontSize:11, fontWeight:600, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:6 }}>Triggers</div>
-                      {(auto.triggers||[]).map((t,ti)=>(
-                        <div key={ti} style={{ display:"flex", gap:8, alignItems:"flex-start", marginBottom:6 }}>
-                          <div style={{ flex:"0 0 180px" }}><ESelect value={t.type} onChange={v=>updAuto(ai,{...auto,triggers:auto.triggers.map((tr,idx)=>idx===ti?{...tr,type:v}:tr)})} options={CLICKUP_TRIGGERS}/></div>
-                          <div style={{ flex:1 }}><EInput value={t.detail} onChange={v=>updAuto(ai,{...auto,triggers:auto.triggers.map((tr,idx)=>idx===ti?{...tr,detail:v}:tr)})} placeholder="e.g. to Done…"/></div>
-                          {auto.triggers.length>1 && <button type="button" onClick={()=>updAuto(ai,{...auto,triggers:auto.triggers.filter((_,idx)=>idx!==ti)})} style={{ fontSize:16, color:"#EF4444", background:"none", border:"none", cursor:"pointer", padding:"6px 4px", fontFamily:F }}>×</button>}
-                        </div>
-                      ))}
-                      <button type="button" onClick={()=>updAuto(ai,{...auto,triggers:[...auto.triggers,{type:"",detail:""}]})} style={{ fontSize:12, color, background:"none", border:"1px dashed #BAE6FD", borderRadius:6, padding:"4px 10px", cursor:"pointer", fontFamily:F }}>+ trigger</button>
-                    </div>
-                    {(auto.platform||"clickup")==="clickup" && (
-                      <div style={{ marginBottom:10 }}>
-                        <div style={{ fontSize:11, fontWeight:600, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:6 }}>Actions</div>
-                        {(auto.actions||[]).map((a,ai2)=>(
-                          <div key={ai2} style={{ display:"flex", gap:8, alignItems:"flex-start", marginBottom:6 }}>
-                            <div style={{ flex:"0 0 180px" }}><ESelect value={a.type} onChange={v=>updAuto(ai,{...auto,actions:auto.actions.map((ac,idx)=>idx===ai2?{...ac,type:v}:ac)})} options={CLICKUP_ACTIONS}/></div>
-                            <div style={{ flex:1 }}><EInput value={a.detail} onChange={v=>updAuto(ai,{...auto,actions:auto.actions.map((ac,idx)=>idx===ai2?{...ac,detail:v}:ac)})} placeholder="e.g. to team lead…"/></div>
-                            {auto.actions.length>1 && <button type="button" onClick={()=>updAuto(ai,{...auto,actions:auto.actions.filter((_,idx)=>idx!==ai2)})} style={{ fontSize:16, color:"#EF4444", background:"none", border:"none", cursor:"pointer", padding:"6px 4px", fontFamily:F }}>×</button>}
-                          </div>
-                        ))}
-                        <button type="button" onClick={()=>updAuto(ai,{...auto,actions:[...auto.actions,{type:"",detail:""}]})} style={{ fontSize:12, color, background:"none", border:"1px dashed #BAE6FD", borderRadius:6, padding:"4px 10px", cursor:"pointer", fontFamily:F }}>+ action</button>
-                      </div>
-                    )}
-                    <div style={{ marginBottom:4 }}>
-                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
-                        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                          <span style={{ fontSize:11, fontWeight:700, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>
-                            {(auto.platform||"clickup")==="clickup" ? "Agent / Automation Instructions" : "Actions / Instructions"}
-                          </span>
-                          {auto.use_agent && <span style={{ fontSize:10, fontWeight:700, color:"#7C3AED", background:"#F5F3FF", border:"1px solid #DDD6FE", borderRadius:6, padding:"2px 7px", fontFamily:F, letterSpacing:"0.04em" }}>AGENT ON</span>}
-                        </div>
-                        <span style={{ fontSize:11, color:theme.textFaint, fontFamily:F }}>optional</span>
-                      </div>
-                      <textarea
-                        value={auto.instructions}
-                        onChange={e=>updAuto(ai,{...auto, instructions:e.target.value, use_agent:e.target.value.trim().length>0})}
-                        rows={5}
-                        placeholder={(auto.platform||"clickup")==="clickup"
-                          ? "# Agent / automation instructions\n# Describe the logic for this automation\n\nIF task.status == 'Done':\n  notify(assignee)\n  move_to_list('Completed')"
-                          : "# 3rd party automation actions\n# e.g. Make scenario steps, Zapier actions\n\nStep 1: Watch for new ClickUp task\nStep 2: Create record in HubSpot\nStep 3: Send Slack notification"}
-                        style={{
-                          width:"100%", boxSizing:"border-box",
-                          fontFamily:"'Fira Code','Cascadia Code','Consolas',monospace",
-                          fontSize:13, color:"#CDD6F4", background:"#1E1E2E",
-                          border:"1px solid #313244", borderRadius:8,
-                          padding:"12px 14px", outline:"none", resize:"vertical", lineHeight:1.7,
-                          caretColor:"#CDD6F4",
-                        }}
-                      />
-                    </div>
-                  </div>
+                  <EditAutoCard key={ai} auto={auto} autoIdx={ai} total={lautos.length}
+                    onChange={v=>updAuto(ai,v)}
+                    onRemove={()=>remAuto(ai)}
+                    onMoveUp={()=>moveAuto(ai,-1)}
+                    onMoveDown={()=>moveAuto(ai,1)}
+                    validPhases={validPhases}
+                  />
                 ))}
                 <button type="button" onClick={addAuto} style={{ width:"100%", padding:"7px 0", background:"transparent", border:"1.5px dashed #0284C750", borderRadius:8, color, fontSize:12, fontWeight:600, fontFamily:F, cursor:"pointer", marginTop:4 }}>+ Add automation</button>
               </div>
             );
           })}
           <button type="button" onClick={addList} style={{ width:"100%", padding:"8px 0", background:"transparent", border:"1.5px dashed #BAE6FD", borderRadius:8, color, fontSize:12, fontWeight:600, fontFamily:F, cursor:"pointer" }}>+ Add list</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EditAutoCard({ auto, autoIdx, total, onChange, onRemove, onMoveUp, onMoveDown, validPhases }) {
+  const [collapsed, setCollapsed] = useState(true);
+  const { theme } = useTheme();
+  const color = "#0284C7";
+  const isThirdParty = (auto.platform||"clickup") === "third_party";
+  const platformLabel = isThirdParty ? (auto.third_party_platform || "3rd Party") : "ClickUp";
+  const platformColor = isThirdParty ? "#7C3AED" : color;
+  const platformBg = isThirdParty ? "#F5F3FF" : "#EFF6FF";
+  const platformBorder = isThirdParty ? "#DDD6FE" : "#BAE6FD";
+  return (
+    <div style={{ border:`1px solid ${theme.borderInput}`, borderLeft:"3px solid #0284C780", borderRadius:8, marginBottom:8, overflow:"hidden" }}>
+      <button type="button" onClick={()=>setCollapsed(c=>!c)} style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 14px", background:theme.surfaceAlt, border:"none", cursor:"pointer", borderBottom:collapsed?"none":`1px solid ${theme.borderInput}`, minHeight:44 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <span style={{ fontSize:11, fontWeight:700, color, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>Automation {autoIdx+1}</span>
+          <span style={{ fontSize:10, fontWeight:600, color:platformColor, background:platformBg, border:`1px solid ${platformBorder}`, borderRadius:6, padding:"2px 8px", fontFamily:F }}>{platformLabel}</span>
+          {auto.pipelinePhase && <span style={{ fontSize:10, fontWeight:700, color, background:"#E0F2FE", border:"1px solid #BAE6FD", borderRadius:6, padding:"2px 8px", fontFamily:F }}>{auto.pipelinePhase}</span>}
+          {auto.use_agent && <span style={{ fontSize:10, fontWeight:700, color:"#7C3AED", background:"#F5F3FF", border:"1px solid #DDD6FE", borderRadius:6, padding:"2px 7px", fontFamily:F }}>AGENT ON</span>}
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+          <button type="button" onClick={e=>{e.stopPropagation();onMoveUp();}} disabled={autoIdx===0} style={{ fontSize:13, color:autoIdx===0?theme.borderInput:theme.textMuted, background:"none", border:"none", cursor:autoIdx===0?"default":"pointer", padding:"2px 4px", lineHeight:1 }} title="Move up">▲</button>
+          <button type="button" onClick={e=>{e.stopPropagation();onMoveDown();}} disabled={autoIdx===total-1} style={{ fontSize:13, color:autoIdx===total-1?theme.borderInput:theme.textMuted, background:"none", border:"none", cursor:autoIdx===total-1?"default":"pointer", padding:"2px 4px", lineHeight:1 }} title="Move down">▼</button>
+          <button type="button" onClick={e=>{e.stopPropagation();onRemove();}} style={{ fontSize:12, color:"#EF4444", background:"none", border:"none", cursor:"pointer", fontFamily:F, marginLeft:4 }}>Remove</button>
+          <span style={{ color:theme.textFaint, fontSize:11, marginLeft:4 }}>{collapsed?"▼":"▲"}</span>
+        </div>
+      </button>
+      {!collapsed && (
+        <div style={{ padding:"12px 14px", background:theme.surfaceAlt }}>
+          {validPhases.length > 0 && (
+            <div style={{ marginBottom:10 }}>
+              <div style={{ fontSize:11, fontWeight:600, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:6 }}>Pipeline phase <span style={{ fontWeight:400, textTransform:"none", letterSpacing:0 }}>(optional)</span></div>
+              <ESelect value={auto.pipelinePhase||""} onChange={v=>onChange({...auto,pipelinePhase:v})} options={validPhases}/>
+            </div>
+          )}
+          <div style={{ display:"flex", gap:0, marginBottom:12, border:`1.5px solid ${theme.borderInput}`, borderRadius:9, overflow:"hidden", width:"fit-content" }}>
+            {["clickup","third_party"].map(p=>{
+              const active=(auto.platform||"clickup")===p;
+              return (
+                <button key={p} type="button" onClick={()=>onChange({...auto,platform:p})}
+                  style={{ padding:"6px 16px", fontSize:12, fontWeight:600, fontFamily:F, border:"none", cursor:"pointer", background:active?color:theme.surface, color:active?"#fff":theme.textMuted }}>
+                  {p==="clickup"?"ClickUp":"3rd Party"}
+                </button>
+              );
+            })}
+          </div>
+          {isThirdParty && (
+            <div style={{ marginBottom:10 }}>
+              <div style={{ fontSize:11, fontWeight:600, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:6 }}>Platform</div>
+              <ESelect value={auto.third_party_platform||""} onChange={v=>onChange({...auto,third_party_platform:v})} options={THIRD_PARTY_PLATFORMS}/>
+            </div>
+          )}
+          <div style={{ marginBottom:10 }}>
+            <div style={{ fontSize:11, fontWeight:600, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:6 }}>Triggers</div>
+            {(auto.triggers||[]).map((t,ti)=>(
+              <div key={ti} style={{ display:"flex", gap:8, alignItems:"flex-start", marginBottom:6 }}>
+                <div style={{ flex:"0 0 180px" }}><ESelect value={t.type} onChange={v=>onChange({...auto,triggers:auto.triggers.map((tr,idx)=>idx===ti?{...tr,type:v}:tr)})} options={CLICKUP_TRIGGERS}/></div>
+                <div style={{ flex:1 }}><EInput value={t.detail} onChange={v=>onChange({...auto,triggers:auto.triggers.map((tr,idx)=>idx===ti?{...tr,detail:v}:tr)})} placeholder="e.g. to Done…"/></div>
+                {auto.triggers.length>1 && <button type="button" onClick={()=>onChange({...auto,triggers:auto.triggers.filter((_,idx)=>idx!==ti)})} style={{ fontSize:16, color:"#EF4444", background:"none", border:"none", cursor:"pointer", padding:"6px 4px", fontFamily:F }}>×</button>}
+              </div>
+            ))}
+            <button type="button" onClick={()=>onChange({...auto,triggers:[...auto.triggers,{type:"",detail:""}]})} style={{ fontSize:12, color, background:"none", border:"1px dashed #BAE6FD", borderRadius:6, padding:"4px 10px", cursor:"pointer", fontFamily:F }}>+ trigger</button>
+          </div>
+          {!isThirdParty && (
+            <div style={{ marginBottom:10 }}>
+              <div style={{ fontSize:11, fontWeight:600, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:6 }}>Actions</div>
+              {(auto.actions||[]).map((a,ai2)=>(
+                <div key={ai2} style={{ display:"flex", gap:8, alignItems:"flex-start", marginBottom:6 }}>
+                  <div style={{ flex:"0 0 180px" }}><ESelect value={a.type} onChange={v=>onChange({...auto,actions:auto.actions.map((ac,idx)=>idx===ai2?{...ac,type:v}:ac)})} options={CLICKUP_ACTIONS}/></div>
+                  <div style={{ flex:1 }}><EInput value={a.detail} onChange={v=>onChange({...auto,actions:auto.actions.map((ac,idx)=>idx===ai2?{...ac,detail:v}:ac)})} placeholder="e.g. to team lead…"/></div>
+                  {auto.actions.length>1 && <button type="button" onClick={()=>onChange({...auto,actions:auto.actions.filter((_,idx)=>idx!==ai2)})} style={{ fontSize:16, color:"#EF4444", background:"none", border:"none", cursor:"pointer", padding:"6px 4px", fontFamily:F }}>×</button>}
+                </div>
+              ))}
+              <button type="button" onClick={()=>onChange({...auto,actions:[...auto.actions,{type:"",detail:""}]})} style={{ fontSize:12, color, background:"none", border:"1px dashed #BAE6FD", borderRadius:6, padding:"4px 10px", cursor:"pointer", fontFamily:F }}>+ action</button>
+            </div>
+          )}
+          <div style={{ marginBottom:4 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <span style={{ fontSize:11, fontWeight:700, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>
+                  {!isThirdParty ? "Agent / Automation Instructions" : "Actions / Instructions"}
+                </span>
+                {auto.use_agent && <span style={{ fontSize:10, fontWeight:700, color:"#7C3AED", background:"#F5F3FF", border:"1px solid #DDD6FE", borderRadius:6, padding:"2px 7px", fontFamily:F, letterSpacing:"0.04em" }}>AGENT ON</span>}
+              </div>
+              <span style={{ fontSize:11, color:theme.textFaint, fontFamily:F }}>optional</span>
+            </div>
+            <textarea
+              value={auto.instructions}
+              onChange={e=>onChange({...auto, instructions:e.target.value, use_agent:e.target.value.trim().length>0})}
+              rows={5}
+              placeholder={!isThirdParty
+                ? "# Agent / automation instructions\n# Describe the logic for this automation\n\nIF task.status == 'Done':\n  notify(assignee)\n  move_to_list('Completed')"
+                : "# 3rd party automation actions\n# e.g. Make scenario steps, Zapier actions\n\nStep 1: Watch for new ClickUp task\nStep 2: Create record in HubSpot\nStep 3: Send Slack notification"}
+              style={{ width:"100%", boxSizing:"border-box", fontFamily:"'Fira Code','Cascadia Code','Consolas',monospace", fontSize:13, color:"#CDD6F4", background:"#1E1E2E", border:"1px solid #313244", borderRadius:8, padding:"12px 14px", outline:"none", resize:"vertical", lineHeight:1.7, caretColor:"#CDD6F4" }}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ViewAutoCard({ auto, autoIdx, forceOpen = false }) {
+  const [collapsed, setCollapsed] = useState(true);
+  const { theme } = useTheme();
+  const isThirdParty = (auto.platform||"clickup") === "third_party";
+  const platformLabel = isThirdParty ? (auto.third_party_platform || "3rd Party") : "ClickUp";
+  const platformColor = isThirdParty ? "#7C3AED" : "#0284C7";
+  const platformBg = isThirdParty ? "#F5F3FF" : "#EFF6FF";
+  const platformBorder = isThirdParty ? "#DDD6FE" : "#BAE6FD";
+  const isOpen = forceOpen || !collapsed;
+  return (
+    <div style={{ border:`1px solid ${theme.borderInput}`, borderLeft:"3px solid #0284C780", borderRadius:8, marginBottom:8, overflow:"hidden" }}>
+      <button type="button" onClick={()=>!forceOpen && setCollapsed(c=>!c)} style={{ width:"100%", display:"flex", alignItems:"center", gap:8, padding:"10px 14px", background:theme.surfaceAlt, border:"none", cursor:forceOpen?"default":"pointer", borderBottom:isOpen?`1px solid ${theme.borderInput}`:"none", minHeight:44 }}>
+        <p style={{ margin:0, fontSize:11, fontWeight:700, color:"#0284C7", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>Automation {autoIdx+1}</p>
+        <span style={{ fontSize:11, fontWeight:600, color:platformColor, background:platformBg, border:`1px solid ${platformBorder}`, borderRadius:6, padding:"2px 8px", fontFamily:F }}>{platformLabel}</span>
+        {auto.pipelinePhase && <span style={{ fontSize:10, fontWeight:700, color:"#0284C7", background:"#E0F2FE", border:"1px solid #BAE6FD", borderRadius:6, padding:"2px 8px", fontFamily:F }}>{auto.pipelinePhase}</span>}
+        {auto.use_agent && <span style={{ fontSize:10, fontWeight:700, color:"#7C3AED", background:"#F5F3FF", border:"1px solid #DDD6FE", borderRadius:6, padding:"2px 7px", fontFamily:F }}>AGENT ON</span>}
+        {!forceOpen && <span style={{ color:theme.textFaint, fontSize:11, marginLeft:"auto" }}>{collapsed?"▼":"▲"}</span>}
+      </button>
+      {isOpen && (
+        <div style={{ padding:"12px 14px", background:theme.surfaceAlt }}>
+          {auto.triggers?.length > 0 && (
+            <div style={{ marginBottom:8 }}>
+              <span style={{ fontSize:11, fontWeight:600, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em" }}>Triggers</span>
+              {auto.triggers.map((t,ti) => t.type && (
+                <div key={ti} style={{ display:"flex", gap:8, alignItems:"baseline", marginTop:4 }}>
+                  <span style={{ fontSize:12, fontWeight:600, color:"#0284C7", fontFamily:F, background:"#EFF6FF", border:"1px solid #BAE6FD", borderRadius:6, padding:"2px 8px", whiteSpace:"nowrap" }}>{t.type}</span>
+                  {t.detail && <span style={{ fontSize:12, color:theme.textSec, fontFamily:F }}>{t.detail}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+          {!isThirdParty && auto.actions?.length > 0 && (
+            <div style={{ marginBottom: auto.instructions ? 8 : 0 }}>
+              <span style={{ fontSize:11, fontWeight:600, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em" }}>Actions</span>
+              {auto.actions.map((a,ai2) => a.type && (
+                <div key={ai2} style={{ display:"flex", gap:8, alignItems:"baseline", marginTop:4 }}>
+                  <span style={{ fontSize:12, fontWeight:600, color:"#059669", fontFamily:F, background:"#ECFDF5", border:"1px solid #A7F3D0", borderRadius:6, padding:"2px 8px", whiteSpace:"nowrap" }}>{a.type}</span>
+                  {a.detail && <span style={{ fontSize:12, color:theme.textSec, fontFamily:F }}>{a.detail}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+          {auto.instructions && (
+            <div style={{ marginTop:8 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
+                <span style={{ fontSize:11, fontWeight:600, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em" }}>
+                  {!isThirdParty ? "Instructions" : "Actions / Instructions"}
+                </span>
+                {auto.use_agent && <span style={{ fontSize:10, fontWeight:700, color:"#7C3AED", background:"#F5F3FF", border:"1px solid #DDD6FE", borderRadius:6, padding:"2px 7px", fontFamily:F, letterSpacing:"0.04em" }}>AGENT ON</span>}
+              </div>
+              <pre style={{ margin:0, fontSize:12, fontFamily:"monospace", background:"#1E1E2E", color:"#E2E8F0", padding:"10px 12px", borderRadius:7, whiteSpace:"pre-wrap", lineHeight:1.6 }}>{auto.instructions}</pre>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -1458,47 +1537,7 @@ export default function CaseFileDetailPage() {
                     <div style={{ padding: "8px 0" }}>
                       <span style={{ fontSize: 11, fontWeight: 600, color: theme.textFaint, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 8 }}>Automations</span>
                       {l.automations.map((auto, ai) => (
-                        <div key={ai} style={{ border: `1px solid ${theme.borderInput}`, borderLeft: "3px solid #0284C780", borderRadius: 8, padding: "12px 14px", marginBottom: 8, background: theme.surfaceAlt }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                            <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#0284C7", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em" }}>Automation {ai + 1}</p>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: (auto.platform||"clickup")==="clickup" ? "#0284C7" : "#7C3AED", background: (auto.platform||"clickup")==="clickup" ? "#EFF6FF" : "#F5F3FF", border: `1px solid ${(auto.platform||"clickup")==="clickup" ? "#BAE6FD" : "#DDD6FE"}`, borderRadius: 6, padding: "2px 8px", fontFamily: F }}>
-                              {(auto.platform||"clickup")==="clickup" ? "ClickUp" : (auto.third_party_platform || "3rd Party")}
-                            </span>
-                          </div>
-                          {auto.triggers?.length > 0 && (
-                            <div style={{ marginBottom: 8 }}>
-                              <span style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.05em" }}>Triggers</span>
-                              {auto.triggers.map((t, ti) => t.type && (
-                                <div key={ti} style={{ display: "flex", gap: 8, alignItems: "baseline", marginTop: 4 }}>
-                                  <span style={{ fontSize: 12, fontWeight: 600, color: "#0284C7", fontFamily: F, background: "#EFF6FF", border: "1px solid #BAE6FD", borderRadius: 6, padding: "2px 8px", whiteSpace: "nowrap" }}>{t.type}</span>
-                                  {t.detail && <span style={{ fontSize: 12, color: theme.textSec, fontFamily: F }}>{t.detail}</span>}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          {(auto.platform||"clickup")==="clickup" && auto.actions?.length > 0 && (
-                            <div style={{ marginBottom: auto.instructions ? 8 : 0 }}>
-                              <span style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.05em" }}>Actions</span>
-                              {auto.actions.map((a, ai2) => a.type && (
-                                <div key={ai2} style={{ display: "flex", gap: 8, alignItems: "baseline", marginTop: 4 }}>
-                                  <span style={{ fontSize: 12, fontWeight: 600, color: "#059669", fontFamily: F, background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 6, padding: "2px 8px", whiteSpace: "nowrap" }}>{a.type}</span>
-                                  {a.detail && <span style={{ fontSize: 12, color: theme.textSec, fontFamily: F }}>{a.detail}</span>}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          {auto.instructions && (
-                            <div style={{ marginTop: 8 }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                                <span style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                                  {(auto.platform||"clickup")==="clickup" ? "Instructions" : "Actions / Instructions"}
-                                </span>
-                                {auto.use_agent && <span style={{ fontSize: 10, fontWeight: 700, color: "#7C3AED", background: "#F5F3FF", border: "1px solid #DDD6FE", borderRadius: 6, padding: "2px 7px", fontFamily: F, letterSpacing: "0.04em" }}>AGENT ON</span>}
-                              </div>
-                              <pre style={{ margin: 0, fontSize: 12, fontFamily: "monospace", background: "#1E1E2E", color: "#E2E8F0", padding: "10px 12px", borderRadius: 7, whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{auto.instructions}</pre>
-                            </div>
-                          )}
-                        </div>
+                        <ViewAutoCard key={ai} auto={auto} autoIdx={ai} forceOpen={isPrinting}/>
                       ))}
                     </div>
                   )}
