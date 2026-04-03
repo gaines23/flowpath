@@ -502,7 +502,7 @@ function EditProjectUpdateCard({ item, onChange, onRemove }) {
   );
 }
 
-function EditWorkflowBuildCard({ wf, wfIdx, onChange, onRemove, initialCollapsed = true }) {
+function EditWorkflowBuildCard({ wf, wfIdx, onChange, onRemove, initialCollapsed = true, spaces = [] }) {
   const [collapsed, setCollapsed] = useState(initialCollapsed);
   const { theme } = useTheme();
   const color = "#0284C7";
@@ -562,6 +562,11 @@ function EditWorkflowBuildCard({ wf, wfIdx, onChange, onRemove, initialCollapsed
                   <span style={{ fontSize:12, fontWeight:700, color, fontFamily:F }}>List {li+1}</span>
                   {(wf.lists||[]).length>1 && <button type="button" onClick={()=>remList(li)} style={{ fontSize:12, color:"#EF4444", background:"none", border:"none", cursor:"pointer", fontFamily:F }}>Remove</button>}
                 </div>
+                {spaces.length > 0 && (
+                  <ERow label="Space">
+                    <ESelect value={l.space||""} onChange={v=>updList(li,{...l,space:v})} options={["(none)",...spaces]}/>
+                  </ERow>
+                )}
                 <ERow label="List name"><EInput value={l.name} onChange={v=>updList(li,{...l,name:v})} placeholder="e.g. Active Leads"/></ERow>
                 <ERow label="Status flow"><EInput value={l.statuses} onChange={v=>updList(li,{...l,statuses:v})} placeholder="New → In Progress → Done"/></ERow>
                 <ERow label="Custom fields" fullWidth><ETextarea value={l.customFields} onChange={v=>updList(li,{...l,customFields:v})} placeholder={"Client Name — Text\nPriority — Dropdown"} rows={3}/></ERow>
@@ -834,9 +839,29 @@ function CaseFileEditView({ cf, onSave, onCancel, isSaving, apiError }) {
 
       {/* ── Build ──────────────────────────────────────────────────────────── */}
       <Section title="Build Documentation" emoji="🏗️" color={STEP_COLORS.build} collapsible>
+        {/* ── Spaces ── */}
+        <div style={{ marginBottom:18 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+            <div>
+              <span style={{ fontSize:13, fontWeight:700, color:theme.text, fontFamily:F }}>Spaces</span>
+              <span style={{ fontSize:12, color:theme.textFaint, fontFamily:F, marginLeft:8 }}>Names available to assign to lists in each workflow</span>
+            </div>
+            <button type="button" onClick={()=>setBuild("spaces")([...(build.spaces||[]),""])} style={{ padding:"7px 14px", background:"transparent", border:"1.5px solid #0284C7", borderRadius:8, color:"#0284C7", fontSize:12, fontWeight:600, fontFamily:F, cursor:"pointer" }}>+ Add space</button>
+          </div>
+          {(build.spaces||[]).length === 0 && (
+            <p style={{ margin:0, fontSize:12, color:theme.textFaint, fontFamily:F, padding:"10px 0" }}>No spaces defined yet.</p>
+          )}
+          {(build.spaces||[]).map((s,si)=>(
+            <div key={si} style={{ display:"flex", gap:8, alignItems:"center", marginBottom:6 }}>
+              <EInput value={s} onChange={v=>setBuild("spaces")((build.spaces||[]).map((sp,idx)=>idx===si?v:sp))} placeholder={`Space name…`}/>
+              <button type="button" onClick={()=>setBuild("spaces")((build.spaces||[]).filter((_,idx)=>idx!==si))} style={{ fontSize:16, color:"#EF4444", background:"none", border:"none", cursor:"pointer", padding:"4px 6px", lineHeight:1, flexShrink:0 }}>×</button>
+            </div>
+          ))}
+        </div>
         {(build.workflows||[]).map((wf,wi)=>(
           <EditWorkflowBuildCard key={wi} wf={wf} wfIdx={wi}
             initialCollapsed={wi !== expandedWorkflowIdx}
+            spaces={(build.spaces||[]).filter(s=>s.trim())}
             onChange={v=>setBuild("workflows")((build.workflows||[]).map((w,idx)=>idx===wi?v:w))}
             onRemove={()=>setBuild("workflows")((build.workflows||[]).filter((_,idx)=>idx!==wi))}
           />
@@ -1398,6 +1423,16 @@ export default function CaseFileDetailPage() {
       {/* ── Layer 3: Build ──────────────────────────────────────────────── */}
       {build && (
         <Section title="Build Documentation" emoji="🏗️" color={STEP_COLORS.build} collapsible forceOpen={isPrinting}>
+          {build.spaces && (
+            <div style={{ marginBottom: 16 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: theme.textFaint, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 8 }}>Spaces</span>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {build.spaces.split(",").map(s => s.trim()).filter(Boolean).map((s, i) => (
+                  <span key={i} style={{ fontSize: 12, fontWeight: 600, color: "#0284C7", background: "#E0F2FE", border: "1px solid #BAE6FD", borderRadius: 8, padding: "3px 10px", fontFamily: F }}>{s}</span>
+                ))}
+              </div>
+            </div>
+          )}
           {build.workflows?.length > 0 ? build.workflows.map((wf, wi) => (
             <CollapsibleCard
               key={wi}
@@ -1408,7 +1443,10 @@ export default function CaseFileDetailPage() {
               {wf.notes && <p style={{ margin: "0 0 12px", fontSize: 13, color: theme.textSec, fontFamily: F, lineHeight: 1.6, fontStyle: "italic" }}>{wf.notes}</p>}
               {wf.lists?.length > 0 && wf.lists.map((l, li) => (
                 <div key={li} style={{ border: `1px solid ${theme.borderInput}`, borderLeft: "3px solid #0284C7", borderRadius: 9, padding: "12px 14px", marginBottom: 8, background: theme.surface }}>
-                  <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#0284C7", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em" }}>List {li + 1}{l.name ? ` — ${l.name}` : ""}</p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#0284C7", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em" }}>List {li + 1}{l.name ? ` — ${l.name}` : ""}</p>
+                    {l.space && <span style={{ fontSize: 11, fontWeight: 600, color: "#0284C7", background: "#E0F2FE", border: "1px solid #BAE6FD", borderRadius: 6, padding: "2px 8px", fontFamily: F }}>{l.space}</span>}
+                  </div>
                   <Row label="Status flow" value={l.statuses} />
                   {l.custom_fields && (
                     <div style={{ padding: "8px 0", borderBottom: `1px solid ${theme.borderSubtle}` }}>
