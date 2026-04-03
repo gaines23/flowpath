@@ -90,16 +90,17 @@ function TagList({ items, color = BLUE }) {
 }
 
 function SatisfactionStars({ score }) {
+  const { theme } = useTheme();
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
       <div style={{ display: "flex", gap: 3 }}>
         {[1, 2, 3, 4, 5].map(n => (
-          <span key={n} style={{ fontSize: 20, color: score >= n ? "#F59E0B" : "#E5E7EB" }}>
+          <span key={n} style={{ fontSize: 20, color: score >= n ? "#F59E0B" : theme.border }}>
             {score >= n ? "★" : "☆"}
           </span>
         ))}
       </div>
-      <span style={{ fontSize: 13, color: "#6B7280", fontFamily: F }}>
+      <span style={{ fontSize: 13, color: theme.textMuted, fontFamily: F }}>
         {satisfactionLabel(score)}
       </span>
     </div>
@@ -107,6 +108,7 @@ function SatisfactionStars({ score }) {
 }
 
 function RoadblockCard({ rb, index }) {
+  const { theme } = useTheme();
   const sevColors = { low: "#10B981", medium: "#F59E0B", high: "#F97316", blocker: "#EF4444" };
   const sc = sevColors[rb.severity] || "#9CA3AF";
   return (
@@ -116,10 +118,10 @@ function RoadblockCard({ rb, index }) {
       borderRadius: 10,
       padding: "14px 16px",
       marginBottom: 10,
-      background: sc + "05",
+      background: sc + "08",
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: "#374151", fontFamily: F }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: theme.textSec, fontFamily: F }}>
           Roadblock {index + 1}
         </span>
         {rb.severity && (
@@ -128,7 +130,7 @@ function RoadblockCard({ rb, index }) {
           </span>
         )}
         {rb.type && (
-          <span style={{ fontSize: 12, color: "#6B7280", fontFamily: F }}>
+          <span style={{ fontSize: 12, color: theme.textMuted, fontFamily: F }}>
             {rb.type.replace(/_/g, " ")}
           </span>
         )}
@@ -139,9 +141,9 @@ function RoadblockCard({ rb, index }) {
       <Row label="Workaround " value={rb.workaround_description} fullWidth />
       <Row label="Time cost" value={rb.time_cost_hours ? `${rb.time_cost_hours}h` : null} />
       {rb.future_warning && (
-        <div style={{ marginTop: 10, padding: "10px 12px", background: "#FFFBF5", border: "1px solid #FED7AA", borderRadius: 8 }}>
+        <div style={{ marginTop: 10, padding: "10px 12px", background: "#EA580C12", border: "1px solid #FED7AA", borderRadius: 8 }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: "#EA580C", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.05em" }}>⚠️ Future warning: </span>
-          <span style={{ fontSize: 13, color: "#92400E", fontFamily: F }}>{rb.future_warning}</span>
+          <span style={{ fontSize: 13, color: theme.textSec, fontFamily: F }}>{rb.future_warning}</span>
         </div>
       )}
     </div>
@@ -149,13 +151,14 @@ function RoadblockCard({ rb, index }) {
 }
 
 function CurrentBuildCard({ build, index }) {
+  const { theme } = useTheme();
   const urgColors = { low: "#10B981", medium: "#F59E0B", high: "#F97316", critical: "#EF4444" };
   const uc = urgColors[build.urgency?.toLowerCase()] || "#9CA3AF";
   return (
-    <div style={{ border: "1px solid #FED7AA", borderRadius: 10, padding: "14px 16px", marginBottom: 10, background: "#FFFBF5" }}>
+    <div style={{ border: "1px solid #FED7AA", borderLeft: "3px solid #EA580C", borderRadius: 10, padding: "14px 16px", marginBottom: 10, background: theme.surface }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
         <span style={{ fontSize: 13, fontWeight: 700, color: "#EA580C", fontFamily: F }}>Build {index + 1}</span>
-        {build.tool && <span style={{ fontSize: 13, fontWeight: 600, color: "#374151", fontFamily: F }}>{build.tool}</span>}
+        {build.tool && <span style={{ fontSize: 13, fontWeight: 600, color: theme.textSec, fontFamily: F }}>{build.tool}</span>}
         {build.urgency && (
           <span style={{ fontSize: 11, fontWeight: 700, color: uc, background: uc + "18", border: `1px solid ${uc}40`, borderRadius: 10, padding: "2px 8px", fontFamily: F }}>
             {build.urgency.toUpperCase()}
@@ -164,8 +167,8 @@ function CurrentBuildCard({ build, index }) {
       </div>
       <Row label="Structure" value={build.structure} fullWidth />
       {build.failure_reasons?.length > 0 && (
-        <div style={{ padding: "10px 0", borderBottom: "1px solid #F9FAFB" }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: "#9CA3AF", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 8 }}>Why it's failing</span>
+        <div style={{ padding: "10px 0", borderBottom: `1px solid ${theme.borderSubtle}` }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: theme.textFaint, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 8 }}>Why it's failing</span>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {build.failure_reasons.map(r => (
               <span key={r} style={{ fontSize: 12, padding: "3px 10px", borderRadius: 12, background: "#FEF2F2", border: "1px solid #FECACA", color: "#DC2626", fontFamily: F }}>{r}</span>
@@ -272,14 +275,14 @@ function EditRBCard({ rb, index, onChange, onRemove }) {
   const sc = SEV_COLORS[rb.severity] || "#9CA3AF";
   return (
     <div style={{ border:"1.5px solid #FED7AA", borderRadius:12, marginBottom:10, overflow:"hidden" }}>
-      <button type="button" onClick={()=>setOpen(o=>!o)} style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"13px 16px", background:"#FFFBF5", border:"none", cursor:"pointer", borderBottom:open?"1px solid #FED7AA":"none", minHeight:52 }}>
+      <button type="button" onClick={()=>setOpen(o=>!o)} style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"13px 16px", background:"#EA580C12", border:"none", cursor:"pointer", borderBottom:open?"1px solid #FED7AA":"none", minHeight:52 }}>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
           <span style={{ fontSize:13, fontWeight:700, color:"#EA580C", fontFamily:F }}>Roadblock {index+1}</span>
           {rb.severity && <span style={{ fontSize:11, fontWeight:700, color:sc, background:sc+"18", borderRadius:10, padding:"2px 8px", fontFamily:F }}>{rb.severity}</span>}
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
           <button type="button" onClick={e=>{e.stopPropagation();onRemove();}} style={{ fontSize:12, color:"#EF4444", background:"#FEF2F2", border:"1px solid #FECACA", borderRadius:7, padding:"5px 11px", cursor:"pointer", fontFamily:F, fontWeight:600 }}>Remove</button>
-          <span style={{ color:"#9CA3AF", fontSize:11 }}>{open?"▲":"▼"}</span>
+          <span style={{ color:theme.textFaint, fontSize:11 }}>{open?"▲":"▼"}</span>
         </div>
       </button>
       {open && (
@@ -316,15 +319,15 @@ function EditBuildCard({ build, index, onChange, onRemove }) {
   const uc = UC_COLORS[build.urgency] || "#9CA3AF";
   return (
     <div style={{ border:"1.5px solid #FED7AA", borderRadius:12, marginBottom:10, overflow:"hidden" }}>
-      <button type="button" onClick={()=>setOpen(o=>!o)} style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"13px 16px", background:"#FFFBF5", border:"none", cursor:"pointer", borderBottom:open?"1px solid #FED7AA":"none", minHeight:52 }}>
+      <button type="button" onClick={()=>setOpen(o=>!o)} style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"13px 16px", background:"#EA580C12", border:"none", cursor:"pointer", borderBottom:open?"1px solid #FED7AA":"none", minHeight:52 }}>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
           <span style={{ fontSize:13, fontWeight:700, color:"#EA580C", fontFamily:F }}>Build {index+1}</span>
-          {build.tool && <span style={{ fontSize:12, color:"#374151", fontFamily:F, fontWeight:500 }}>{build.tool}</span>}
+          {build.tool && <span style={{ fontSize:12, color:theme.textSec, fontFamily:F, fontWeight:500 }}>{build.tool}</span>}
           <span style={{ fontSize:11, fontWeight:700, color:uc, background:uc+"18", borderRadius:10, padding:"2px 8px", fontFamily:F }}>{build.urgency||"Medium"}</span>
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
           <button type="button" onClick={e=>{e.stopPropagation();onRemove();}} style={{ fontSize:12, color:"#EF4444", background:"#FEF2F2", border:"1px solid #FECACA", borderRadius:7, padding:"5px 11px", cursor:"pointer", fontFamily:F, fontWeight:600 }}>Remove</button>
-          <span style={{ color:"#9CA3AF", fontSize:11 }}>{open?"▲":"▼"}</span>
+          <span style={{ color:theme.textFaint, fontSize:11 }}>{open?"▲":"▼"}</span>
         </div>
       </button>
       {open && (
@@ -335,10 +338,10 @@ function EditBuildCard({ build, index, onChange, onRemove }) {
               <ESelect value={build.tool} onChange={v=>onChange({...build,tool:v})} options={CURRENT_TOOLS_USED}/>
             </div>
             <div>
-              <span style={{ fontSize:12, fontWeight:600, color:"#9CA3AF", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:6 }}>Fix urgency</span>
+              <span style={{ fontSize:12, fontWeight:600, color:theme.textFaint, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:6 }}>Fix urgency</span>
               <div style={{ display:"flex", gap:6 }}>
                 {["Low","Medium","High","Critical"].map(u=>(
-                  <button key={u} type="button" onClick={()=>onChange({...build,urgency:u})} style={{ flex:1, padding:"8px 4px", borderRadius:8, fontSize:11, fontWeight:600, fontFamily:F, cursor:"pointer", border:build.urgency===u?`1.5px solid ${UC_COLORS[u]}`:"1.5px solid #E5E7EB", background:build.urgency===u?UC_COLORS[u]+"18":"#fff", color:build.urgency===u?UC_COLORS[u]:"#9CA3AF", minHeight:40 }}>{u}</button>
+                  <button key={u} type="button" onClick={()=>onChange({...build,urgency:u})} style={{ flex:1, padding:"8px 4px", borderRadius:8, fontSize:11, fontWeight:600, fontFamily:F, cursor:"pointer", border:build.urgency===u?`1.5px solid ${UC_COLORS[u]}`:`1.5px solid ${theme.borderInput}`, background:build.urgency===u?UC_COLORS[u]+"18":theme.surface, color:build.urgency===u?UC_COLORS[u]:theme.textFaint, minHeight:40 }}>{u}</button>
                 ))}
               </div>
             </div>
@@ -349,11 +352,11 @@ function EditBuildCard({ build, index, onChange, onRemove }) {
           <ERow label="Workarounds they're using" fullWidth><ETextarea value={build.workaroundsTheyUse} onChange={v=>onChange({...build,workaroundsTheyUse:v})} placeholder="Separate spreadsheet, Slack DMs…" rows={2}/></ERow>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, margin:"14px 0" }}>
             <div>
-              <span style={{ fontSize:12, fontWeight:600, color:"#9CA3AF", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:6 }}>How long broken?</span>
+              <span style={{ fontSize:12, fontWeight:600, color:theme.textFaint, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:6 }}>How long broken?</span>
               <ESelect value={build.howLongBroken} onChange={v=>onChange({...build,howLongBroken:v})} options={["Just noticed","< 1 month","1–3 months","3–6 months","6–12 months","1+ year","Since day one"]}/>
             </div>
             <div>
-              <span style={{ fontSize:12, fontWeight:600, color:"#9CA3AF", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:6 }}>Who flagged this?</span>
+              <span style={{ fontSize:12, fontWeight:600, color:theme.textFaint, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:6 }}>Who flagged this?</span>
               <ESelect value={build.whoReported} onChange={v=>onChange({...build,whoReported:v})} options={["Client / End User","Team Lead","Manager / Director","Executive","Ops / Admin","IT","Self-identified"]}/>
             </div>
           </div>
@@ -373,15 +376,15 @@ function EditScopeCreepCard({ item, index, onChange, onRemove }) {
   const cc = COMM_COLORS[item.communicated] || "#9CA3AF";
   return (
     <div style={{ border:"1.5px solid #FDE68A", borderRadius:12, marginBottom:10, overflow:"hidden" }}>
-      <button type="button" onClick={()=>setOpen(o=>!o)} style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"13px 16px", background:"#FFFBEB", border:"none", cursor:"pointer", borderBottom:open?"1px solid #FDE68A":"none", minHeight:52 }}>
+      <button type="button" onClick={()=>setOpen(o=>!o)} style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"13px 16px", background:"#D9770612", border:"none", cursor:"pointer", borderBottom:open?"1px solid #FDE68A":"none", minHeight:52 }}>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
           <span style={{ fontSize:13, fontWeight:700, color:"#D97706", fontFamily:F }}>Scope item {index+1}</span>
-          {item.area && <span style={{ fontSize:12, color:"#374151", fontFamily:F, fontWeight:500 }}>{item.area}</span>}
+          {item.area && <span style={{ fontSize:12, color:theme.textSec, fontFamily:F, fontWeight:500 }}>{item.area}</span>}
           {item.communicated && <span style={{ fontSize:11, fontWeight:700, color:cc, background:cc+"18", borderRadius:10, padding:"2px 8px", fontFamily:F }}>{item.communicated}</span>}
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
           <button type="button" onClick={e=>{e.stopPropagation();onRemove();}} style={{ fontSize:12, color:"#EF4444", background:"#FEF2F2", border:"1px solid #FECACA", borderRadius:7, padding:"5px 11px", cursor:"pointer", fontFamily:F, fontWeight:600 }}>Remove</button>
-          <span style={{ color:"#9CA3AF", fontSize:11 }}>{open?"▲":"▼"}</span>
+          <span style={{ color:theme.textFaint, fontSize:11 }}>{open?"▲":"▼"}</span>
         </div>
       </button>
       {open && (
@@ -412,14 +415,14 @@ function EditProjectUpdateCard({ item, onChange, onRemove }) {
     : "New update";
   return (
     <div style={{ border:"1.5px solid #BAE6FD", borderRadius:12, marginBottom:10, overflow:"hidden" }}>
-      <button type="button" onClick={()=>setOpen(o=>!o)} style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"13px 16px", background:"#F0F9FF", border:"none", cursor:"pointer", borderBottom:open?"1px solid #BAE6FD":"none", minHeight:52 }}>
+      <button type="button" onClick={()=>setOpen(o=>!o)} style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"13px 16px", background:"#0284C712", border:"none", cursor:"pointer", borderBottom:open?"1px solid #BAE6FD":"none", minHeight:52 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <span style={{ fontSize:13, fontWeight:700, color:"#0284C7", fontFamily:F }}>{dateLabel}</span>
           {(item.attachments||[]).length > 0 && <span style={{ fontSize:11, fontWeight:700, color:"#0284C7", background:"#E0F2FE", border:"1px solid #BAE6FD", borderRadius:8, padding:"2px 8px", fontFamily:F }}>📎 {item.attachments.length}</span>}
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
           <button type="button" onClick={e=>{e.stopPropagation();onRemove();}} style={{ fontSize:12, color:"#EF4444", background:"#FEF2F2", border:"1px solid #FECACA", borderRadius:7, padding:"5px 11px", cursor:"pointer", fontFamily:F, fontWeight:600 }}>Remove</button>
-          <span style={{ color:"#9CA3AF", fontSize:11 }}>{open?"▲":"▼"}</span>
+          <span style={{ color:theme.textFaint, fontSize:11 }}>{open?"▲":"▼"}</span>
         </div>
       </button>
       {open && (
@@ -429,7 +432,7 @@ function EditProjectUpdateCard({ item, onChange, onRemove }) {
               type="date"
               value={item.createdAt ? item.createdAt.slice(0,10) : ""}
               onChange={e=>onChange({...item, createdAt: e.target.value || ""})}
-              style={{ fontFamily:F, fontSize:13, color:"#374151", border:"1.5px solid #E5E7EB", borderRadius:9, padding:"9px 12px", outline:"none", background:"#fff", cursor:"pointer" }}
+              style={{ fontFamily:F, fontSize:13, color:theme.text, border:`1.5px solid ${theme.borderInput}`, borderRadius:9, padding:"9px 12px", outline:"none", background:theme.inputBg, cursor:"pointer" }}
             />
           </ERow>
           <ERow label="Update" fullWidth>
@@ -438,11 +441,11 @@ function EditProjectUpdateCard({ item, onChange, onRemove }) {
           {/* Attachments */}
           <div style={{ marginTop:14 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-              <span style={{ fontSize:12, fontWeight:600, color:"#9CA3AF", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>Attachments <span style={{ fontWeight:400, textTransform:"none", letterSpacing:0 }}>(links)</span></span>
+              <span style={{ fontSize:12, fontWeight:600, color:theme.textFaint, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>Attachments <span style={{ fontWeight:400, textTransform:"none", letterSpacing:0 }}>(links)</span></span>
               <button type="button" onClick={()=>onChange({...item,attachments:[...(item.attachments||[]),{name:"",url:""}]})} style={{ fontSize:12, color:"#0284C7", background:"none", border:"1px dashed #BAE6FD", borderRadius:6, padding:"4px 10px", cursor:"pointer", fontFamily:F }}>+ Add link</button>
             </div>
             {(item.attachments||[]).length === 0 && (
-              <p style={{ fontSize:12, color:"#9CA3AF", fontFamily:F, margin:"0 0 4px" }}>No attachments yet — paste a Google Drive, Notion, or any file link above.</p>
+              <p style={{ fontSize:12, color:theme.textFaint, fontFamily:F, margin:"0 0 4px" }}>No attachments yet — paste a Google Drive, Notion, or any file link above.</p>
             )}
             {(item.attachments||[]).map((att,ai)=>(
               <div key={ai} style={{ display:"flex", gap:8, alignItems:"center", marginBottom:6 }}>
@@ -515,9 +518,9 @@ function CaseFileEditView({ cf, onSave, onCancel, isSaving, apiError }) {
       {/* Header */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:28, flexWrap:"wrap", gap:14 }}>
         <div>
-          <button onClick={onCancel} style={{ fontSize:13, color:"#9CA3AF", fontFamily:F, background:"none", border:"none", cursor:"pointer", marginBottom:10, padding:0 }}>← Back to view</button>
+          <button onClick={onCancel} style={{ fontSize:13, color:theme.textFaint, fontFamily:F, background:"none", border:"none", cursor:"pointer", marginBottom:10, padding:0 }}>← Back to view</button>
           <h1 style={{ margin:"0 0 4px", fontSize:24, fontFamily:"'Fraunces', serif" }}>Edit case file</h1>
-          <p style={{ margin:0, fontSize:13, color:"#6B7280", fontFamily:F }}>Logged by <strong style={{ color:"#374151" }}>{enteredBy||"—"}</strong></p>
+          <p style={{ margin:0, fontSize:13, color:theme.textMuted, fontFamily:F }}>Logged by <strong style={{ color:theme.textSec }}>{enteredBy||"—"}</strong></p>
         </div>
         <div style={{ display:"flex", gap:8, paddingTop:28 }}>
           <button onClick={onCancel} style={{ padding:"9px 18px", background:theme.surface, border:`1.5px solid ${theme.borderInput}`, borderRadius:9, color:theme.textSec, fontSize:13, fontWeight:600, fontFamily:F, cursor:"pointer" }}>Cancel</button>
@@ -534,7 +537,7 @@ function CaseFileEditView({ cf, onSave, onCancel, isSaving, apiError }) {
       )}
 
       {/* Case name */}
-      <div style={{ marginBottom:20, background:"#fff", border:"1px solid #F0F0F0", borderRadius:12, padding:"16px 18px" }}>
+      <div style={{ marginBottom:20, background:theme.surface, border:`1px solid ${theme.border}`, borderRadius:12, padding:"16px 18px" }}>
         <ERow label="Case name"><EInput value={caseName} onChange={setCaseName} placeholder="e.g. Acme CRM Migration"/></ERow>
       </div>
 
@@ -558,7 +561,7 @@ function CaseFileEditView({ cf, onSave, onCancel, isSaving, apiError }) {
           <ERow label="Pattern summary" fullWidth><ETextarea value={audit.patternSummary} onChange={setAudit("patternSummary")} placeholder="Recurring issues..."/></ERow>
           {(audit.builds||[]).length>0 && (
             <div style={{ marginTop:14 }}>
-              <p style={{ fontSize:12, fontWeight:700, color:"#9CA3AF", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:10 }}>Builds ({audit.builds.length})</p>
+              <p style={{ fontSize:12, fontWeight:700, color:theme.textFaint, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:10 }}>Builds ({audit.builds.length})</p>
               {audit.builds.map((b,i)=>(
                 <EditBuildCard key={i} build={b} index={i}
                   onChange={v=>setData(d=>{const builds=[...d.audit.builds];builds[i]=v;return {...d,audit:{...d.audit,builds}};})}
@@ -574,52 +577,52 @@ function CaseFileEditView({ cf, onSave, onCancel, isSaving, apiError }) {
       <Section title="Scenario Intake" emoji="📋" color={STEP_COLORS.intake}>
 
         {/* Raw scenario prompt */}
-        <div style={{ background:"#fff", border:"1px solid #EDE9FE", borderTop:"3px solid #7C3AED", borderRadius:10, padding:"18px 18px 16px", marginBottom:14 }}>
-          <p style={{ margin:"0 0 2px", fontSize:14, fontWeight:700, color:"#111827", fontFamily:F }}>Raw scenario prompt</p>
-          <p style={{ margin:"0 0 12px", fontSize:12, color:"#9CA3AF", fontFamily:F }}>Paste exactly as the user described — don't clean it up</p>
+        <div style={{ background:theme.surface, border:`1px solid ${theme.border}`, borderTop:"3px solid #7C3AED", borderRadius:10, padding:"18px 18px 16px", marginBottom:14 }}>
+          <p style={{ margin:"0 0 2px", fontSize:14, fontWeight:700, color:theme.text, fontFamily:F }}>Raw scenario prompt</p>
+          <p style={{ margin:"0 0 12px", fontSize:12, color:theme.textFaint, fontFamily:F }}>Paste exactly as the user described — don't clean it up</p>
           <ETextarea value={intake.rawPrompt} onChange={setIntake("rawPrompt")} placeholder="e.g. We're a 6-person marketing agency managing 12 clients. We use Slack and HubSpot but nothing talks to each other…" rows={4}/>
         </div>
 
         {/* Team basics */}
-        <div style={{ background:"#fff", border:"1px solid #EDE9FE", borderTop:"3px solid #7C3AED", borderRadius:10, padding:"18px 18px 16px", marginBottom:14 }}>
-          <p style={{ margin:"0 0 14px", fontSize:14, fontWeight:700, color:"#111827", fontFamily:F }}>Team basics</p>
+        <div style={{ background:theme.surface, border:`1px solid ${theme.border}`, borderTop:"3px solid #7C3AED", borderRadius:10, padding:"18px 18px 16px", marginBottom:14 }}>
+          <p style={{ margin:"0 0 14px", fontSize:14, fontWeight:700, color:theme.text, fontFamily:F }}>Team basics</p>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
             <div>
-              <span style={{ fontSize:12, fontWeight:600, color:"#9CA3AF", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:6 }}>Team size</span>
+              <span style={{ fontSize:12, fontWeight:600, color:theme.textFaint, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:6 }}>Team size</span>
               <EInput value={intake.teamSize} onChange={setIntake("teamSize")} placeholder="e.g. 6"/>
             </div>
             <div>
-              <span style={{ fontSize:12, fontWeight:600, color:"#9CA3AF", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:6 }}>Primary workflow type</span>
+              <span style={{ fontSize:12, fontWeight:600, color:theme.textFaint, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:6 }}>Primary workflow type</span>
               <ESelect value={intake.workflowType} onChange={setIntake("workflowType")} options={WORKFLOW_TYPES.map(w=>w.name)}/>
-              {intake.workflowType && (() => { const wt = WORKFLOW_TYPES.find(w=>w.name===intake.workflowType); return wt ? <p style={{ margin:"4px 0 0", fontSize:12, color:"#9CA3AF", fontFamily:F, lineHeight:1.4 }}>{wt.desc}</p> : null; })()}
+              {intake.workflowType && (() => { const wt = WORKFLOW_TYPES.find(w=>w.name===intake.workflowType); return wt ? <p style={{ margin:"4px 0 0", fontSize:12, color:theme.textFaint, fontFamily:F, lineHeight:1.4 }}>{wt.desc}</p> : null; })()}
             </div>
           </div>
         </div>
 
         {/* Industry */}
-        <div style={{ background:"#fff", border:"1px solid #EDE9FE", borderTop:"3px solid #7C3AED", borderRadius:10, padding:"18px 18px 16px", marginBottom:14 }}>
-          <p style={{ margin:"0 0 2px", fontSize:14, fontWeight:700, color:"#111827", fontFamily:F }}>Industry</p>
-          <p style={{ margin:"0 0 12px", fontSize:12, color:"#9CA3AF", fontFamily:F }}>Expand a category — multiple allowed</p>
+        <div style={{ background:theme.surface, border:`1px solid ${theme.border}`, borderTop:"3px solid #7C3AED", borderRadius:10, padding:"18px 18px 16px", marginBottom:14 }}>
+          <p style={{ margin:"0 0 2px", fontSize:14, fontWeight:700, color:theme.text, fontFamily:F }}>Industry</p>
+          <p style={{ margin:"0 0 12px", fontSize:12, color:theme.textFaint, fontFamily:F }}>Expand a category — multiple allowed</p>
           <IndustryPicker selected={intake.industries||[]} onChange={setIntake("industries")}/>
         </div>
 
         {/* Process frameworks */}
-        <div style={{ background:"#fff", border:"1px solid #EDE9FE", borderTop:"3px solid #7C3AED", borderRadius:10, padding:"18px 18px 16px", marginBottom:14 }}>
-          <p style={{ margin:"0 0 2px", fontSize:14, fontWeight:700, color:"#111827", fontFamily:F }}>Process frameworks</p>
-          <p style={{ margin:"0 0 12px", fontSize:12, color:"#9CA3AF", fontFamily:F }}>Select every framework they reference or need support with</p>
+        <div style={{ background:theme.surface, border:`1px solid ${theme.border}`, borderTop:"3px solid #7C3AED", borderRadius:10, padding:"18px 18px 16px", marginBottom:14 }}>
+          <p style={{ margin:"0 0 2px", fontSize:14, fontWeight:700, color:theme.text, fontFamily:F }}>Process frameworks</p>
+          <p style={{ margin:"0 0 12px", fontSize:12, color:theme.textFaint, fontFamily:F }}>Select every framework they reference or need support with</p>
           <FrameworkPicker selected={intake.processFrameworks||[]} onChange={setIntake("processFrameworks")}/>
         </div>
 
         {/* Tools & pain points */}
-        <div style={{ background:"#fff", border:"1px solid #EDE9FE", borderTop:"3px solid #7C3AED", borderRadius:10, padding:"18px 18px 16px", marginBottom:14 }}>
-          <p style={{ margin:"0 0 14px", fontSize:14, fontWeight:700, color:"#111827", fontFamily:F }}>Tools & pain points</p>
-          <span style={{ fontSize:12, fontWeight:600, color:"#9CA3AF", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:8 }}>Tools currently in use <span style={{ fontWeight:400, textTransform:"none", letterSpacing:0 }}>— select all</span></span>
+        <div style={{ background:theme.surface, border:`1px solid ${theme.border}`, borderTop:"3px solid #7C3AED", borderRadius:10, padding:"18px 18px 16px", marginBottom:14 }}>
+          <p style={{ margin:"0 0 14px", fontSize:14, fontWeight:700, color:theme.text, fontFamily:F }}>Tools & pain points</p>
+          <span style={{ fontSize:12, fontWeight:600, color:theme.textFaint, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:8 }}>Tools currently in use <span style={{ fontWeight:400, textTransform:"none", letterSpacing:0 }}>— select all</span></span>
           <ChipGroup options={TOOLS} selected={intake.tools||[]} onChange={setIntake("tools")} color={BLUE}/>
-          <div style={{ height:1, background:"#F3F4F6", margin:"16px 0 14px" }}/>
-          <span style={{ fontSize:12, fontWeight:600, color:"#9CA3AF", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:8 }}>Core pain points</span>
+          <div style={{ height:1, background:theme.borderSubtle, margin:"16px 0 14px" }}/>
+          <span style={{ fontSize:12, fontWeight:600, color:theme.textFaint, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:8 }}>Core pain points</span>
           <ChipGroup options={PAIN_POINTS} selected={intake.painPoints||[]} onChange={setIntake("painPoints")} color="#7C3AED"/>
-          <div style={{ height:1, background:"#F3F4F6", margin:"16px 0 14px" }}/>
-          <span style={{ fontSize:12, fontWeight:600, color:"#9CA3AF", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:8 }}>What have they already tried that didn't work? <span style={{ fontWeight:400, textTransform:"none", letterSpacing:0 }}>— optional</span></span>
+          <div style={{ height:1, background:theme.borderSubtle, margin:"16px 0 14px" }}/>
+          <span style={{ fontSize:12, fontWeight:600, color:theme.textFaint, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:8 }}>What have they already tried that didn't work? <span style={{ fontWeight:400, textTransform:"none", letterSpacing:0 }}>— optional</span></span>
           <ETextarea value={intake.priorAttempts} onChange={setIntake("priorAttempts")} placeholder="Previous tools, failed automations…" rows={2}/>
         </div>
 
@@ -635,11 +638,11 @@ function CaseFileEditView({ cf, onSave, onCancel, isSaving, apiError }) {
           const pipeline = wf.pipeline||[];
           const validPhases = pipeline.filter(p=>p.trim());
           return (
-            <div key={wi} style={{ border:"1px solid #BAE6FD", borderRadius:12, padding:"14px 16px", marginBottom:14, background:"#F0F9FF" }}>
+            <div key={wi} style={{ border:"1px solid #BAE6FD", borderRadius:12, padding:"14px 16px", marginBottom:14, background:"#0284C710" }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                   <span style={{ width:24, height:24, borderRadius:6, background:"#0284C7", color:"#fff", fontSize:12, fontWeight:700, fontFamily:F, display:"inline-flex", alignItems:"center", justifyContent:"center" }}>{wi+1}</span>
-                  <span style={{ fontSize:13, fontWeight:700, color:"#0C4A6E", fontFamily:F }}>{wf.name||`Workflow ${wi+1}`}</span>
+                  <span style={{ fontSize:13, fontWeight:700, color:theme.text, fontFamily:F }}>{wf.name||`Workflow ${wi+1}`}</span>
                 </div>
                 <button type="button" onClick={()=>setBuild("workflows")((build.workflows||[]).filter((_,idx)=>idx!==wi))} style={{ fontSize:12, color:"#EF4444", background:"none", border:"none", cursor:"pointer", fontFamily:F }}>Remove</button>
               </div>
@@ -650,14 +653,14 @@ function CaseFileEditView({ cf, onSave, onCancel, isSaving, apiError }) {
               <div style={{ marginBottom:10 }}>
                 {pipeline.map((phase,pi)=>(
                   <div key={pi} style={{ display:"flex", gap:6, alignItems:"center", marginBottom:6 }}>
-                    <span style={{ fontSize:11, fontWeight:700, color:"#9CA3AF", fontFamily:F, minWidth:22, textAlign:"right" }}>{pi+1}.</span>
+                    <span style={{ fontSize:11, fontWeight:700, color:theme.textFaint, fontFamily:F, minWidth:22, textAlign:"right" }}>{pi+1}.</span>
                     <div style={{ flex:1 }}><EInput value={phase} onChange={v=>updWf({...wf,pipeline:pipeline.map((p,idx)=>idx===pi?v:p)})} placeholder={`Phase ${pi+1} name…`}/></div>
-                    <button type="button" onClick={()=>{const n=[...pipeline];[n[pi],n[pi-1]]=[n[pi-1],n[pi]];updWf({...wf,pipeline:n});}} disabled={pi===0} style={{ fontSize:13, color:pi===0?"#D1D5DB":"#6B7280", background:"none", border:"none", cursor:pi===0?"default":"pointer", padding:"4px 2px" }} title="Move up">▲</button>
-                    <button type="button" onClick={()=>{const n=[...pipeline];[n[pi],n[pi+1]]=[n[pi+1],n[pi]];updWf({...wf,pipeline:n});}} disabled={pi===pipeline.length-1} style={{ fontSize:13, color:pi===pipeline.length-1?"#D1D5DB":"#6B7280", background:"none", border:"none", cursor:pi===pipeline.length-1?"default":"pointer", padding:"4px 2px" }} title="Move down">▼</button>
+                    <button type="button" onClick={()=>{const n=[...pipeline];[n[pi],n[pi-1]]=[n[pi-1],n[pi]];updWf({...wf,pipeline:n});}} disabled={pi===0} style={{ fontSize:13, color:pi===0?theme.borderInput:theme.textMuted, background:"none", border:"none", cursor:pi===0?"default":"pointer", padding:"4px 2px" }} title="Move up">▲</button>
+                    <button type="button" onClick={()=>{const n=[...pipeline];[n[pi],n[pi+1]]=[n[pi+1],n[pi]];updWf({...wf,pipeline:n});}} disabled={pi===pipeline.length-1} style={{ fontSize:13, color:pi===pipeline.length-1?theme.borderInput:theme.textMuted, background:"none", border:"none", cursor:pi===pipeline.length-1?"default":"pointer", padding:"4px 2px" }} title="Move down">▼</button>
                     <button type="button" onClick={()=>updWf({...wf,pipeline:pipeline.filter((_,idx)=>idx!==pi)})} style={{ fontSize:16, color:"#EF4444", background:"none", border:"none", cursor:"pointer", padding:"4px 2px", lineHeight:1 }}>×</button>
                   </div>
                 ))}
-                {pipeline.length===0 && <p style={{ margin:"0 0 6px", fontSize:12, color:"#9CA3AF", fontFamily:F }}>No pipeline phases yet.</p>}
+                {pipeline.length===0 && <p style={{ margin:"0 0 6px", fontSize:12, color:theme.textFaint, fontFamily:F }}>No pipeline phases yet.</p>}
                 <button type="button" onClick={()=>updWf({...wf,pipeline:[...pipeline,""]})} style={{ fontSize:12, color:"#0284C7", background:"none", border:"1px dashed #BAE6FD", borderRadius:7, padding:"5px 12px", cursor:"pointer", fontFamily:F }}>+ Add phase</button>
               </div>
               <div style={{ margin:"12px 0 8px", fontSize:11, fontWeight:700, color:"#0284C7", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>Lists ({(wf.lists||[]).length})</div>
@@ -674,7 +677,7 @@ function CaseFileEditView({ cf, onSave, onCancel, isSaving, apiError }) {
                   updList(li,{...l,automations:next});
                 };
                 return (
-                  <div key={li} style={{ border:"1px solid #0284C730", borderLeft:"3px solid #0284C7", borderRadius:9, padding:"12px 14px", marginBottom:8, background:"#fff" }}>
+                  <div key={li} style={{ border:`1px solid ${theme.borderInput}`, borderLeft:"3px solid #0284C7", borderRadius:9, padding:"12px 14px", marginBottom:8, background:theme.surface }}>
                     <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
                       <span style={{ fontSize:12, fontWeight:700, color:"#0284C7", fontFamily:F }}>List {li+1}</span>
                       {(wf.lists||[]).length>1 && <button type="button" onClick={()=>remList(li)} style={{ fontSize:12, color:"#EF4444", background:"none", border:"none", cursor:"pointer", fontFamily:F }}>Remove</button>}
@@ -684,32 +687,32 @@ function CaseFileEditView({ cf, onSave, onCancel, isSaving, apiError }) {
                     <ERow label="Custom fields" fullWidth><ETextarea value={l.customFields} onChange={v=>updList(li,{...l,customFields:v})} placeholder={"Client Name — Text\nPriority — Dropdown"} rows={3}/></ERow>
                     <div style={{ margin:"12px 0 6px", fontSize:11, fontWeight:700, color:"#0284C7", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>Automations ({lautos.length})</div>
                     {lautos.map((auto,ai)=>(
-                      <div key={ai} style={{ border:"1px solid #E5E7EB", borderLeft:"3px solid #0284C780", borderRadius:8, padding:"12px 14px", marginBottom:8, background:"#F9FAFB" }}>
+                      <div key={ai} style={{ border:`1px solid ${theme.borderInput}`, borderLeft:"3px solid #0284C780", borderRadius:8, padding:"12px 14px", marginBottom:8, background:theme.surfaceAlt }}>
                         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
                           <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                             <span style={{ fontSize:11, fontWeight:700, color:"#0284C7", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>Automation {ai+1}</span>
                             {auto.pipelinePhase && <span style={{ fontSize:10, fontWeight:700, color:"#0284C7", background:"#E0F2FE", border:"1px solid #BAE6FD", borderRadius:6, padding:"2px 8px", fontFamily:F }}>{auto.pipelinePhase}</span>}
                           </div>
                           <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                            <button type="button" onClick={()=>moveAuto(ai,-1)} disabled={ai===0} style={{ fontSize:13, color:ai===0?"#D1D5DB":"#6B7280", background:"none", border:"none", cursor:ai===0?"default":"pointer", padding:"2px 4px", lineHeight:1 }} title="Move up">▲</button>
-                            <button type="button" onClick={()=>moveAuto(ai,1)} disabled={ai===lautos.length-1} style={{ fontSize:13, color:ai===lautos.length-1?"#D1D5DB":"#6B7280", background:"none", border:"none", cursor:ai===lautos.length-1?"default":"pointer", padding:"2px 4px", lineHeight:1 }} title="Move down">▼</button>
+                            <button type="button" onClick={()=>moveAuto(ai,-1)} disabled={ai===0} style={{ fontSize:13, color:ai===0?theme.borderInput:theme.textMuted, background:"none", border:"none", cursor:ai===0?"default":"pointer", padding:"2px 4px", lineHeight:1 }} title="Move up">▲</button>
+                            <button type="button" onClick={()=>moveAuto(ai,1)} disabled={ai===lautos.length-1} style={{ fontSize:13, color:ai===lautos.length-1?theme.borderInput:theme.textMuted, background:"none", border:"none", cursor:ai===lautos.length-1?"default":"pointer", padding:"2px 4px", lineHeight:1 }} title="Move down">▼</button>
                             <button type="button" onClick={()=>remAuto(ai)} style={{ fontSize:12, color:"#EF4444", background:"none", border:"none", cursor:"pointer", fontFamily:F, marginLeft:4 }}>Remove</button>
                           </div>
                         </div>
                         {/* Pipeline phase */}
                         {validPhases.length > 0 && (
                           <div style={{ marginBottom:10 }}>
-                            <div style={{ fontSize:11, fontWeight:600, color:"#6B7280", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:6 }}>Pipeline phase <span style={{ fontWeight:400, textTransform:"none", letterSpacing:0 }}>(optional)</span></div>
+                            <div style={{ fontSize:11, fontWeight:600, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:6 }}>Pipeline phase <span style={{ fontWeight:400, textTransform:"none", letterSpacing:0 }}>(optional)</span></div>
                             <ESelect value={auto.pipelinePhase||""} onChange={v=>updAuto(ai,{...auto,pipelinePhase:v})} options={validPhases}/>
                           </div>
                         )}
                         {/* Platform toggle */}
-                        <div style={{ display:"flex", gap:0, marginBottom:12, border:"1.5px solid #E5E7EB", borderRadius:9, overflow:"hidden", width:"fit-content" }}>
+                        <div style={{ display:"flex", gap:0, marginBottom:12, border:`1.5px solid ${theme.borderInput}`, borderRadius:9, overflow:"hidden", width:"fit-content" }}>
                           {["clickup","third_party"].map(p=>{
                             const active=(auto.platform||"clickup")===p;
                             return (
                               <button key={p} type="button" onClick={()=>updAuto(ai,{...auto,platform:p})}
-                                style={{ padding:"6px 16px", fontSize:12, fontWeight:600, fontFamily:F, border:"none", cursor:"pointer", background:active?"#0284C7":"#fff", color:active?"#fff":"#6B7280" }}>
+                                style={{ padding:"6px 16px", fontSize:12, fontWeight:600, fontFamily:F, border:"none", cursor:"pointer", background:active?"#0284C7":theme.surface, color:active?"#fff":theme.textMuted }}>
                                 {p==="clickup"?"ClickUp":"3rd Party"}
                               </button>
                             );
@@ -718,13 +721,13 @@ function CaseFileEditView({ cf, onSave, onCancel, isSaving, apiError }) {
                         {/* 3rd party platform picker */}
                         {(auto.platform||"clickup")==="third_party" && (
                           <div style={{ marginBottom:10 }}>
-                            <div style={{ fontSize:11, fontWeight:600, color:"#6B7280", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:6 }}>Platform</div>
+                            <div style={{ fontSize:11, fontWeight:600, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:6 }}>Platform</div>
                             <ESelect value={auto.third_party_platform||""} onChange={v=>updAuto(ai,{...auto,third_party_platform:v})} options={THIRD_PARTY_PLATFORMS}/>
                           </div>
                         )}
                         {/* Triggers */}
                         <div style={{ marginBottom:10 }}>
-                          <div style={{ fontSize:11, fontWeight:600, color:"#6B7280", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:6 }}>Triggers</div>
+                          <div style={{ fontSize:11, fontWeight:600, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:6 }}>Triggers</div>
                           {(auto.triggers||[]).map((t,ti)=>(
                             <div key={ti} style={{ display:"flex", gap:8, alignItems:"flex-start", marginBottom:6 }}>
                               <div style={{ flex:"0 0 180px" }}><ESelect value={t.type} onChange={v=>updAuto(ai,{...auto,triggers:auto.triggers.map((tr,idx)=>idx===ti?{...tr,type:v}:tr)})} options={CLICKUP_TRIGGERS}/></div>
@@ -737,7 +740,7 @@ function CaseFileEditView({ cf, onSave, onCancel, isSaving, apiError }) {
                         {/* Actions — ClickUp only */}
                         {(auto.platform||"clickup")==="clickup" && (
                           <div style={{ marginBottom:10 }}>
-                            <div style={{ fontSize:11, fontWeight:600, color:"#6B7280", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:6 }}>Actions</div>
+                            <div style={{ fontSize:11, fontWeight:600, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:6 }}>Actions</div>
                             {(auto.actions||[]).map((a,ai2)=>(
                               <div key={ai2} style={{ display:"flex", gap:8, alignItems:"flex-start", marginBottom:6 }}>
                                 <div style={{ flex:"0 0 180px" }}><ESelect value={a.type} onChange={v=>updAuto(ai,{...auto,actions:auto.actions.map((ac,idx)=>idx===ai2?{...ac,type:v}:ac)})} options={CLICKUP_ACTIONS}/></div>
@@ -752,12 +755,12 @@ function CaseFileEditView({ cf, onSave, onCancel, isSaving, apiError }) {
                         <div style={{ marginBottom:4 }}>
                           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
                             <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                              <span style={{ fontSize:11, fontWeight:700, color:"#6B7280", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>
+                              <span style={{ fontSize:11, fontWeight:700, color:theme.textMuted, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>
                                 {(auto.platform||"clickup")==="clickup" ? "Agent / Automation Instructions" : "Actions / Instructions"}
                               </span>
                               {auto.use_agent && <span style={{ fontSize:10, fontWeight:700, color:"#7C3AED", background:"#F5F3FF", border:"1px solid #DDD6FE", borderRadius:6, padding:"2px 7px", fontFamily:F, letterSpacing:"0.04em" }}>AGENT ON</span>}
                             </div>
-                            <span style={{ fontSize:11, color:"#9CA3AF", fontFamily:F }}>optional</span>
+                            <span style={{ fontSize:11, color:theme.textFaint, fontFamily:F }}>optional</span>
                           </div>
                           <textarea
                             value={auto.instructions}
@@ -800,7 +803,7 @@ function CaseFileEditView({ cf, onSave, onCancel, isSaving, apiError }) {
         <ERow label="Compromises " fullWidth><ETextarea value={delta.compromises} onChange={setDelta("compromises")} placeholder="What was compromised?" rows={2}/></ERow>
         {(delta.roadblocks||[]).length>0 && (
           <div style={{ marginTop:14 }}>
-            <p style={{ fontSize:12, fontWeight:700, color:"#9CA3AF", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:10 }}>Roadblocks ({delta.roadblocks.length})</p>
+            <p style={{ fontSize:12, fontWeight:700, color:theme.textFaint, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:10 }}>Roadblocks ({delta.roadblocks.length})</p>
             {delta.roadblocks.map((r,i)=>(
               <EditRBCard key={i} rb={r} index={i} onChange={v=>setData(d=>{const rbs=[...d.delta.roadblocks];rbs[i]=v;return {...d,delta:{...d.delta,roadblocks:rbs}};})} onRemove={()=>remRb(i)}/>
             ))}
@@ -1096,7 +1099,7 @@ export default function CaseFileDetailPage() {
               {cf.name || cf.workflow_type || "Untitled workflow"}
             </h1>
             {cf.name && cf.workflow_type && (
-              <p style={{ margin: "0 0 6px", fontSize: 14, color: "#6B7280", fontFamily: F }}>{cf.workflow_type}</p>
+              <p style={{ margin: "0 0 6px", fontSize: 14, color: theme.textMuted, fontFamily: F }}>{cf.workflow_type}</p>
             )}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 12, fontSize: 13, color: theme.textMuted, fontFamily: F }}>
               <span>Logged by <strong style={{ color: theme.textSec }}>{cf.logged_by_name || "—"}</strong></span>
@@ -1225,16 +1228,16 @@ export default function CaseFileDetailPage() {
           <Row label="Previous fixes" value={audit.previous_fixes} fullWidth />
           {audit.builds?.length > 0 && (
             <div style={{ marginTop: 16 }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#9CA3AF", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: theme.textFaint, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
                 Builds audited ({audit.builds.length})
               </p>
               {audit.builds.map((b, i) => <CurrentBuildCard key={b.id} build={b} index={i} />)}
             </div>
           )}
           {audit.pattern_summary && (
-            <div style={{ marginTop: 14, padding: "12px 14px", background: "#FFF7ED", border: "1px solid #FED7AA", borderRadius: 8 }}>
+            <div style={{ marginTop: 14, padding: "12px 14px", background: "#EA580C12", border: "1px solid #FED7AA", borderRadius: 8 }}>
               <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#EA580C", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em" }}>Pattern summary</p>
-              <p style={{ margin: 0, fontSize: 13, color: "#92400E", fontFamily: F, lineHeight: 1.6 }}>{audit.pattern_summary}</p>
+              <p style={{ margin: 0, fontSize: 13, color: theme.textSec, fontFamily: F, lineHeight: 1.6 }}>{audit.pattern_summary}</p>
             </div>
           )}
         </Section>
@@ -1244,34 +1247,34 @@ export default function CaseFileDetailPage() {
       {intake && (
         <Section title="Scenario Intake" emoji="📋" color={STEP_COLORS.intake}>
           {intake.raw_prompt && (
-            <div style={{ padding: "12px 14px", background: "#FAFAFA", border: "1px solid #F0F0F0", borderRadius: 8, marginBottom: 14 }}>
-              <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#9CA3AF", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em" }}>Raw prompt</p>
-              <p style={{ margin: 0, fontSize: 14, color: "#374151", fontFamily: F, lineHeight: 1.7, fontStyle: "italic" }}>"{intake.raw_prompt}"</p>
+            <div style={{ padding: "12px 14px", background: theme.surfaceAlt, border: `1px solid ${theme.border}`, borderRadius: 8, marginBottom: 14 }}>
+              <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: theme.textFaint, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em" }}>Raw prompt</p>
+              <p style={{ margin: 0, fontSize: 14, color: theme.textSec, fontFamily: F, lineHeight: 1.7, fontStyle: "italic" }}>"{intake.raw_prompt}"</p>
             </div>
           )}
           <Row label="Team size" value={intake.team_size} />
           <Row label="Workflow type" value={intake.workflow_type} />
           {intake.industries?.length > 0 && (
-            <div style={{ padding: "10px 0", borderBottom: "1px solid #F9FAFB" }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "#9CA3AF", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 8 }}>Industries</span>
+            <div style={{ padding: "10px 0", borderBottom: `1px solid ${theme.borderSubtle}` }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: theme.textFaint, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 8 }}>Industries</span>
               <TagList items={intake.industries} color={BLUE} />
             </div>
           )}
           {intake.process_frameworks?.length > 0 && (
-            <div style={{ padding: "10px 0", borderBottom: "1px solid #F9FAFB" }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "#9CA3AF", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 8 }}>Frameworks</span>
+            <div style={{ padding: "10px 0", borderBottom: `1px solid ${theme.borderSubtle}` }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: theme.textFaint, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 8 }}>Frameworks</span>
               <TagList items={intake.process_frameworks} color="#7C3AED" />
             </div>
           )}
           {intake.tools?.length > 0 && (
-            <div style={{ padding: "10px 0", borderBottom: "1px solid #F9FAFB" }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "#9CA3AF", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 8 }}>Tools in use</span>
-              <TagList items={intake.tools} color="#374151" />
+            <div style={{ padding: "10px 0", borderBottom: `1px solid ${theme.borderSubtle}` }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: theme.textFaint, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 8 }}>Tools in use</span>
+              <TagList items={intake.tools} color={theme.textMuted} />
             </div>
           )}
           {intake.pain_points?.length > 0 && (
-            <div style={{ padding: "10px 0", borderBottom: "1px solid #F9FAFB" }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "#9CA3AF", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 8 }}>Pain points</span>
+            <div style={{ padding: "10px 0", borderBottom: `1px solid ${theme.borderSubtle}` }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: theme.textFaint, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 8 }}>Pain points</span>
               <TagList items={intake.pain_points} color="#DC2626" />
             </div>
           )}
@@ -1283,27 +1286,27 @@ export default function CaseFileDetailPage() {
       {build && (
         <Section title="Build Documentation" emoji="🏗️" color={STEP_COLORS.build}>
           {build.workflows?.length > 0 ? build.workflows.map((wf, wi) => (
-            <div key={wi} style={{ border: "1px solid #BAE6FD", borderRadius: 12, padding: "14px 16px", marginBottom: 14, background: "#F0F9FF" }}>
+            <div key={wi} style={{ border: "1px solid #BAE6FD", borderRadius: 12, padding: "14px 16px", marginBottom: 14, background: "#0284C710" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                 <span style={{ width: 24, height: 24, borderRadius: 6, background: "#0284C7", color: "#fff", fontSize: 12, fontWeight: 700, fontFamily: F, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{wi + 1}</span>
-                <span style={{ fontSize: 14, fontWeight: 700, color: "#0C4A6E", fontFamily: F }}>{wf.name || `Workflow ${wi + 1}`}</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: theme.text, fontFamily: F }}>{wf.name || `Workflow ${wi + 1}`}</span>
               </div>
-              {wf.notes && <p style={{ margin: "0 0 12px", fontSize: 13, color: "#374151", fontFamily: F, lineHeight: 1.6, fontStyle: "italic" }}>{wf.notes}</p>}
+              {wf.notes && <p style={{ margin: "0 0 12px", fontSize: 13, color: theme.textSec, fontFamily: F, lineHeight: 1.6, fontStyle: "italic" }}>{wf.notes}</p>}
               {wf.lists?.length > 0 && wf.lists.map((l, li) => (
-                <div key={li} style={{ border: "1px solid #0284C730", borderLeft: "3px solid #0284C7", borderRadius: 9, padding: "12px 14px", marginBottom: 8, background: "#fff" }}>
+                <div key={li} style={{ border: `1px solid ${theme.borderInput}`, borderLeft: "3px solid #0284C7", borderRadius: 9, padding: "12px 14px", marginBottom: 8, background: theme.surface }}>
                   <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#0284C7", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em" }}>List {li + 1}{l.name ? ` — ${l.name}` : ""}</p>
                   <Row label="Status flow" value={l.statuses} />
                   {l.custom_fields && (
-                    <div style={{ padding: "8px 0", borderBottom: "1px solid #F9FAFB" }}>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: "#9CA3AF", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 5 }}>Custom fields</span>
-                      <pre style={{ margin: 0, fontSize: 12, color: "#374151", fontFamily: "monospace", background: "#F9FAFB", padding: "8px 10px", borderRadius: 7, whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{l.custom_fields}</pre>
+                    <div style={{ padding: "8px 0", borderBottom: `1px solid ${theme.borderSubtle}` }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: theme.textFaint, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 5 }}>Custom fields</span>
+                      <pre style={{ margin: 0, fontSize: 12, color: theme.textSec, fontFamily: "monospace", background: theme.surfaceAlt, padding: "8px 10px", borderRadius: 7, whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{l.custom_fields}</pre>
                     </div>
                   )}
                   {Array.isArray(l.automations) && l.automations.length > 0 && (
                     <div style={{ padding: "8px 0" }}>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: "#9CA3AF", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 8 }}>Automations</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: theme.textFaint, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 8 }}>Automations</span>
                       {l.automations.map((auto, ai) => (
-                        <div key={ai} style={{ border: "1px solid #E5E7EB", borderLeft: "3px solid #0284C780", borderRadius: 8, padding: "12px 14px", marginBottom: 8, background: "#F9FAFB" }}>
+                        <div key={ai} style={{ border: `1px solid ${theme.borderInput}`, borderLeft: "3px solid #0284C780", borderRadius: 8, padding: "12px 14px", marginBottom: 8, background: theme.surfaceAlt }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                             <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#0284C7", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em" }}>Automation {ai + 1}</p>
                             <span style={{ fontSize: 11, fontWeight: 600, color: (auto.platform||"clickup")==="clickup" ? "#0284C7" : "#7C3AED", background: (auto.platform||"clickup")==="clickup" ? "#EFF6FF" : "#F5F3FF", border: `1px solid ${(auto.platform||"clickup")==="clickup" ? "#BAE6FD" : "#DDD6FE"}`, borderRadius: 6, padding: "2px 8px", fontFamily: F }}>
@@ -1312,22 +1315,22 @@ export default function CaseFileDetailPage() {
                           </div>
                           {auto.triggers?.length > 0 && (
                             <div style={{ marginBottom: 8 }}>
-                              <span style={{ fontSize: 11, fontWeight: 600, color: "#6B7280", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.05em" }}>Triggers</span>
+                              <span style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.05em" }}>Triggers</span>
                               {auto.triggers.map((t, ti) => t.type && (
                                 <div key={ti} style={{ display: "flex", gap: 8, alignItems: "baseline", marginTop: 4 }}>
                                   <span style={{ fontSize: 12, fontWeight: 600, color: "#0284C7", fontFamily: F, background: "#EFF6FF", border: "1px solid #BAE6FD", borderRadius: 6, padding: "2px 8px", whiteSpace: "nowrap" }}>{t.type}</span>
-                                  {t.detail && <span style={{ fontSize: 12, color: "#374151", fontFamily: F }}>{t.detail}</span>}
+                                  {t.detail && <span style={{ fontSize: 12, color: theme.textSec, fontFamily: F }}>{t.detail}</span>}
                                 </div>
                               ))}
                             </div>
                           )}
                           {(auto.platform||"clickup")==="clickup" && auto.actions?.length > 0 && (
                             <div style={{ marginBottom: auto.instructions ? 8 : 0 }}>
-                              <span style={{ fontSize: 11, fontWeight: 600, color: "#6B7280", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.05em" }}>Actions</span>
+                              <span style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.05em" }}>Actions</span>
                               {auto.actions.map((a, ai2) => a.type && (
                                 <div key={ai2} style={{ display: "flex", gap: 8, alignItems: "baseline", marginTop: 4 }}>
                                   <span style={{ fontSize: 12, fontWeight: 600, color: "#059669", fontFamily: F, background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 6, padding: "2px 8px", whiteSpace: "nowrap" }}>{a.type}</span>
-                                  {a.detail && <span style={{ fontSize: 12, color: "#374151", fontFamily: F }}>{a.detail}</span>}
+                                  {a.detail && <span style={{ fontSize: 12, color: theme.textSec, fontFamily: F }}>{a.detail}</span>}
                                 </div>
                               ))}
                             </div>
@@ -1335,7 +1338,7 @@ export default function CaseFileDetailPage() {
                           {auto.instructions && (
                             <div style={{ marginTop: 8 }}>
                               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                                <span style={{ fontSize: 11, fontWeight: 600, color: "#6B7280", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                                <span style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                                   {(auto.platform||"clickup")==="clickup" ? "Instructions" : "Actions / Instructions"}
                                 </span>
                                 {auto.use_agent && <span style={{ fontSize: 10, fontWeight: 700, color: "#7C3AED", background: "#F5F3FF", border: "1px solid #DDD6FE", borderRadius: 6, padding: "2px 7px", fontFamily: F, letterSpacing: "0.04em" }}>AGENT ON</span>}
@@ -1351,7 +1354,7 @@ export default function CaseFileDetailPage() {
               ))}
             </div>
           )) : (
-            <p style={{ fontSize: 13, color: "#9CA3AF", fontFamily: F, fontStyle: "italic" }}>No workflows documented.</p>
+            <p style={{ fontSize: 13, color: theme.textFaint, fontFamily: F, fontStyle: "italic" }}>No workflows documented.</p>
           )}
           <Row label="Build notes" value={build.build_notes} fullWidth />
         </Section>
@@ -1368,7 +1371,7 @@ export default function CaseFileDetailPage() {
           <Row label="Compromises " value={delta.compromises} fullWidth />
           {delta.roadblocks?.length > 0 && (
             <div style={{ marginTop: 16 }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#9CA3AF", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: theme.textFaint, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
                 Roadblocks ({delta.roadblocks.length})
               </p>
               {delta.roadblocks.map((r, i) => <RoadblockCard key={r.id} rb={r} index={i} />)}
@@ -1388,14 +1391,14 @@ export default function CaseFileDetailPage() {
           <Row label="Lessons learned" value={reasoning.lessons} fullWidth />
           {reasoning.complexity && (
             <div style={{ padding: "10px 0" }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "#9CA3AF", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 8 }}>Complexity</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: theme.textFaint, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 8 }}>Complexity</span>
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 {[1, 2, 3, 4, 5].map(n => (
-                  <div key={n} style={{ width: 28, height: 28, borderRadius: 6, border: `2px solid ${reasoning.complexity >= n ? BLUE : "#E5E7EB"}`, background: reasoning.complexity >= n ? "#EFF6FF" : "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <span style={{ color: reasoning.complexity >= n ? BLUE : "#D1D5DB", fontSize: 12 }}>◆</span>
+                  <div key={n} style={{ width: 28, height: 28, borderRadius: 6, border: `2px solid ${reasoning.complexity >= n ? theme.blue : theme.borderInput}`, background: reasoning.complexity >= n ? theme.blueLight : theme.surface, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ color: reasoning.complexity >= n ? theme.blue : theme.borderInput, fontSize: 12 }}>◆</span>
                   </div>
                 ))}
-                <span style={{ fontSize: 13, color: "#6B7280", fontFamily: F }}>
+                <span style={{ fontSize: 13, color: theme.textMuted, fontFamily: F }}>
                   {["", "Very simple", "Simple", "Moderate", "Complex", "Very complex"][reasoning.complexity]}
                 </span>
               </div>
@@ -1414,8 +1417,8 @@ export default function CaseFileDetailPage() {
           <Row label="What failed" value={outcome.what_failed} fullWidth />
           <Row label="Revisit when" value={outcome.revisit_when} fullWidth />
           {outcome.satisfaction && (
-            <div style={{ padding: "10px 0", borderBottom: "1px solid #F9FAFB" }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "#9CA3AF", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 8 }}>Satisfaction</span>
+            <div style={{ padding: "10px 0", borderBottom: `1px solid ${theme.borderSubtle}` }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: theme.textFaint, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 8 }}>Satisfaction</span>
               <SatisfactionStars score={outcome.satisfaction} />
             </div>
           )}
@@ -1430,27 +1433,27 @@ export default function CaseFileDetailPage() {
       <div className="fp-no-print" style={{ width: 480, flexShrink: 0, position: "sticky", top: 24, paddingTop: 28, paddingBottom: 24, maxHeight: "calc(100vh - 48px)", overflowY: "auto" }}>
 
         {/* Project Updates */}
-        <div style={{ background: "#fff", border: "1px solid #F0F0F0", borderRadius: 14, padding: "16px 16px 12px", marginBottom: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+        <div style={{ background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 14, padding: "16px 16px 12px", marginBottom: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
           <div style={{ marginBottom: 12 }}>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#111827", fontFamily: F }}>Project Updates</p>
-            <p style={{ margin: "2px 0 0", fontSize: 11, color: "#9CA3AF", fontFamily: F }}>Timestamped notes & attachments</p>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: theme.text, fontFamily: F }}>Project Updates</p>
+            <p style={{ margin: "2px 0 0", fontSize: 11, color: theme.textFaint, fontFamily: F }}>Timestamped notes & attachments</p>
           </div>
           {!project_updates?.length
-            ? <p style={{ fontSize: 12, color: "#D1D5DB", fontFamily: F, textAlign: "center", padding: "12px 0", margin: 0 }}>No updates logged</p>
+            ? <p style={{ fontSize: 12, color: theme.borderInput, fontFamily: F, textAlign: "center", padding: "12px 0", margin: 0 }}>No updates logged</p>
             : project_updates.map((pu, i) => {
                 const dateLabel = pu.created_at
                   ? (() => { const [y,m,d] = pu.created_at.slice(0,10).split("-"); return new Date(+y,+m-1,+d).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); })()
                   : "—";
                 return (
                   <div key={pu.id || i} style={{ border: "1.5px solid #BAE6FD", borderRadius: 10, marginBottom: 8, overflow: "hidden" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "#F0F9FF", borderBottom: "1px solid #BAE6FD" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "#0284C712", borderBottom: "1px solid #BAE6FD" }}>
                       <span style={{ fontSize: 13, fontWeight: 700, color: "#0284C7", fontFamily: F }}>{dateLabel}</span>
                       {pu.attachments?.length > 0 && (
                         <span style={{ fontSize: 11, fontWeight: 700, color: "#0284C7", background: "#E0F2FE", border: "1px solid #BAE6FD", borderRadius: 8, padding: "2px 8px", fontFamily: F }}>📎 {pu.attachments.length}</span>
                       )}
                     </div>
-                    <div style={{ padding: "12px 14px", background: "#fff" }}>
-                      {pu.content && <p style={{ margin: 0, fontSize: 13, color: "#374151", fontFamily: F, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{pu.content}</p>}
+                    <div style={{ padding: "12px 14px", background: theme.surface }}>
+                      {pu.content && <p style={{ margin: 0, fontSize: 13, color: theme.textSec, fontFamily: F, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{pu.content}</p>}
                       {pu.attachments?.length > 0 && (
                         <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 8 }}>
                           {pu.attachments.map((att, ai) => att.url && (
@@ -1469,21 +1472,21 @@ export default function CaseFileDetailPage() {
         </div>
 
         {/* Scope Creep */}
-        <div style={{ background: "#fff", border: "1px solid #F0F0F0", borderRadius: 14, padding: "16px 16px 12px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+        <div style={{ background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 14, padding: "16px 16px 12px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
           <div style={{ marginBottom: 12 }}>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#111827", fontFamily: F }}>Scope Creep</p>
-            <p style={{ margin: "2px 0 0", fontSize: 11, color: "#9CA3AF", fontFamily: F }}>Unplanned additions to the build</p>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: theme.text, fontFamily: F }}>Scope Creep</p>
+            <p style={{ margin: "2px 0 0", fontSize: 11, color: theme.textFaint, fontFamily: F }}>Unplanned additions to the build</p>
           </div>
           {!delta?.scope_creep?.length
-            ? <p style={{ fontSize: 12, color: "#D1D5DB", fontFamily: F, textAlign: "center", padding: "12px 0", margin: 0 }}>No scope creep logged</p>
+            ? <p style={{ fontSize: 12, color: theme.borderInput, fontFamily: F, textAlign: "center", padding: "12px 0", margin: 0 }}>No scope creep logged</p>
             : delta.scope_creep.map((sc, i) => (
-                <div key={i} style={{ border: "1px solid #FDE68A", borderLeft: "3px solid #D97706", borderRadius: 10, padding: "12px 14px", marginBottom: 8, background: "#FFFBEB" }}>
-                  <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "#92400E", fontFamily: F }}>{sc.area || `Item ${i + 1}`}</p>
+                <div key={i} style={{ border: "1px solid #FDE68A", borderLeft: "3px solid #D97706", borderRadius: 10, padding: "12px 14px", marginBottom: 8, background: "#D9770612" }}>
+                  <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "#D97706", fontFamily: F }}>{sc.area || `Item ${i + 1}`}</p>
                   {sc.reason && <Row label="Why added" value={sc.reason} fullWidth />}
                   {sc.impact && <Row label="Impact" value={sc.impact} fullWidth />}
                   {sc.communicated != null && (
                     <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 6 }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: "#9CA3AF", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em" }}>Communicated</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: theme.textFaint, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em" }}>Communicated</span>
                       <span style={{ fontSize: 12, fontWeight: 700, fontFamily: F,
                         color: sc.communicated === true ? "#059669" : sc.communicated === false ? "#DC2626" : "#D97706",
                         background: sc.communicated === true ? "#ECFDF5" : sc.communicated === false ? "#FEF2F2" : "#FEF3C7",

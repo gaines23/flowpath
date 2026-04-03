@@ -339,17 +339,19 @@ function Banner({ emoji, title, body, color }) {
 }
 
 function HR({ label }) {
+  const { theme } = useTheme();
   return (
     <div style={{ display:"flex", alignItems:"center", gap:10, margin:"18px 0" }}>
-      <div style={{ flex:1, height:1, background:"#F3F4F6" }}/>
-      {label && <span style={{ fontSize:10, fontWeight:700, color:"#D1D5DB", fontFamily:F, letterSpacing:"0.08em", textTransform:"uppercase", whiteSpace:"nowrap" }}>{label}</span>}
-      <div style={{ flex:1, height:1, background:"#F3F4F6" }}/>
+      <div style={{ flex:1, height:1, background:theme.borderSubtle }}/>
+      {label && <span style={{ fontSize:10, fontWeight:700, color:theme.textFaint, fontFamily:F, letterSpacing:"0.08em", textTransform:"uppercase", whiteSpace:"nowrap" }}>{label}</span>}
+      <div style={{ flex:1, height:1, background:theme.borderSubtle }}/>
     </div>
   );
 }
 
 function Stars({ value, onChange }) {
   const [hov, setHov] = useState(0);
+  const { theme } = useTheme();
   const labels = ["","Needs major rework","Partially useful","Mostly worked","Solid outcome","Exactly what they needed"];
   return (
     <div>
@@ -357,11 +359,11 @@ function Stars({ value, onChange }) {
         {[1,2,3,4,5].map(n=>(
           <button key={n} onClick={()=>onChange(n)} onMouseEnter={()=>setHov(n)} onMouseLeave={()=>setHov(0)}
             style={{ background:"none", border:"none", cursor:"pointer", padding:4, fontSize:28, lineHeight:1, transition:"transform 0.1s", transform:(hov||value)>=n?"scale(1.15)":"scale(1)", WebkitTapHighlightColor:"transparent" }}>
-            <span style={{ color:(hov||value)>=n?"#F59E0B":"#E5E7EB" }}>{(hov||value)>=n?"★":"☆"}</span>
+            <span style={{ color:(hov||value)>=n?"#F59E0B":theme.border }}>{(hov||value)>=n?"★":"☆"}</span>
           </button>
         ))}
       </div>
-      {(hov||value)>0 && <p style={{ margin:0, fontSize:12, color:"#6B7280", fontFamily:F }}>{labels[hov||value]}</p>}
+      {(hov||value)>0 && <p style={{ margin:0, fontSize:12, color:theme.textMuted, fontFamily:F }}>{labels[hov||value]}</p>}
     </div>
   );
 }

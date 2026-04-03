@@ -84,17 +84,21 @@ export default function AppLayout({ children }) {
 
   const SidebarFooter = () => (
     <div style={{ padding: "12px 14px", borderTop: `1px solid ${theme.borderSubtle}` }}>
-      <div style={{ fontSize: 12, fontWeight: 600, color: theme.textSec, fontFamily: F, marginBottom: 2 }}>
-        {user?.first_name ? `${user.first_name} ${user.last_name}`.trim() : user?.email}
-      </div>
-      <div style={{ fontSize: 11, color: theme.textFaint, fontFamily: F, marginBottom: 10, textTransform: "capitalize" }}>
-        {user?.role}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: theme.textSec, fontFamily: F, marginBottom: 2 }}>
+            {user?.first_name ? `${user.first_name} ${user.last_name}`.trim() : user?.email}
+          </div>
+          <div style={{ fontSize: 11, color: theme.textFaint, fontFamily: F, textTransform: "capitalize" }}>
+            {user?.role}
+          </div>
+        </div>
+        <ThemeToggle mode={mode} onToggle={toggle} theme={theme} />
       </div>
       <div style={{ display: "flex", gap: 6 }}>
         <Link to="/settings" style={{ flex: 1, padding: "7px 10px", background: "transparent", border: `1px solid ${theme.borderInput}`, borderRadius: 7, color: theme.textMuted, fontSize: 12, fontWeight: 500, fontFamily: F, cursor: "pointer", textAlign: "center", textDecoration: "none" }}>
           Settings
         </Link>
-        <ThemeToggle mode={mode} onToggle={toggle} theme={theme} />
         <button onClick={handleLogout} style={{ flex: 1, padding: "7px 10px", background: "transparent", border: `1px solid ${theme.borderInput}`, borderRadius: 7, color: theme.textMuted, fontSize: 12, fontWeight: 500, fontFamily: F, cursor: "pointer" }}>
           Sign out
         </button>
