@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
-import { useCaseFile, useDeleteCaseFile, useUpdateCaseFile, useShareCaseFile } from "../../hooks/useCaseFiles";
+import { useCaseFile, useDeleteCaseFile, useUpdateCaseFile, useShareCaseFile, useToggleCaseFileStatus } from "../../hooks/useCaseFiles";
 import { formatDate, satisfactionLabel, formStateToCaseFilePayload, caseFileToFormState } from "../../utils/transforms";
 import { ChipGroup, IndustryPicker, FrameworkPicker, TOOLS, PAIN_POINTS, CLICKUP_TRIGGERS, CLICKUP_ACTIONS, THIRD_PARTY_PLATFORMS, CURRENT_TOOLS_USED, FAILURE_REASONS, WORKFLOW_TYPES } from "../../components/CaseFileForm";
 import { useTheme } from "../../hooks/useTheme";
@@ -1029,6 +1029,7 @@ export default function CaseFileDetailPage() {
   const { data: cf, isLoading, isError } = useCaseFile(id);
   const deleteMutation = useDeleteCaseFile();
   const updateMutation = useUpdateCaseFile(id);
+  const statusMutation = useToggleCaseFileStatus(id);
 
   const handleDelete = async () => {
     if (!window.confirm("Delete this case file? This cannot be undone.")) return;
@@ -1129,7 +1130,7 @@ export default function CaseFileDetailPage() {
             {cf.name && cf.workflow_type && (
               <p style={{ margin: "0 0 6px", fontSize: 14, color: theme.textMuted, fontFamily: F }}>{cf.workflow_type}</p>
             )}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, fontSize: 13, color: theme.textMuted, fontFamily: F }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, fontSize: 13, color: theme.textMuted, fontFamily: F, alignItems: "center" }}>
               <span>Logged by <strong style={{ color: theme.textSec }}>{cf.logged_by_name || "—"}</strong></span>
               <span>·</span>
               <span>{formatDate(cf.created_at)}</span>
@@ -1145,9 +1146,40 @@ export default function CaseFileDetailPage() {
                   <span style={{ color: "#EA580C" }}>{cf.roadblock_count} roadblock{cf.roadblock_count !== 1 ? "s" : ""}</span>
                 </>
               )}
+              <span
+                style={{
+                  fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20,
+                  background: cf.status === "closed" ? "#ECFDF5" : "#EFF6FF",
+                  border: `1px solid ${cf.status === "closed" ? "#6EE7B7" : "#BFDBFE"}`,
+                  color: cf.status === "closed" ? "#065F46" : "#1D4ED8",
+                  fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em",
+                }}
+              >
+                {cf.status === "closed" ? "Closed" : "Open"}
+              </span>
+              {cf.status === "closed" && cf.closed_at && (
+                <span style={{ fontSize: 12, color: theme.textFaint, fontFamily: F }}>
+                  closed {formatDate(cf.closed_at)}
+                </span>
+              )}
             </div>
           </div>
           <div className="fp-no-print" style={{ display: "flex", gap: 8, flexShrink: 0, paddingTop: 28 }}>
+            <button
+              onClick={() => statusMutation.mutate()}
+              disabled={statusMutation.isPending}
+              style={{
+                padding: "9px 16px",
+                background: cf.status === "closed" ? "#ECFDF5" : theme.surface,
+                border: `1.5px solid ${cf.status === "closed" ? "#6EE7B7" : theme.borderInput}`,
+                borderRadius: 9,
+                color: cf.status === "closed" ? "#065F46" : theme.textSec,
+                fontSize: 13, fontWeight: 600, fontFamily: F, cursor: "pointer", whiteSpace: "nowrap",
+                opacity: statusMutation.isPending ? 0.6 : 1,
+              }}
+            >
+              {cf.status === "closed" ? "Reopen" : "Mark closed"}
+            </button>
             <button onClick={() => {
               const name = (cf.name || cf.workflow_type || "Case_File").replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_]/g, "");
               const date = new Date().toISOString().slice(0, 10);
