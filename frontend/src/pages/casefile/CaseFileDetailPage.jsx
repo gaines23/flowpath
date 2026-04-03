@@ -1068,62 +1068,64 @@ export default function CaseFileDetailPage() {
       )}
 
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28, flexWrap: "wrap", gap: 14 }}>
-        <div>
-          <Link to="/case-files" className="fp-no-print" style={{ fontSize: 13, color: "#9CA3AF", fontFamily: F, textDecoration: "none", display: "flex", alignItems: "center", gap: 4, marginBottom: 10 }}>
-            ← Case files
-          </Link>
-          <h1 style={{ margin: "0 0 6px", fontSize: 24, fontFamily: "'Fraunces', serif" }}>
-            {cf.name || cf.workflow_type || "Untitled workflow"}
-          </h1>
-          {cf.name && cf.workflow_type && (
-            <p style={{ margin: "0 0 6px", fontSize: 14, color: "#6B7280", fontFamily: F }}>{cf.workflow_type}</p>
-          )}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, fontSize: 13, color: "#6B7280", fontFamily: F }}>
-            <span>Logged by <strong style={{ color: "#374151" }}>{cf.logged_by_name || "—"}</strong></span>
-            <span>·</span>
-            <span>{formatDate(cf.created_at)}</span>
-            {cf.satisfaction_score && (
-              <>
-                <span>·</span>
-                <span>{cf.satisfaction_score}/5 satisfaction</span>
-              </>
+      <div style={{ marginBottom: 28 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
+          <div style={{ flex: "1 1 0", minWidth: 0 }}>
+            <Link to="/case-files" className="fp-no-print" style={{ fontSize: 13, color: "#9CA3AF", fontFamily: F, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4, marginBottom: 10 }}>
+              ← Case files
+            </Link>
+            <h1 style={{ margin: "0 0 6px", fontSize: 24, fontFamily: "'Fraunces', serif", wordBreak: "break-word" }}>
+              {cf.name || cf.workflow_type || "Untitled workflow"}
+            </h1>
+            {cf.name && cf.workflow_type && (
+              <p style={{ margin: "0 0 6px", fontSize: 14, color: "#6B7280", fontFamily: F }}>{cf.workflow_type}</p>
             )}
-            {cf.roadblock_count > 0 && (
-              <>
-                <span>·</span>
-                <span style={{ color: "#EA580C" }}>{cf.roadblock_count} roadblock{cf.roadblock_count !== 1 ? "s" : ""}</span>
-              </>
-            )}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, fontSize: 13, color: "#6B7280", fontFamily: F }}>
+              <span>Logged by <strong style={{ color: "#374151" }}>{cf.logged_by_name || "—"}</strong></span>
+              <span>·</span>
+              <span>{formatDate(cf.created_at)}</span>
+              {cf.satisfaction_score && (
+                <>
+                  <span>·</span>
+                  <span>{cf.satisfaction_score}/5 satisfaction</span>
+                </>
+              )}
+              {cf.roadblock_count > 0 && (
+                <>
+                  <span>·</span>
+                  <span style={{ color: "#EA580C" }}>{cf.roadblock_count} roadblock{cf.roadblock_count !== 1 ? "s" : ""}</span>
+                </>
+              )}
+            </div>
           </div>
-        </div>
-        <div className="fp-no-print" style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => {
-            const name = (cf.name || cf.workflow_type || "Case_File").replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_]/g, "");
-            const date = new Date().toISOString().slice(0, 10);
-            const prev = document.title;
-            document.title = `${name}_${date}_Flowpath`;
-            window.onafterprint = () => { document.title = prev; window.onafterprint = null; };
-            window.print();
-          }} style={{ padding: "9px 18px", background: "#fff", border: "1.5px solid #E5E7EB", borderRadius: 9, color: "#374151", fontSize: 13, fontWeight: 600, fontFamily: F, cursor: "pointer" }}>
-            Export PDF
-          </button>
-          <button
-            onClick={() => setShowShare(true)}
-            style={{ padding: "9px 18px", background: "#fff", border: `1.5px solid ${cf.share_enabled ? BLUE : "#E5E7EB"}`, borderRadius: 9, color: cf.share_enabled ? BLUE : "#374151", fontSize: 13, fontWeight: 600, fontFamily: F, cursor: "pointer" }}
-          >
-            {cf.share_enabled ? "🔗 Shared" : "Share"}
-          </button>
-          <button onClick={() => setIsEditing(true)} style={{ padding: "9px 18px", background: BLUE, border: "none", borderRadius: 9, color: "#fff", fontSize: 13, fontWeight: 600, fontFamily: F, cursor: "pointer" }}>
-            Edit
-          </button>
-          <button
-            onClick={handleDelete}
-            disabled={deleteMutation.isPending}
-            style={{ padding: "9px 18px", background: "#fff", border: "1.5px solid #FECACA", borderRadius: 9, color: "#EF4444", fontSize: 13, fontWeight: 600, fontFamily: F, cursor: "pointer" }}
-          >
-            {deleteMutation.isPending ? "Deleting…" : "Delete"}
-          </button>
+          <div className="fp-no-print" style={{ display: "flex", gap: 8, flexShrink: 0, paddingTop: 28 }}>
+            <button onClick={() => {
+              const name = (cf.name || cf.workflow_type || "Case_File").replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_]/g, "");
+              const date = new Date().toISOString().slice(0, 10);
+              const prev = document.title;
+              document.title = `${name}_${date}_Flowpath`;
+              window.onafterprint = () => { document.title = prev; window.onafterprint = null; };
+              window.print();
+            }} style={{ padding: "9px 16px", background: "#fff", border: "1.5px solid #E5E7EB", borderRadius: 9, color: "#374151", fontSize: 13, fontWeight: 600, fontFamily: F, cursor: "pointer", whiteSpace: "nowrap" }}>
+              Export PDF
+            </button>
+            <button
+              onClick={() => setShowShare(true)}
+              style={{ padding: "9px 16px", background: "#fff", border: `1.5px solid ${cf.share_enabled ? BLUE : "#E5E7EB"}`, borderRadius: 9, color: cf.share_enabled ? BLUE : "#374151", fontSize: 13, fontWeight: 600, fontFamily: F, cursor: "pointer", whiteSpace: "nowrap" }}
+            >
+              {cf.share_enabled ? "🔗 Shared" : "Share"}
+            </button>
+            <button onClick={() => setIsEditing(true)} style={{ padding: "9px 16px", background: BLUE, border: "none", borderRadius: 9, color: "#fff", fontSize: 13, fontWeight: 600, fontFamily: F, cursor: "pointer", whiteSpace: "nowrap" }}>
+              Edit
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+              style={{ padding: "9px 16px", background: "#fff", border: "1.5px solid #FECACA", borderRadius: 9, color: "#EF4444", fontSize: 13, fontWeight: 600, fontFamily: F, cursor: "pointer", whiteSpace: "nowrap" }}
+            >
+              {deleteMutation.isPending ? "Deleting…" : "Delete"}
+            </button>
+          </div>
         </div>
       </div>
 
