@@ -936,12 +936,34 @@ export default function CaseFileDetailPage() {
   const { audit, intake, build, delta, reasoning, outcome, project_updates, } = cf;
 
   return (
+    <>
+    <style>{`
+      .fp-print-only { display: none; }
+      @media print {
+        body * { visibility: hidden !important; }
+        #fp-print-root, #fp-print-root * { visibility: visible !important; }
+        #fp-print-root {
+          position: absolute !important;
+          top: 0 !important; left: 0 !important;
+          width: 100% !important;
+          padding: 24px 32px !important;
+          margin: 0 !important;
+          box-sizing: border-box !important;
+        }
+        .fp-no-print { display: none !important; }
+        .fp-print-only { display: block !important; }
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        @page { margin: 16mm 14mm; size: A4; }
+        .fp-meta-chips { margin-bottom: 12px !important; }
+        #fp-print-root { padding-bottom: 24px !important; }
+      }
+    `}</style>
     <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
-    <div style={{ flex: 1, minWidth: 0, maxWidth: 780, padding: "28px 32px 80px" }}>
+    <div id="fp-print-root" style={{ flex: 1, minWidth: 0, maxWidth: 780, padding: "28px 32px 80px" }}>
 
       {/* Success banner */}
       {justCreated && (
-        <div style={{ padding: "12px 16px", background: "#ECFDF5", border: "1px solid #6EE7B7", borderRadius: 10, marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
+        <div className="fp-no-print" style={{ padding: "12px 16px", background: "#ECFDF5", border: "1px solid #6EE7B7", borderRadius: 10, marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 18 }}>✅</span>
           <span style={{ fontSize: 14, color: "#065F46", fontFamily: F, fontWeight: 600 }}>
             Case file saved successfully. It's now part of the knowledge base.
@@ -952,7 +974,7 @@ export default function CaseFileDetailPage() {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28, flexWrap: "wrap", gap: 14 }}>
         <div>
-          <Link to="/case-files" style={{ fontSize: 13, color: "#9CA3AF", fontFamily: F, textDecoration: "none", display: "flex", alignItems: "center", gap: 4, marginBottom: 10 }}>
+          <Link to="/case-files" className="fp-no-print" style={{ fontSize: 13, color: "#9CA3AF", fontFamily: F, textDecoration: "none", display: "flex", alignItems: "center", gap: 4, marginBottom: 10 }}>
             ← Case files
           </Link>
           <h1 style={{ margin: "0 0 6px", fontSize: 24, fontFamily: "'Fraunces', serif" }}>
@@ -979,7 +1001,17 @@ export default function CaseFileDetailPage() {
             )}
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div className="fp-no-print" style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => {
+            const name = (cf.name || cf.workflow_type || "Case_File").replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_]/g, "");
+            const date = new Date().toISOString().slice(0, 10);
+            const prev = document.title;
+            document.title = `${name}_${date}_Flowpath`;
+            window.onafterprint = () => { document.title = prev; window.onafterprint = null; };
+            window.print();
+          }} style={{ padding: "9px 18px", background: "#fff", border: "1.5px solid #E5E7EB", borderRadius: 9, color: "#374151", fontSize: 13, fontWeight: 600, fontFamily: F, cursor: "pointer" }}>
+            Export PDF
+          </button>
           <button onClick={() => setIsEditing(true)} style={{ padding: "9px 18px", background: BLUE, border: "none", borderRadius: 9, color: "#fff", fontSize: 13, fontWeight: 600, fontFamily: F, cursor: "pointer" }}>
             Edit
           </button>
@@ -994,7 +1026,7 @@ export default function CaseFileDetailPage() {
       </div>
 
       {/* Meta chips */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 28 }}>
+      <div className="fp-meta-chips" style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 28 }}>
         {cf.industries?.map(i => (
           <span key={i} style={{ fontSize: 12, padding: "4px 12px", borderRadius: 12, background: "#EFF6FF", border: "1px solid #BFDBFE", color: BLUE, fontFamily: F, fontWeight: 500 }}>{i}</span>
         ))}
@@ -1004,6 +1036,62 @@ export default function CaseFileDetailPage() {
         {cf.process_frameworks?.slice(0, 4).map(f => (
           <span key={f} style={{ fontSize: 12, padding: "4px 12px", borderRadius: 12, background: "#F5F3FF", border: "1px solid #DDD6FE", color: "#7C3AED", fontFamily: F }}>{f}</span>
         ))}
+      </div>
+
+      {/* ── Print-only: Project Updates + Scope Creep (top of PDF) ──────── */}
+      <div className="fp-print-only">
+        {project_updates?.length > 0 && (
+          <Section title="Project Updates" emoji="📝" color="#0284C7">
+            {project_updates.map((pu, i) => {
+              const dateLabel = pu.created_at
+                ? (() => { const [y,m,d] = pu.created_at.slice(0,10).split("-"); return new Date(+y,+m-1,+d).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); })()
+                : "—";
+              return (
+                <div key={pu.id || i} style={{ border: "1.5px solid #BAE6FD", borderRadius: 10, marginBottom: 10, overflow: "hidden" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "#F0F9FF", borderBottom: "1px solid #BAE6FD" }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#0284C7", fontFamily: F }}>{dateLabel}</span>
+                    {pu.attachments?.length > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: "#0284C7", background: "#E0F2FE", border: "1px solid #BAE6FD", borderRadius: 8, padding: "2px 8px", fontFamily: F }}>📎 {pu.attachments.length}</span>}
+                  </div>
+                  <div style={{ padding: "12px 14px" }}>
+                    {pu.content && <p style={{ margin: 0, fontSize: 13, color: "#374151", fontFamily: F, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{pu.content}</p>}
+                    {pu.attachments?.length > 0 && (
+                      <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {pu.attachments.map((att, ai) => att.url && (
+                          <span key={ai} style={{ fontSize: 12, color: "#0284C7", background: "#E0F2FE", border: "1px solid #BAE6FD", borderRadius: 8, padding: "3px 10px", fontFamily: F, fontWeight: 500 }}>
+                            {att.name || att.url}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </Section>
+        )}
+        {delta?.scope_creep?.length > 0 && (
+          <Section title="Scope Creep" emoji="📎" color="#D97706">
+            {delta.scope_creep.map((sc, i) => (
+              <div key={i} style={{ border: "1px solid #FDE68A", borderLeft: "3px solid #D97706", borderRadius: 10, padding: "12px 14px", marginBottom: 8, background: "#FFFBEB" }}>
+                <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "#92400E", fontFamily: F }}>{sc.area || `Item ${i + 1}`}</p>
+                {sc.reason && <Row label="Why added" value={sc.reason} fullWidth />}
+                {sc.impact && <Row label="Impact" value={sc.impact} fullWidth />}
+                {sc.communicated != null && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 6 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "#9CA3AF", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em" }}>Communicated</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, fontFamily: F,
+                      color: sc.communicated === true ? "#059669" : sc.communicated === false ? "#DC2626" : "#D97706",
+                      background: sc.communicated === true ? "#ECFDF5" : sc.communicated === false ? "#FEF2F2" : "#FEF3C7",
+                      border: `1px solid ${sc.communicated === true ? "#A7F3D0" : sc.communicated === false ? "#FECACA" : "#FDE68A"}`,
+                      borderRadius: 8, padding: "2px 10px" }}>
+                      {sc.communicated === true ? "Yes" : sc.communicated === false ? "No" : "Partially"}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </Section>
+        )}
       </div>
 
       {/* ── Layer 1: Audit ──────────────────────────────────────────────── */}
@@ -1217,7 +1305,7 @@ export default function CaseFileDetailPage() {
 
     {/* ── Right sidebar ─────────────────────────────────────────────────── */}
     {w >= 1300 && (
-      <div style={{ width: 480, flexShrink: 0, position: "sticky", top: 24, paddingTop: 28, paddingBottom: 24, maxHeight: "calc(100vh - 48px)", overflowY: "auto" }}>
+      <div className="fp-no-print" style={{ width: 480, flexShrink: 0, position: "sticky", top: 24, paddingTop: 28, paddingBottom: 24, maxHeight: "calc(100vh - 48px)", overflowY: "auto" }}>
 
         {/* Project Updates */}
         <div style={{ background: "#fff", border: "1px solid #F0F0F0", borderRadius: 14, padding: "16px 16px 12px", marginBottom: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
@@ -1291,5 +1379,6 @@ export default function CaseFileDetailPage() {
       </div>
     )}
   </div>
+  </>
   );
 }
