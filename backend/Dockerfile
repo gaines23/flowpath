@@ -33,7 +33,5 @@ RUN pip install --upgrade pip \
 
 COPY . .
 
-RUN chmod +x /app/entrypoint.prod.sh
-
 EXPOSE 8000
-ENTRYPOINT ["/app/entrypoint.prod.sh"]
+CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 120"]
