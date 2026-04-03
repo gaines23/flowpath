@@ -121,7 +121,7 @@ export default function DashboardPage() {
               >
                 <div style={{ minWidth: 0 }}>
                   <p style={{ margin: "0 0 3px", fontSize: 14, fontWeight: 600, color: "#111827", fontFamily: F }}>
-                    {cf.workflow_type || "Untitled workflow"}
+                    {cf.name} - {cf.workflow_type || "Untitled workflow"}
                   </p>
                   <p style={{ margin: 0, fontSize: 12, color: "#9CA3AF", fontFamily: F }}>
                     {cf.industries?.slice(0, 2).join(", ") || "No industry"}

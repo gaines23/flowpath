@@ -120,6 +120,8 @@ const SEVERITIES = ["Low","Medium","High","Blocker"];
 
 export const THIRD_PARTY_PLATFORMS = ["Make","Zapier","HubSpot Workflows","n8n","Pabbly Connect","ActiveCampaign","Monday Automations","Other"];
 
+const HUBSPOT_TRIGGERS = ["Filter-based","Event-based","Based on a schedule","Based on webhooks"];
+
 export const CLICKUP_TRIGGERS = [
   "Task Created","Task Status Changed","Task Completed","Task Moved","Task Assigned","Task Unassigned",
   "Task Due Date Arrives","Task Start Date Arrives","Task Due Date Changed","Task Priority Changed",
@@ -128,7 +130,7 @@ export const CLICKUP_TRIGGERS = [
 ];
 export const CLICKUP_ACTIONS = [
   "Change Status","Assign To","Unassign From","Set Priority","Set Due Date","Set Start Date",
-  "Move to List","Add to List","Copy Task","Create Subtask","Create Task","Post Comment","Send Email",
+  "Move to List","Add to List","Create List","Copy Task","Create Subtask","Create Task","Post Comment","Send Email",
   "Add Tag","Remove Tag","Set Custom Field","Start Time Tracking","Stop Time Tracking", "Change Task Type",
   "Apply Template","Archive Task","Send Webhook",
 ];
@@ -136,18 +138,18 @@ export const CLICKUP_ACTIONS = [
 const STEPS = [
   {id:"audit",     label:"Current State",    short:"Audit",     color:"#EA580C"},
   {id:"intake",    label:"Scenario",          short:"Scenario",  color:"#7C3AED"},
-  {id:"delta",     label:"Intent vs Reality", short:"Delta",     color:"#DC2626"},
   {id:"build",     label:"Build",             short:"Build",     color:"#0284C7"},
+  {id:"delta",     label:"Intent vs Reality", short:"Delta",     color:"#DC2626"},
   {id:"reasoning", label:"Reasoning",         short:"Reasoning", color:"#059669"},
   {id:"outcome",   label:"Outcome",           short:"Outcome",   color:"#4F46E5"},
 ];
 
-const STEP_TITLES = ["Current State Audit","Scenario Intake","Intent vs Reality","Build Documentation","Decision Reasoning","Outcome Capture"];
+const STEP_TITLES = ["Current State Audit","Scenario Intake","Build Documentation","Intent vs Reality","Decision Reasoning","Outcome Capture"];
 const STEP_DESC = [
   "Document what the user already has — and exactly why it's failing.",
   "Capture the raw scenario and what the user is trying to solve.",
-  "Log the gap between what was wanted and what was delivered.",
   "Document what was actually built in ClickUp, field by field.",
+  "Log the gap between what was wanted and what was delivered.",
   "Record the reasoning behind every major decision.",
   "Capture the post-build result and long-term usage signal.",
 ];
@@ -696,7 +698,7 @@ function AutomationCard({ auto, autoIdx, onChange, onRemove, canRemove, onMoveUp
         <div style={{ fontSize:11, fontWeight:700, color:"#6B7280", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:8 }}>Triggers</div>
         {auto.triggers.map((t,ti)=>(
           <div key={ti} style={{ display:"flex", gap:8, alignItems:"flex-start", marginBottom:8 }}>
-            <div style={{ flex:"0 0 190px" }}><Sel value={t.type} onChange={v=>updTrigger(ti,"type",v)} options={CLICKUP_TRIGGERS} placeholder="Select trigger…"/></div>
+            <div style={{ flex:"0 0 190px" }}><Sel value={t.type} onChange={v=>updTrigger(ti,"type",v)} options={auto.third_party_platform==="HubSpot Workflows" ? HUBSPOT_TRIGGERS : CLICKUP_TRIGGERS} placeholder="Select trigger…"/></div>
             <div style={{ flex:1 }}><TI value={t.detail} onChange={v=>updTrigger(ti,"detail",v)} placeholder="e.g. to Done, from any status…"/></div>
             {auto.triggers.length>1 && <button type="button" onClick={()=>remTrigger(ti)} style={{ fontSize:18, color:"#EF4444", background:"none", border:"none", cursor:"pointer", padding:"8px 4px", fontFamily:F, lineHeight:1 }}>×</button>}
           </div>
@@ -823,11 +825,14 @@ function WorkflowBuildCard({ wf, wfIdx, onChange, onRemove, w }) {
   );
 }
 
-function StepBuild({ data, set, w }) {
+function StepBuild({ data, set, w, deltaData, setDelta }) {
   const workflows = data.workflows || [];
   const addWf = () => set({ ...data, workflows: [...workflows, emptyWorkflow()] });
   const updWf = (i,v) => set({ ...data, workflows: workflows.map((wf,idx)=>idx===i?v:wf) });
   const remWf = i => set({ ...data, workflows: workflows.filter((_,idx)=>idx!==i) });
+  const addRb=()=>setDelta({...deltaData,roadblocks:[...deltaData.roadblocks,emptyRB()]});
+  const updRb=(i,v)=>setDelta({...deltaData,roadblocks:deltaData.roadblocks.map((r,idx)=>idx===i?v:r)});
+  const remRb=(i)=>setDelta({...deltaData,roadblocks:deltaData.roadblocks.filter((_,idx)=>idx!==i)});
   return (
     <div>
       <Banner emoji="🏗️" title="Map each workflow build in detail." body="Add one workflow per distinct space or flow. Each workflow has its own lists — and each list has its own statuses, custom fields, and automations." color="#0284C7"/>
@@ -847,14 +852,20 @@ function StepBuild({ data, set, w }) {
         </>
       )}
       <Card><CardTitle hint="optional">Overall build notes</CardTitle><TI rows={3} value={data.buildNotes} onChange={v=>set({...data,buildNotes:v})} placeholder="General notes that apply across all workflows…"/></Card>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12, flexWrap:"wrap", gap:10 }}>
+        <div>
+          <p style={{ margin:0, fontSize:14, fontWeight:700, color:"#111827", fontFamily:F }}>Roadblocks</p>
+          <p style={{ margin:"2px 0 0", fontSize:12, color:"#9CA3AF", fontFamily:F }}>Each becomes a proactive warning for future similar builds</p>
+        </div>
+        <button onClick={addRb} style={{ padding:"11px 18px", background:"#fff", border:"1.5px solid #F97316", borderRadius:10, color:"#F97316", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:F, minHeight:44 }}>+ Add Roadblock</button>
+      </div>
+      {deltaData.roadblocks.length===0 && <div style={{ padding:24, textAlign:"center", border:"2px dashed #E5E7EB", borderRadius:12 }}><p style={{ margin:0, fontSize:13, color:"#9CA3AF", fontFamily:F }}>No roadblocks — add one if something broke.</p></div>}
+      {deltaData.roadblocks.map((r,i)=><RBCard key={i} rb={r} index={i} onChange={v=>updRb(i,v)} onRemove={()=>remRb(i)} w={w}/>)}
     </div>
   );
 }
 
 function StepDelta({ data, set, w }) {
-  const addRb=()=>set({...data,roadblocks:[...data.roadblocks,emptyRB()]});
-  const updRb=(i,v)=>set({...data,roadblocks:data.roadblocks.map((r,idx)=>idx===i?v:r)});
-  const remRb=(i)=>set({...data,roadblocks:data.roadblocks.filter((_,idx)=>idx!==i)});
   return (
     <div>
       <Banner emoji="⚖️" title="Where did intent and reality diverge?" body="Capture not just what was built, but the gap between what was asked for and what was achievable." color="#DC2626"/>
@@ -870,15 +881,6 @@ function StepDelta({ data, set, w }) {
         {data.diverged==="Yes" && <Field label="What caused the divergence?" style={{marginTop:14}}><TI rows={2} value={data.divergenceReason} onChange={v=>set({...data,divergenceReason:v})} placeholder="Integration limitation? Scope change?"/></Field>}
         <Field label="Compromises accepted" style={{marginTop:14}}><TI rows={2} value={data.compromises} onChange={v=>set({...data,compromises:v})} placeholder="What did they settle for?"/></Field>
       </Card>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12, flexWrap:"wrap", gap:10 }}>
-        <div>
-          <p style={{ margin:0, fontSize:14, fontWeight:700, color:"#111827", fontFamily:F }}>Roadblocks</p>
-          <p style={{ margin:"2px 0 0", fontSize:12, color:"#9CA3AF", fontFamily:F }}>Each becomes a proactive warning for future similar builds</p>
-        </div>
-        <button onClick={addRb} style={{ padding:"11px 18px", background:"#fff", border:"1.5px solid #F97316", borderRadius:10, color:"#F97316", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:F, minHeight:44 }}>+ Add Roadblock</button>
-      </div>
-      {data.roadblocks.length===0 && <div style={{ padding:24, textAlign:"center", border:"2px dashed #E5E7EB", borderRadius:12 }}><p style={{ margin:0, fontSize:13, color:"#9CA3AF", fontFamily:F }}>No roadblocks — add one if something broke.</p></div>}
-      {data.roadblocks.map((r,i)=><RBCard key={i} rb={r} index={i} onChange={v=>updRb(i,v)} onRemove={()=>remRb(i)} w={w}/>)}
     </div>
   );
 }
@@ -1061,8 +1063,8 @@ export default function CaseFileForm({ onSubmit, isSaving, initialData, initialN
 
         {step===0 && <StepAudit   data={data.audit}     set={v=>setSD("audit",v)}     w={w} caseName={caseName} setCaseName={setCaseName}/>}
         {step===1 && <StepIntake  data={data.intake}    set={v=>setSD("intake",v)}    w={w}/>}
-        {step===2 && <StepDelta   data={data.delta}     set={v=>setSD("delta",v)}     w={w}/>}
-        {step===3 && <StepBuild   data={data.build}     set={v=>setSD("build",v)}     w={w}/>}
+        {step===2 && <StepBuild   data={data.build}     set={v=>setSD("build",v)}     w={w} deltaData={data.delta} setDelta={v=>setSD("delta",v)}/>}
+        {step===3 && <StepDelta   data={data.delta}     set={v=>setSD("delta",v)}     w={w}/>}
         {step===4 && <StepReasoning data={data.reasoning} set={v=>setSD("reasoning",v)} w={w}/>}
         {step===5 && <StepOutcome data={data.outcome}   set={v=>setSD("outcome",v)}   w={w}/>}
       </div>

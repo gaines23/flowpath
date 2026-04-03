@@ -98,7 +98,7 @@ export default function CaseFileListPage() {
             ))}
           </div>
 
-          {caseFiles.map((cf) => (
+          {[...caseFiles].sort((a, b) => (a.name || a.workflow_type || "").localeCompare(b.name || b.workflow_type || "")).map((cf) => (
             <div key={cf.id} style={{
               display: "grid",
               gridTemplateColumns: "1fr 160px 120px 100px 80px",
@@ -116,10 +116,10 @@ export default function CaseFileListPage() {
               <div style={{ minWidth: 0 }}>
                 <Link to={`/case-files/${cf.id}`} style={{ textDecoration: "none" }}>
                   <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 600, color: "#111827", fontFamily: F }}>
-                    {cf.name || cf.workflow_type || "Untitled"}
+                    {cf.name || "Untitled"}
                   </p>
                 </Link>
-                {cf.name && cf.workflow_type && (
+                {cf.workflow_type && (
                   <p style={{ margin: "0 0 4px", fontSize: 12, color: "#6B7280", fontFamily: F }}>{cf.workflow_type}</p>
                 )}
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
