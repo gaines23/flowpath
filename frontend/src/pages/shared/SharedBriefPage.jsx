@@ -192,6 +192,61 @@ export default function SharedBriefPage() {
           </div>
         )}
 
+        {/* Project Updates */}
+        {project_updates?.length > 0 && (
+          <Section title="Project Updates" emoji="📝" color="#0284C7">
+            {project_updates.map((pu, i) => {
+              const dateLabel = pu.created_at
+                ? (() => { const [y,m,d] = pu.created_at.slice(0,10).split("-"); return new Date(+y,+m-1,+d).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); })()
+                : "—";
+              return (
+                <div key={pu.id || i} style={{ border: "1.5px solid #BAE6FD", borderRadius: 10, marginBottom: 10, overflow: "hidden" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "#F0F9FF", borderBottom: "1px solid #BAE6FD" }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#0284C7", fontFamily: F }}>{dateLabel}</span>
+                  </div>
+                  <div style={{ padding: "12px 14px" }}>
+                    {pu.content && <p style={{ margin: 0, fontSize: 13, color: "#374151", fontFamily: F, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{pu.content}</p>}
+                    {pu.attachments?.length > 0 && (
+                      <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {pu.attachments.map((att, ai) => att.url && (
+                          <a key={ai} href={att.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "#0284C7", background: "#E0F2FE", border: "1px solid #BAE6FD", borderRadius: 8, padding: "3px 10px", fontFamily: F, fontWeight: 500, textDecoration: "none" }}>
+                            📎 {att.name || att.url}
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </Section>
+        )}
+
+        {/* Scope Creep */}
+        {delta?.scope_creep?.length > 0 && (
+          <Section title="Scope Creep" emoji="📎" color="#D97706">
+            {delta.scope_creep.map((sc, i) => (
+              <div key={i} style={{ border: "1px solid #FDE68A", borderLeft: "3px solid #D97706", borderRadius: 10, padding: "12px 14px", marginBottom: 8, background: "#FFFBEB" }}>
+                <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "#92400E", fontFamily: F }}>{sc.area || `Item ${i + 1}`}</p>
+                {sc.reason && <Row label="Why added" value={sc.reason} fullWidth />}
+                {sc.impact && <Row label="Impact" value={sc.impact} fullWidth />}
+                {sc.communicated != null && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 6 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "#9CA3AF", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em" }}>Communicated</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, fontFamily: F,
+                      color: sc.communicated === true ? "#059669" : sc.communicated === false ? "#DC2626" : "#D97706",
+                      background: sc.communicated === true ? "#ECFDF5" : sc.communicated === false ? "#FEF2F2" : "#FEF3C7",
+                      border: `1px solid ${sc.communicated === true ? "#A7F3D0" : sc.communicated === false ? "#FECACA" : "#FDE68A"}`,
+                      borderRadius: 8, padding: "2px 10px" }}>
+                      {sc.communicated === true ? "Yes" : sc.communicated === false ? "No" : "Partially"}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </Section>
+        )}
+
         {/* Audit */}
         {audit && (audit.overall_assessment || audit.builds?.length > 0) && (
           <Section title="Current State Audit" emoji="🔍" color={STEP_COLORS.audit}>
@@ -297,36 +352,6 @@ export default function SharedBriefPage() {
                 </div>
               </div>
             )}
-          </Section>
-        )}
-
-        {/* Project updates */}
-        {project_updates?.length > 0 && (
-          <Section title="Project Updates" emoji="📝" color="#0284C7">
-            {project_updates.map((pu, i) => {
-              const dateLabel = pu.created_at
-                ? (() => { const [y,m,d] = pu.created_at.slice(0,10).split("-"); return new Date(+y,+m-1,+d).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); })()
-                : "—";
-              return (
-                <div key={pu.id || i} style={{ border: "1.5px solid #BAE6FD", borderRadius: 10, marginBottom: 10, overflow: "hidden" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "#F0F9FF", borderBottom: "1px solid #BAE6FD" }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#0284C7", fontFamily: F }}>{dateLabel}</span>
-                  </div>
-                  <div style={{ padding: "12px 14px" }}>
-                    {pu.content && <p style={{ margin: 0, fontSize: 13, color: "#374151", fontFamily: F, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{pu.content}</p>}
-                    {pu.attachments?.length > 0 && (
-                      <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {pu.attachments.map((att, ai) => att.url && (
-                          <a key={ai} href={att.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "#0284C7", background: "#E0F2FE", border: "1px solid #BAE6FD", borderRadius: 8, padding: "3px 10px", fontFamily: F, fontWeight: 500, textDecoration: "none" }}>
-                            📎 {att.name || att.url}
-                          </a>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
           </Section>
         )}
 
