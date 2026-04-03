@@ -37,7 +37,7 @@ function ThemeToggle({ mode, onToggle, theme }) {
         width: 32,
         height: 32,
         borderRadius: 8,
-        border: `1px solid ${theme.border}`,
+        border: `1px solid #c9d9ff`,
         background: "transparent",
         color: theme.textMuted,
         fontSize: 15,
