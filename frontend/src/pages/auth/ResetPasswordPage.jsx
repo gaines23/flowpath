@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "../../hooks/useAuth";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTheme } from "../../hooks/useTheme";
+import publicApi from "../../api/publicClient";
 
 const F = "'Plus Jakarta Sans', sans-serif";
 
@@ -18,30 +18,34 @@ function FlowpathMark({ blue }) {
   );
 }
 
-export default function LoginPage() {
-  const { login } = useAuth();
+export default function ResetPasswordPage() {
   const { theme } = useTheme();
   const navigate = useNavigate();
-  const location = useLocation();
-  const from = location.state?.from?.pathname || "/dashboard";
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token");
 
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [form, setForm] = useState({ newPassword: "", confirmPassword: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const passwordReset = location.state?.passwordReset;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
+    if (form.newPassword !== form.confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     setLoading(true);
     try {
-      await login(form.email, form.password);
-      navigate(from, { replace: true });
+      await publicApi.post("/v1/users/password-reset/confirm/", {
+        token,
+        new_password: form.newPassword,
+      });
+      navigate("/login", { state: { passwordReset: true } });
     } catch (err) {
-      setError(
-        err.response?.data?.detail ||
-        "Invalid email or password. Please try again."
-      );
+      setError(err.response?.data?.detail || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -61,6 +65,37 @@ export default function LoginPage() {
     transition: "border-color 0.15s, box-shadow 0.15s",
   };
 
+  if (!token) {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        background: theme.bg,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+      }}>
+        <div style={{ width: "100%", maxWidth: 400 }}>
+          <div style={{
+            background: theme.surface,
+            border: `1px solid ${theme.border}`,
+            borderRadius: 14,
+            padding: "32px 28px",
+            boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
+            textAlign: "center",
+          }}>
+            <p style={{ fontSize: 13, color: theme.textMuted, fontFamily: F, marginBottom: 16 }}>
+              This reset link is invalid or missing. Please request a new one.
+            </p>
+            <Link to="/forgot-password" style={{ color: theme.blue, fontWeight: 600, fontFamily: F, fontSize: 13 }}>
+              Request a new link
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{
       minHeight: "100vh",
@@ -72,7 +107,6 @@ export default function LoginPage() {
     }}>
       <div style={{ width: "100%", maxWidth: 400 }}>
 
-        {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: 36 }}>
           <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
             <FlowpathMark blue={theme.blue} />
@@ -84,7 +118,6 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Card */}
         <div style={{
           background: theme.surface,
           border: `1px solid ${theme.border}`,
@@ -93,26 +126,11 @@ export default function LoginPage() {
           boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
         }}>
           <h1 style={{ margin: "0 0 6px", fontSize: 22, fontFamily: "'Fraunces', serif", color: theme.text }}>
-            Sign in
+            Set new password
           </h1>
           <p style={{ margin: "0 0 24px", fontSize: 13, color: theme.textMuted, fontFamily: F }}>
-            Log in to access the case file builder.
+            Choose a new password for your account.
           </p>
-
-          {passwordReset && (
-            <div style={{
-              padding: "11px 14px",
-              background: "#F0FDF4",
-              border: "1px solid #BBF7D0",
-              borderRadius: 8,
-              marginBottom: 18,
-              fontSize: 13,
-              color: "#16A34A",
-              fontFamily: F,
-            }}>
-              Password updated. Sign in with your new password.
-            </div>
-          )}
 
           {error && (
             <div style={{
@@ -132,15 +150,16 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: theme.text, fontFamily: F, marginBottom: 6 }}>
-                Email
+                New password
               </label>
               <input
-                type="email"
+                type="password"
                 required
-                autoComplete="email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                placeholder="you@company.com"
+                minLength={8}
+                autoComplete="new-password"
+                value={form.newPassword}
+                onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
+                placeholder="••••••••"
                 style={inputStyle}
                 onFocus={(e) => { e.target.style.borderColor = theme.blue; e.target.style.boxShadow = `0 0 0 3px ${theme.blueLight}`; }}
                 onBlur={(e) => { e.target.style.borderColor = theme.borderInput; e.target.style.boxShadow = "none"; }}
@@ -148,20 +167,15 @@ export default function LoginPage() {
             </div>
 
             <div style={{ marginBottom: 24 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
-                <label style={{ fontSize: 13, fontWeight: 600, color: theme.text, fontFamily: F }}>
-                  Password
-                </label>
-                <Link to="/forgot-password" style={{ fontSize: 12, color: theme.blue, fontWeight: 500, fontFamily: F }}>
-                  Forgot password?
-                </Link>
-              </div>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: theme.text, fontFamily: F, marginBottom: 6 }}>
+                Confirm new password
+              </label>
               <input
                 type="password"
                 required
-                autoComplete="current-password"
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                autoComplete="new-password"
+                value={form.confirmPassword}
+                onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
                 placeholder="••••••••"
                 style={inputStyle}
                 onFocus={(e) => { e.target.style.borderColor = theme.blue; e.target.style.boxShadow = `0 0 0 3px ${theme.blueLight}`; }}
@@ -186,16 +200,9 @@ export default function LoginPage() {
                 transition: "background 0.15s",
               }}
             >
-              {loading ? "Signing in…" : "Sign in"}
+              {loading ? "Saving…" : "Set new password"}
             </button>
           </form>
-
-          {/* <p style={{ marginTop: 20, textAlign: "center", fontSize: 13, color: theme.textMuted, fontFamily: F }}>
-            No account?{" "}
-            <Link to="/register" style={{ color: theme.blue, fontWeight: 600 }}>
-              Create one
-            </Link>
-          </p> */}
         </div>
       </div>
     </div>

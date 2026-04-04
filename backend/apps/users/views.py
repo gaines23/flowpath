@@ -5,8 +5,11 @@ from rest_framework.response import Response
 from django.utils import timezone
 from datetime import timedelta
 
-from .models import User, Invitation
-from .serializers import UserSerializer, RegisterSerializer, ChangePasswordSerializer, InviteSerializer
+from .models import User, Invitation, PasswordResetToken
+from .serializers import (
+    UserSerializer, RegisterSerializer, ChangePasswordSerializer,
+    InviteSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer,
+)
 
 
 class RegisterView(generics.CreateAPIView):
@@ -40,6 +43,54 @@ def change_password(request):
     user.set_password(serializer.validated_data["new_password"])
     user.save()
     return Response({"detail": "Password updated."})
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def request_password_reset(request):
+    serializer = PasswordResetRequestSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    email = serializer.validated_data["email"]
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({"detail": "No account found with that email."}, status=status.HTTP_404_NOT_FOUND)
+
+    reset_token = PasswordResetToken.objects.create(
+        user=user,
+        expires_at=timezone.now() + timedelta(hours=1),
+    )
+
+    return Response({"token": str(reset_token.token)})
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def confirm_password_reset(request):
+    serializer = PasswordResetConfirmSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        reset_token = PasswordResetToken.objects.select_related("user").get(
+            token=serializer.validated_data["token"]
+        )
+    except PasswordResetToken.DoesNotExist:
+        return Response({"detail": "Invalid or expired reset link."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not reset_token.is_valid():
+        return Response({"detail": "This reset link has already been used or has expired."}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = reset_token.user
+    user.set_password(serializer.validated_data["new_password"])
+    user.save()
+
+    reset_token.is_used = True
+    reset_token.save(update_fields=["is_used"])
+
+    return Response({"detail": "Password updated. You can now sign in."})
 
 
 @api_view(["POST"])

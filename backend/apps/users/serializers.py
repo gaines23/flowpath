@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Invitation
+from .models import User, Invitation, PasswordResetToken
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -40,6 +40,15 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 class ChangePasswordSerializer(serializers.Serializer):
     current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, min_length=8)
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    token = serializers.UUIDField()
     new_password = serializers.CharField(write_only=True, min_length=8)
 
 
