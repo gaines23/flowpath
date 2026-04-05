@@ -490,7 +490,7 @@ function FailureList({ selected, onChange, w }) {
   );
 }
 
-const emptyRB = () => ({type:"",severity:"",tools:[],description:"",workaroundFound:null,workaround:"",timeCost:"",futureWarning:""});
+const emptyRB = () => ({stage:"",type:"",severity:"",tools:[],description:"",workaroundFound:null,workaround:"",timeCost:"",futureWarning:""});
 const emptyBuild = () => ({tool:"",structure:"",failureReasons:[],whatBreaks:"",workaroundsTheyUse:"",howLongBroken:"",whoReported:"",integrationsInPlace:[],impactOnTeam:"",urgency:"Medium"});
 
 function RBCard({ rb, index, onChange, onRemove, w }) {
@@ -502,6 +502,7 @@ function RBCard({ rb, index, onChange, onRemove, w }) {
       <button onClick={()=>setOpen(o=>!o)} style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"13px 16px", background:"#FFFBF5", border:"none", cursor:"pointer", borderBottom:open?"1px solid #FED7AA":"none", minHeight:52 }}>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
           <span style={{ fontSize:13, fontWeight:700, color:"#EA580C", fontFamily:F }}>Roadblock {index+1}</span>
+          {rb.stage && <span style={{ fontSize:11, fontWeight:600, color:"#EA580C", background:"#FFF7ED", border:"1px solid #FED7AA", borderRadius:10, padding:"2px 8px", fontFamily:F }}>{rb.stage}</span>}
           {rb.severity && <span style={{ fontSize:11, fontWeight:700, color:SC[rb.severity]||"#9CA3AF", background:(SC[rb.severity]||"#9CA3AF")+"18", borderRadius:10, padding:"2px 8px", fontFamily:F }}>{rb.severity}</span>}
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
@@ -511,6 +512,13 @@ function RBCard({ rb, index, onChange, onRemove, w }) {
       </button>
       {open && (
         <div style={{ padding:"18px 16px", background:theme.surface }}>
+          <Field label="Stage">
+            <div style={{ display:"flex", gap:6 }}>
+              {["Pre-build","During build","Post-build"].map(s=>(
+                <button key={s} onClick={()=>onChange({...rb,stage:s})} style={{ flex:1, padding:"8px 4px", borderRadius:8, fontSize:11, fontWeight:600, fontFamily:F, cursor:"pointer", border:rb.stage===s?"1.5px solid #EA580C":"1.5px solid #E5E7EB", background:rb.stage===s?"#FFF7ED":"transparent", color:rb.stage===s?"#EA580C":"#9CA3AF", minHeight:40 }}>{s}</button>
+              ))}
+            </div>
+          </Field>
           <Grid2 w={w}>
             <Field label="Roadblock type"><Sel value={rb.type} onChange={v=>onChange({...rb,type:v})} options={ROADBLOCK_TYPES}/></Field>
             <Field label="Severity"><Sel value={rb.severity} onChange={v=>onChange({...rb,severity:v})} options={SEVERITIES}/></Field>
@@ -855,15 +863,12 @@ function WorkflowBuildCard({ wf, wfIdx, onChange, onRemove, w }) {
   );
 }
 
-function StepBuild({ data, set, w, deltaData, setDelta }) {
+function StepBuild({ data, set, w }) {
   const { theme } = useTheme();
   const workflows = data.workflows || [];
   const addWf = () => set({ ...data, workflows: [...workflows, emptyWorkflow()] });
   const updWf = (i,v) => set({ ...data, workflows: workflows.map((wf,idx)=>idx===i?v:wf) });
   const remWf = i => set({ ...data, workflows: workflows.filter((_,idx)=>idx!==i) });
-  const addRb=()=>setDelta({...deltaData,roadblocks:[...deltaData.roadblocks,emptyRB()]});
-  const updRb=(i,v)=>setDelta({...deltaData,roadblocks:deltaData.roadblocks.map((r,idx)=>idx===i?v:r)});
-  const remRb=(i)=>setDelta({...deltaData,roadblocks:deltaData.roadblocks.filter((_,idx)=>idx!==i)});
   return (
     <div>
       <Banner emoji="🏗️" title="Map each workflow build in detail." body="Add one workflow per distinct space or flow. Each workflow has its own lists — and each list has its own statuses, custom fields, and automations." color="#0284C7"/>
@@ -883,20 +888,16 @@ function StepBuild({ data, set, w, deltaData, setDelta }) {
         </>
       )}
       <Card><CardTitle hint="optional">Overall build notes</CardTitle><TI rows={3} value={data.buildNotes} onChange={v=>set({...data,buildNotes:v})} placeholder="General notes that apply across all workflows…"/></Card>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12, flexWrap:"wrap", gap:10 }}>
-        <div>
-          <p style={{ margin:0, fontSize:14, fontWeight:700, color:theme.text, fontFamily:F }}>Roadblocks</p>
-          <p style={{ margin:"2px 0 0", fontSize:12, color:theme.textFaint, fontFamily:F }}>Each becomes a proactive warning for future similar builds</p>
-        </div>
-        <button onClick={addRb} style={{ padding:"11px 18px", background:theme.surface, border:"1.5px solid #F97316", borderRadius:10, color:"#F97316", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:F, minHeight:44 }}>+ Add Roadblock</button>
-      </div>
-      {deltaData.roadblocks.length===0 && <div style={{ padding:24, textAlign:"center", border:`2px dashed ${theme.borderInput}`, borderRadius:12 }}><p style={{ margin:0, fontSize:13, color:theme.textFaint, fontFamily:F }}>No roadblocks — add one if something broke.</p></div>}
-      {deltaData.roadblocks.map((r,i)=><RBCard key={i} rb={r} index={i} onChange={v=>updRb(i,v)} onRemove={()=>remRb(i)} w={w}/>)}
     </div>
   );
 }
 
 function StepDelta({ data, set, w }) {
+  const { theme } = useTheme();
+  const roadblocks = data.roadblocks || [];
+  const addRb = () => set({...data, roadblocks:[...roadblocks, emptyRB()]});
+  const updRb = (i,v) => set({...data, roadblocks: roadblocks.map((r,idx)=>idx===i?v:r)});
+  const remRb = (i) => set({...data, roadblocks: roadblocks.filter((_,idx)=>idx!==i)});
   return (
     <div>
       <Banner emoji="⚖️" title="Where did intent and reality diverge?" body="Capture not just what was built, but the gap between what was asked for and what was achievable." color="#DC2626"/>
@@ -912,6 +913,15 @@ function StepDelta({ data, set, w }) {
         {data.diverged==="Yes" && <Field label="What caused the divergence?" style={{marginTop:14}}><TI rows={2} value={data.divergenceReason} onChange={v=>set({...data,divergenceReason:v})} placeholder="Integration limitation? Scope change?"/></Field>}
         <Field label="Compromises accepted" style={{marginTop:14}}><TI rows={2} value={data.compromises} onChange={v=>set({...data,compromises:v})} placeholder="What did they settle for?"/></Field>
       </Card>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12, flexWrap:"wrap", gap:10 }}>
+        <div>
+          <p style={{ margin:0, fontSize:14, fontWeight:700, color:theme.text, fontFamily:F }}>Roadblocks</p>
+          <p style={{ margin:"2px 0 0", fontSize:12, color:theme.textFaint, fontFamily:F }}>Log once — tag the stage (pre / during / post-build) so the system knows when it occurred</p>
+        </div>
+        <button onClick={addRb} style={{ padding:"11px 18px", background:theme.surface, border:"1.5px solid #F97316", borderRadius:10, color:"#F97316", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:F, minHeight:44 }}>+ Add Roadblock</button>
+      </div>
+      {roadblocks.length===0 && <div style={{ padding:24, textAlign:"center", border:`2px dashed ${theme.borderInput}`, borderRadius:12 }}><p style={{ margin:0, fontSize:13, color:theme.textFaint, fontFamily:F }}>No roadblocks — add one if something broke or was blocked at any stage.</p></div>}
+      {roadblocks.map((r,i)=><RBCard key={i} rb={r} index={i} onChange={v=>updRb(i,v)} onRemove={()=>remRb(i)} w={w}/>)}
     </div>
   );
 }
@@ -1097,7 +1107,7 @@ export default function CaseFileForm({ onSubmit, isSaving, initialData, initialN
 
         {step===0 && <StepAudit   data={data.audit}     set={v=>setSD("audit",v)}     w={w} caseName={caseName} setCaseName={setCaseName}/>}
         {step===1 && <StepIntake  data={data.intake}    set={v=>setSD("intake",v)}    w={w}/>}
-        {step===2 && <StepBuild   data={data.build}     set={v=>setSD("build",v)}     w={w} deltaData={data.delta} setDelta={v=>setSD("delta",v)}/>}
+        {step===2 && <StepBuild   data={data.build}     set={v=>setSD("build",v)}     w={w}/>}
         {step===3 && <StepDelta   data={data.delta}     set={v=>setSD("delta",v)}     w={w}/>}
         {step===4 && <StepReasoning data={data.reasoning} set={v=>setSD("reasoning",v)} w={w}/>}
         {step===5 && <StepOutcome data={data.outcome}   set={v=>setSD("outcome",v)}   w={w}/>}
