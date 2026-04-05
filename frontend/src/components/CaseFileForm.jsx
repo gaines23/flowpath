@@ -164,7 +164,7 @@ const DEFAULT_STATE = {
   outcome:   {built:null,blockReason:"",changes:"",whatWorked:"",whatFailed:"",satisfaction:3,recommend:null,revisitWhen:""},
 };
 
-// ── Primitive UI components (self-contained, no external deps) ────────────────
+//  ── Primitive UI components (self-contained, no external deps) ────────────────
 const F = "'Plus Jakarta Sans', sans-serif";
 const BLUE = "#2563EB";
 
