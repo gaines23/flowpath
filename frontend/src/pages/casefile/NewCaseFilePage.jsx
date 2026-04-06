@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useCreateCaseFile } from "../../hooks/useCaseFiles";
-import { formStateToCaseFilePayload, briefToFormState } from "../../utils/transforms";
+import { formStateToCaseFilePayload, briefToFormState, briefToSuggestedAutomations } from "../../utils/transforms";
 import { useAuth } from "../../hooks/useAuth";
 import { useTheme } from "../../hooks/useTheme";
 import { useGeneratedBrief, useMarkBriefConverted } from "../../hooks/useWorkflows";
@@ -59,6 +59,7 @@ export default function NewCaseFilePage() {
   }
 
   const initialData = sourceBrief ? briefToFormState(sourceBrief) : undefined;
+  const suggestedAutomations = sourceBrief ? briefToSuggestedAutomations(sourceBrief) : [];
 
   const initialName = sourceBrief
     ? [
@@ -105,6 +106,7 @@ export default function NewCaseFilePage() {
         initialData={initialData}
         initialName={initialName}
         hideRawPrompt={!!briefId}
+        suggestedAutomations={suggestedAutomations}
       />
     </div>
   );
