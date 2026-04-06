@@ -674,8 +674,10 @@ const emptyAutomation = () => ({ platform:"clickup", pipelinePhase:"", triggers:
 const emptyList = () => ({ name:"", statuses:"", customFields:"", automations:[] });
 const emptyWorkflow = () => ({ name:"", notes:"", pipeline:[], lists:[emptyList()] });
 
-function AutomationCard({ auto, autoIdx, onChange, onRemove, canRemove, onMoveUp, onMoveDown, isFirst, isLast, color, pipelinePhases }) {
+function AutomationCard({ auto, autoIdx, onChange, onRemove, canRemove, onMoveUp, onMoveDown, isFirst, isLast, color, pipelinePhases, suggestedAutomations }) {
   const { theme } = useTheme();
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestionQuery, setSuggestionQuery] = useState("");
   const updTrigger = (i,k,v) => onChange({ ...auto, triggers: auto.triggers.map((t,idx)=>idx===i?{...t,[k]:v}:t) });
   const addTrigger = () => onChange({ ...auto, triggers:[...auto.triggers, emptyTrigger()] });
   const remTrigger = i => onChange({ ...auto, triggers: auto.triggers.filter((_,idx)=>idx!==i) });
@@ -683,12 +685,33 @@ function AutomationCard({ auto, autoIdx, onChange, onRemove, canRemove, onMoveUp
   const addAction = () => onChange({ ...auto, actions:[...auto.actions, emptyAction()] });
   const remAction = i => onChange({ ...auto, actions: auto.actions.filter((_,idx)=>idx!==i) });
   const validPhases = (pipelinePhases||[]).filter(p=>p.trim());
+  const hasSuggestions = suggestedAutomations?.length > 0;
+
+  const applySuggestion = (s) => {
+    onChange({ ...auto, triggers: s.triggers, actions: s.actions, instructions: s.instructions || "", use_agent: !!(s.instructions?.trim()) });
+    setShowSuggestions(false);
+  };
+
+  const suggestionLabel = (s) => {
+    const t = s.triggers?.[0];
+    const a = s.actions?.[0];
+    const tLabel = t?.type || t?.detail || "…";
+    const aLabel = a?.type || a?.detail || "…";
+    return `${tLabel} → ${aLabel}`;
+  };
+
   return (
-    <div style={{ border:`1px solid ${color}20`, borderLeft:`3px solid ${color}80`, borderRadius:9, padding:"14px 16px", marginBottom:10, background:theme.surface }}>
+    <div style={{ position:"relative", border:`1px solid ${color}20`, borderLeft:`3px solid ${color}80`, borderRadius:9, padding:"14px 16px", marginBottom:10, background:theme.surface }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
           <span style={{ fontSize:11, fontWeight:700, color, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>Automation {autoIdx+1}</span>
           {auto.pipelinePhase && <span style={{ fontSize:10, fontWeight:700, color, background:color+"12", border:`1px solid ${color}30`, borderRadius:6, padding:"2px 8px", fontFamily:F }}>{auto.pipelinePhase}</span>}
+          {hasSuggestions && (
+            <button type="button" onClick={() => setShowSuggestions(s => !s)}
+              style={{ fontSize:11, fontWeight:600, color: showSuggestions ? "#fff" : color, background: showSuggestions ? color : `${color}12`, border:`1px solid ${color}40`, borderRadius:6, padding:"2px 9px", cursor:"pointer", fontFamily:F, display:"flex", alignItems:"center", gap:4 }}>
+              ✨ {showSuggestions ? "Close" : "Flow suggestion"}
+            </button>
+          )}
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:6 }}>
           <button type="button" onClick={onMoveUp} disabled={isFirst} style={{ fontSize:13, color:isFirst?theme.borderInput:theme.textMuted, background:"none", border:"none", cursor:isFirst?"default":"pointer", padding:"2px 4px", lineHeight:1 }} title="Move up">▲</button>
@@ -696,6 +719,71 @@ function AutomationCard({ auto, autoIdx, onChange, onRemove, canRemove, onMoveUp
           {canRemove && <button type="button" onClick={onRemove} style={{ fontSize:12, color:"#EF4444", background:"none", border:"none", cursor:"pointer", fontFamily:F, marginLeft:4 }}>Remove</button>}
         </div>
       </div>
+
+      {/* Suggestion popover — floats to the right of the card */}
+      {showSuggestions && (
+        <div style={{ position:"absolute", left:"calc(100% + 12px)", top:0, width:280, zIndex:50, border:`1px solid ${color}25`, borderRadius:8, overflow:"hidden", background:theme.surface, boxShadow:"0 4px 20px rgba(0,0,0,0.14)" }}>
+          {/* Header */}
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"7px 10px", background:`${color}08`, borderBottom:`1px solid ${color}20` }}>
+            <p style={{ margin:0, fontSize:10, fontWeight:700, color, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>Flow suggestions</p>
+            <button type="button" onClick={() => { setShowSuggestions(false); setSuggestionQuery(""); }} style={{ fontSize:16, lineHeight:1, color, background:"none", border:"none", cursor:"pointer", padding:0 }}>×</button>
+          </div>
+          {/* Search */}
+          <div style={{ padding:"7px 10px", borderBottom:`1px solid ${color}15` }}>
+            <input
+              type="text"
+              value={suggestionQuery}
+              onChange={e => setSuggestionQuery(e.target.value)}
+              placeholder="Search suggestions…"
+              autoFocus
+              style={{ width:"100%", boxSizing:"border-box", fontSize:12, fontFamily:F, color:theme.text, background:theme.bg, border:`1px solid ${theme.borderInput}`, borderRadius:6, padding:"5px 9px", outline:"none" }}
+            />
+          </div>
+          {/* Grouped scrollable list — ~5 items visible */}
+          {(() => {
+            const q = suggestionQuery.toLowerCase();
+            const filtered = suggestedAutomations.filter(s => {
+              if (!q) return true;
+              const searchable = [
+                ...(s.triggers||[]).map(t => `${t.type} ${t.detail}`),
+                ...(s.actions||[]).map(a => `${a.type} ${a.detail}`),
+              ].join(" ").toLowerCase();
+              return searchable.includes(q);
+            });
+            const groups = {};
+            filtered.forEach(s => {
+              const key = s.triggers?.[0]?.type || s.triggers?.[0]?.detail || "Other";
+              if (!groups[key]) groups[key] = [];
+              groups[key].push(s);
+            });
+            const groupKeys = Object.keys(groups);
+            if (groupKeys.length === 0) {
+              return <p style={{ margin:0, padding:"12px 10px", fontSize:12, color:theme.textFaint, fontFamily:F, textAlign:"center" }}>No matches</p>;
+            }
+            return (
+              <div style={{ maxHeight:185, overflowY:"auto" }}>
+                {groupKeys.map(key => (
+                  <div key={key}>
+                    <div style={{ padding:"5px 10px 3px", fontSize:10, fontWeight:700, color, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em", background:`${color}06`, borderBottom:`1px solid ${color}12`, position:"sticky", top:0 }}>
+                      {key}
+                    </div>
+                    {groups[key].map((s, i) => (
+                      <button key={i} type="button" onClick={() => applySuggestion(s)}
+                        style={{ width:"100%", display:"block", textAlign:"left", padding:"7px 10px", fontSize:12, fontFamily:F, color:theme.textSec, background:"none", border:"none", borderBottom:`1px solid ${theme.border}`, cursor:"pointer", lineHeight:1.4 }}
+                        onMouseEnter={e => e.currentTarget.style.background = `${color}08`}
+                        onMouseLeave={e => e.currentTarget.style.background = "none"}
+                      >
+                        {suggestionLabel(s)}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
       {/* Pipeline phase */}
       {validPhases.length > 0 && (
         <div style={{ marginBottom:12 }}>
@@ -781,7 +869,7 @@ function AutomationCard({ auto, autoIdx, onChange, onRemove, canRemove, onMoveUp
   );
 }
 
-function WorkflowListCard({ list, listIdx, onChange, onRemove, canRemove, color, pipelinePhases }) {
+function WorkflowListCard({ list, listIdx, onChange, onRemove, canRemove, color, pipelinePhases, suggestedAutomations }) {
   const upd = (k,v) => onChange({ ...list, [k]: v });
   const autos = list.automations||[];
   const updAuto = (i,v) => upd("automations", autos.map((a,idx)=>idx===i?v:a));
@@ -805,7 +893,7 @@ function WorkflowListCard({ list, listIdx, onChange, onRemove, canRemove, color,
       <Field label="Custom fields"><TI rows={3} value={list.customFields} onChange={v=>upd("customFields",v)} placeholder={"Client Name — Text\nDue Date — Date\nPriority — Dropdown (High / Med / Low)"}/></Field>
       <HR label={`automations (${autos.length})`}/>
       {autos.map((auto,ai)=>(
-        <AutomationCard key={ai} auto={auto} autoIdx={ai} onChange={v=>updAuto(ai,v)} onRemove={()=>remAuto(ai)} canRemove={autos.length>0} onMoveUp={()=>moveAuto(ai,-1)} onMoveDown={()=>moveAuto(ai,1)} isFirst={ai===0} isLast={ai===autos.length-1} color={color} pipelinePhases={pipelinePhases}/>
+        <AutomationCard key={ai} auto={auto} autoIdx={ai} onChange={v=>updAuto(ai,v)} onRemove={()=>remAuto(ai)} canRemove={autos.length>0} onMoveUp={()=>moveAuto(ai,-1)} onMoveDown={()=>moveAuto(ai,1)} isFirst={ai===0} isLast={ai===autos.length-1} color={color} pipelinePhases={pipelinePhases} suggestedAutomations={suggestedAutomations}/>
       ))}
       <button type="button" onClick={addAuto} style={{ width:"100%", padding:"8px 0", background:"transparent", border:`1.5px dashed ${color}50`, borderRadius:9, color, fontSize:12, fontWeight:600, fontFamily:F, cursor:"pointer", marginTop:4 }}>
         + Add automation
@@ -814,7 +902,7 @@ function WorkflowListCard({ list, listIdx, onChange, onRemove, canRemove, color,
   );
 }
 
-function WorkflowBuildCard({ wf, wfIdx, onChange, onRemove, w }) {
+function WorkflowBuildCard({ wf, wfIdx, onChange, onRemove, w, suggestedAutomations }) {
   const { theme } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
   const color = "#0284C7";
@@ -854,7 +942,7 @@ function WorkflowBuildCard({ wf, wfIdx, onChange, onRemove, w }) {
           </div>
           <HR label={`lists (${wf.lists.length})`}/>
           {wf.lists.map((l,i)=>(
-            <WorkflowListCard key={i} list={l} listIdx={i} onChange={v=>updList(i,v)} onRemove={()=>remList(i)} canRemove={wf.lists.length>1} color={color} pipelinePhases={wf.pipeline||[]}/>
+            <WorkflowListCard key={i} list={l} listIdx={i} onChange={v=>updList(i,v)} onRemove={()=>remList(i)} canRemove={wf.lists.length>1} color={color} pipelinePhases={wf.pipeline||[]} suggestedAutomations={suggestedAutomations}/>
           ))}
           <button type="button" onClick={addList} style={{ width:"100%", padding:"9px 0", background:"transparent", border:`1.5px dashed ${color}50`, borderRadius:9, color, fontSize:12, fontWeight:600, fontFamily:F, cursor:"pointer", marginTop:4 }}>
             + Add list to this workflow
@@ -865,7 +953,7 @@ function WorkflowBuildCard({ wf, wfIdx, onChange, onRemove, w }) {
   );
 }
 
-function StepBuild({ data, set, w }) {
+function StepBuild({ data, set, w, suggestedAutomations }) {
   const { theme } = useTheme();
   const workflows = data.workflows || [];
   const addWf = () => set({ ...data, workflows: [...workflows, emptyWorkflow()] });
@@ -882,7 +970,7 @@ function StepBuild({ data, set, w }) {
       ) : (
         <>
           {workflows.map((wf,i)=>(
-            <WorkflowBuildCard key={i} wf={wf} wfIdx={i} onChange={v=>updWf(i,v)} onRemove={()=>remWf(i)} w={w}/>
+            <WorkflowBuildCard key={i} wf={wf} wfIdx={i} onChange={v=>updWf(i,v)} onRemove={()=>remWf(i)} w={w} suggestedAutomations={suggestedAutomations}/>
           ))}
           <button type="button" onClick={addWf} style={{ width:"100%", padding:"11px 0", background:"transparent", border:"1.5px dashed #BFDBFE", borderRadius:10, color:"#0284C7", fontSize:13, fontWeight:600, fontFamily:F, cursor:"pointer", marginBottom:14 }}>
             + Add another workflow
@@ -1017,7 +1105,7 @@ function MobileStepDrawer({ step, setStep, cs, open, onClose }) {
 }
 
 // ── Main CaseFileForm ─────────────────────────────────────────────────────────
-export default function CaseFileForm({ onSubmit, isSaving, initialData, initialName, initialEnteredBy, isEditing, onCancel, hideRawPrompt }) {
+export default function CaseFileForm({ onSubmit, isSaving, initialData, initialName, initialEnteredBy, isEditing, onCancel, hideRawPrompt, suggestedAutomations }) {
   const [step, setStep] = useState(0);
   const [data, setData] = useState(initialData || DEFAULT_STATE);
   const [enteredBy, setEnteredBy] = useState(initialEnteredBy || "");
@@ -1096,24 +1184,30 @@ export default function CaseFileForm({ onSubmit, isSaving, initialData, initialN
       <MobileStepDrawer step={step} setStep={setStep} cs={cs} open={drawerOpen} onClose={()=>setDrawerOpen(false)}/>
 
       {/* ── Content ─────────────────────────────────────────────────────── */}
-      <div style={{ maxWidth:820, margin:"0 auto", padding:`24px ${px}px 140px` }}>
+      {(() => {
+        return (
+          <div style={{ maxWidth:820, margin:"0 auto", padding:`24px ${px}px 140px` }}>
 
-        {/* Mobile: logged by */}
-        {isMobile && (
-          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:20, background:theme.surface, border:`1px solid ${theme.border}`, borderRadius:12, padding:"10px 14px" }}>
-            <span style={{ fontSize:12, color:theme.textFaint, fontFamily:F, fontWeight:500, flexShrink:0 }}>Logged by</span>
-            <input value={enteredBy} onChange={e=>setEnteredBy(e.target.value)} placeholder="Your name"
-              style={{ flex:1, fontFamily:F, fontSize:14, color:theme.textSec, background:"transparent", border:"none", outline:"none" }}/>
+            {/* Mobile: logged by */}
+            {isMobile && (
+              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:20, background:theme.surface, border:`1px solid ${theme.border}`, borderRadius:12, padding:"10px 14px" }}>
+                <span style={{ fontSize:12, color:theme.textFaint, fontFamily:F, fontWeight:500, flexShrink:0 }}>Logged by</span>
+                <input value={enteredBy} onChange={e=>setEnteredBy(e.target.value)} placeholder="Your name"
+                  style={{ flex:1, fontFamily:F, fontSize:14, color:theme.textSec, background:"transparent", border:"none", outline:"none" }}/>
+              </div>
+            )}
+
+            <>
+              {step===0 && <StepAudit   data={data.audit}     set={v=>setSD("audit",v)}     w={w} caseName={caseName} setCaseName={setCaseName}/>}
+              {step===1 && <StepIntake  data={data.intake}    set={v=>setSD("intake",v)}    w={w} hideRawPrompt={hideRawPrompt}/>}
+              {step===2 && <StepBuild   data={data.build}     set={v=>setSD("build",v)}     w={w} suggestedAutomations={suggestedAutomations}/>}
+              {step===3 && <StepDelta   data={data.delta}     set={v=>setSD("delta",v)}     w={w}/>}
+              {step===4 && <StepReasoning data={data.reasoning} set={v=>setSD("reasoning",v)} w={w}/>}
+              {step===5 && <StepOutcome data={data.outcome}   set={v=>setSD("outcome",v)}   w={w}/>}
+            </>
           </div>
-        )}
-
-        {step===0 && <StepAudit   data={data.audit}     set={v=>setSD("audit",v)}     w={w} caseName={caseName} setCaseName={setCaseName}/>}
-        {step===1 && <StepIntake  data={data.intake}    set={v=>setSD("intake",v)}    w={w} hideRawPrompt={hideRawPrompt}/>}
-        {step===2 && <StepBuild   data={data.build}     set={v=>setSD("build",v)}     w={w}/>}
-        {step===3 && <StepDelta   data={data.delta}     set={v=>setSD("delta",v)}     w={w}/>}
-        {step===4 && <StepReasoning data={data.reasoning} set={v=>setSD("reasoning",v)} w={w}/>}
-        {step===5 && <StepOutcome data={data.outcome}   set={v=>setSD("outcome",v)}   w={w}/>}
-      </div>
+        );
+      })()}
 
       {/* ── Sticky footer ────────────────────────────────────────────────── */}
       <div style={{ position:"fixed", bottom:0, left:0, right:0, background:theme.surface, borderTop:`1px solid ${theme.border}`, padding:`12px ${isMobile?16:24}px`, boxShadow:"0 -4px 16px rgba(0,0,0,0.06)", zIndex:20 }}>

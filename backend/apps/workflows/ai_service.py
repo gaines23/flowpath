@@ -395,6 +395,7 @@ class FlowpathAIService:
         brief = GeneratedBrief.objects.create(
             raw_prompt=raw_prompt,
             parsed_scenario={
+                "client_name": scenario.client_name,
                 "industry": scenario.industry,
                 "team_size": scenario.team_size,
                 "workflow_type": scenario.workflow_type,
