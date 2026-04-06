@@ -10,6 +10,7 @@
  */
 import { useState, useEffect, useRef } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { useParsePrompt } from "../hooks/useWorkflows";
 
 // ── All data constants (same as workflow-intake.jsx) ──────────────────────────
 const INDUSTRY_MAP = {
@@ -156,7 +157,7 @@ const STEP_DESC = [
 ];
 
 const DEFAULT_STATE = {
-  audit:         {hasExisting:null,overallAssessment:"",triedToFix:null,previousFixes:"",builds:[],patternSummary:""},
+  audit:         {hasExisting:null,overallAssessment:"",builds:[],patternSummary:""},
   intake:        {rawPrompt:"",industries:[],teamSize:"",workflowType:"",processFrameworks:[],tools:[],painPoints:[],priorAttempts:""},
   build:         {buildNotes:"",workflows:[]},
   delta:         {userIntent:"",successCriteria:"",actualBuild:"",diverged:null,divergenceReason:"",compromises:"",scopeCreep:[],roadblocks:[]},
@@ -179,20 +180,28 @@ function useWidth() {
   return w;
 }
 
-function Lbl({ children, hint }) {
+function AiBadge() {
+  return (
+    <span style={{ fontSize:10, fontWeight:700, fontFamily:F, color:"#7C3AED", background:"#7C3AED18", border:"1px solid #7C3AED30", borderRadius:6, padding:"2px 6px", marginLeft:6, letterSpacing:"0.04em", verticalAlign:"middle" }}>
+      AI
+    </span>
+  );
+}
+
+function Lbl({ children, hint, aiBadge }) {
   const { theme } = useTheme();
   return (
     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:6 }}>
-      <span style={{ fontSize:13, fontWeight:600, color:theme.text, fontFamily:F }}>{children}</span>
+      <span style={{ fontSize:13, fontWeight:600, color:theme.text, fontFamily:F }}>{children}{aiBadge && <AiBadge/>}</span>
       {hint && <span style={{ fontSize:11, color:theme.textFaint, fontFamily:F }}>{hint}</span>}
     </div>
   );
 }
 
-function Field({ label, hint, children, style }) {
+function Field({ label, hint, children, style, aiBadge }) {
   return (
     <div style={{ marginBottom:16, ...style }}>
-      {label && <Lbl hint={hint}>{label}</Lbl>}
+      {label && <Lbl hint={hint} aiBadge={aiBadge}>{label}</Lbl>}
       {children}
     </div>
   );
@@ -536,8 +545,8 @@ function RBCard({ rb, index, onChange, onRemove, w }) {
   );
 }
 
-function BuildCard({ item, index, onChange, onRemove, w }) {
-  const [open, setOpen] = useState(true);
+function BuildCard({ item, index, onChange, onRemove, w, defaultOpen = true }) {
+  const [open, setOpen] = useState(defaultOpen);
   const { theme } = useTheme();
   const UC={Low:"#10B981",Medium:"#F59E0B",High:"#F97316",Critical:"#EF4444"};
   return (
@@ -659,13 +668,29 @@ function AuditProjectUpdateCard({ item, onChange, onRemove }) {
   );
 }
 
-function StepAudit({ data, set, w, caseName, setCaseName, projectUpdates, onProjectUpdatesChange, scopeCreep, onScopeCreepChange }) {
+function StepAudit({ data, set, caseName, setCaseName, projectUpdates, onProjectUpdatesChange, scopeCreep, onScopeCreepChange, intakeData, setIntake, hideRawPrompt, onAiParse, isParsing, parseError }) {
   const { theme } = useTheme();
-  const add=()=>set({...data,builds:[...data.builds,emptyBuild()]});
-  const upd=(i,v)=>set({...data,builds:data.builds.map((b,idx)=>idx===i?v:b)});
-  const rem=(i)=>set({...data,builds:data.builds.filter((_,idx)=>idx!==i)});
   const pu = projectUpdates || [];
   const sc = scopeCreep || [];
+
+  // Guided conversation state (lives here so it persists while on this step)
+  const [guidedMode, setGuidedMode] = useState(!(intakeData?.rawPrompt));
+  const [g1, setG1] = useState("");
+  const [g2, setG2] = useState("");
+  const [g3, setG3] = useState("");
+
+  const updateGuided = (field, value) => {
+    const next = { g1, g2, g3, [field]: value };
+    if (field === "g1") setG1(value);
+    if (field === "g2") setG2(value);
+    if (field === "g3") setG3(value);
+    setIntake({ ...intakeData, rawPrompt: assembleGuidedPrompt(next.g1, next.g2, next.g3) });
+  };
+
+  const switchToGuided = () => { setG1(""); setG2(""); setG3(""); setIntake({ ...intakeData, rawPrompt:"" }); setGuidedMode(true); };
+  const switchToRaw = () => setGuidedMode(false);
+  const canParse = !hideRawPrompt && (intakeData?.rawPrompt||"").trim().length > 20 && !!onAiParse;
+
   return (
     <div>
       <Banner emoji="🔍" title="Before we recommend anything, let's understand what already exists." body="Documenting the current state — and exactly why it's failing — is the most important input for an accurate recommendation." color="#EA580C"/>
@@ -673,6 +698,67 @@ function StepAudit({ data, set, w, caseName, setCaseName, projectUpdates, onProj
         <CardTitle sub="Give this project file a short, memorable name">Project name</CardTitle>
         <TI value={caseName} onChange={setCaseName} placeholder="e.g. Company/Client Name"/>
       </Card>
+
+      {/* Guided client conversation — moved here from Scenario step */}
+      {!hideRawPrompt && (
+        <Card accent="#7C3AED">
+          {guidedMode ? (<>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:18 }}>
+              <div>
+                <p style={{ margin:0, fontSize:15, fontWeight:700, color:theme.text, fontFamily:F }}>Tell me about the client</p>
+                <p style={{ margin:"3px 0 0", fontSize:12, color:theme.textFaint, fontFamily:F }}>Answer 3 quick questions — AI will fill the rest</p>
+              </div>
+              <button type="button" onClick={switchToRaw}
+                style={{ fontSize:11, color:theme.textFaint, background:"none", border:`1px solid ${theme.borderInput}`, borderRadius:6, padding:"4px 9px", cursor:"pointer", fontFamily:F, whiteSpace:"nowrap", flexShrink:0 }}>
+                Paste raw text
+              </button>
+            </div>
+            {GUIDED_QUESTIONS.map(({ key, q, placeholder }, idx) => {
+              const val = { g1, g2, g3 }[key];
+              return (
+                <div key={key} style={{ marginBottom:16 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+                    <span style={{ width:22, height:22, borderRadius:"50%", background:"#7C3AED18", border:"1.5px solid #7C3AED40", display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, color:"#7C3AED", fontFamily:F, flexShrink:0 }}>{idx+1}</span>
+                    <span style={{ fontSize:13, fontWeight:600, color:theme.text, fontFamily:F }}>{q}</span>
+                  </div>
+                  <TI value={val} onChange={v=>updateGuided(key, v)} placeholder={placeholder} rows={idx===1?2:1}/>
+                </div>
+              );
+            })}
+            <HR/>
+            <div style={{ marginBottom:6 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
+                <span style={{ fontSize:13, fontWeight:600, color:theme.text, fontFamily:F }}>Describe the current setup end-to-end</span>
+                <AiBadge/>
+              </div>
+              <p style={{ margin:"0 0 8px", fontSize:11, color:theme.textFaint, fontFamily:F, lineHeight:1.5 }}>This is stored as the AI's permanent reference for this case. The more specific you are, the better future recommendations get when similar scenarios come in.</p>
+              <TI rows={3} value={data.overallAssessment} onChange={v=>set({...data,overallAssessment:v})} placeholder="e.g. They built a ClickUp workspace 18 months ago with 3 spaces and 47 custom fields — never properly adopted. Team of 8 defaulted back to spreadsheets. Tried rebuilding twice but same pattern repeated."/>
+            </div>
+          </>) : (<>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
+              <div>
+                <p style={{ margin:0, fontSize:15, fontWeight:700, color:theme.text, fontFamily:F }}>Raw scenario prompt</p>
+                <p style={{ margin:"3px 0 0", fontSize:12, color:theme.textFaint, fontFamily:F }}>Paste exactly as the client described it — don't clean it up</p>
+              </div>
+              <button type="button" onClick={switchToGuided}
+                style={{ fontSize:11, color:"#7C3AED", background:"#7C3AED10", border:"1px solid #7C3AED30", borderRadius:6, padding:"4px 9px", cursor:"pointer", fontFamily:F, whiteSpace:"nowrap", flexShrink:0 }}>
+                Use guided form
+              </button>
+            </div>
+            <TI rows={4} value={intakeData?.rawPrompt||""} onChange={v=>setIntake({...intakeData,rawPrompt:v})} placeholder="e.g. We're a 6-person marketing agency managing 12 clients. We use Slack and HubSpot but nothing talks to each other…"/>
+          </>)}
+          {canParse && (
+            <div style={{ marginTop:12, display:"flex", alignItems:"center", gap:10 }}>
+              <button type="button" onClick={onAiParse} disabled={isParsing}
+                style={{ padding:"9px 16px", borderRadius:8, fontSize:13, fontWeight:700, fontFamily:F, cursor:isParsing?"not-allowed":"pointer", background:"#7C3AED", color:"#fff", border:"none", opacity:isParsing?0.7:1, transition:"opacity 0.15s" }}>
+                {isParsing ? "Parsing…" : "✦ Let AI parse this"}
+              </button>
+              <span style={{ fontSize:12, color:theme.textFaint, fontFamily:F }}>Auto-fills industry, tools, and pain points</span>
+            </div>
+          )}
+          {parseError && <p style={{ margin:"8px 0 0", fontSize:12, color:"#DC2626", fontFamily:F }}>{parseError}</p>}
+        </Card>
+      )}
 
       {/* Project Updates — edit only */}
       {onProjectUpdatesChange && (
@@ -721,75 +807,66 @@ function StepAudit({ data, set, w, caseName, setCaseName, projectUpdates, onProj
           }
         </Card>
       )}
-      <Card>
-        <CardTitle>Does this client have an existing setup?</CardTitle>
-        <TogGroup options={["Yes, they have something","No — starting from scratch"]} value={data.hasExisting} onChange={v=>set({...data,hasExisting:v})} color={BLUE}/>
-      </Card>
-      {data.hasExisting==="No — starting from scratch" && (
-        <div style={{ padding:24, textAlign:"center", background:"#ECFDF5", border:"1px solid #6EE7B7", borderRadius:12 }}>
-          <span style={{ fontSize:28 }}>🌱</span>
-          <p style={{ margin:"8px 0 0", fontSize:14, color:"#065F46", fontFamily:F, fontWeight:600 }}>Greenfield build — proceed to Scenario.</p>
-        </div>
-      )}
-      {data.hasExisting==="Yes, they have something" && (<>
-        <Card>
-          <CardTitle sub="High-level summary before diving into specifics">Overall assessment</CardTitle>
-          <TI rows={3} value={data.overallAssessment} onChange={v=>set({...data,overallAssessment:v})} placeholder="e.g. They built a ClickUp workspace 18 months ago that was never properly adopted…"/>
-        </Card>
-        <Card>
-          <CardTitle>Have they tried to fix this before?</CardTitle>
-          <Field><TogGroup options={["Yes","No"]} value={data.triedToFix} onChange={v=>set({...data,triedToFix:v})} color={BLUE}/></Field>
-          {data.triedToFix==="Yes" && <Field label="What did they try, and why didn't it stick?"><TI rows={2} value={data.previousFixes} onChange={v=>set({...data,previousFixes:v})} placeholder="What solution did they attempt?"/></Field>}
-        </Card>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12, flexWrap:"wrap", gap:10 }}>
-          <div>
-            <p style={{ margin:0, fontSize:14, fontWeight:700, color:theme.text, fontFamily:F }}>Builds to audit <span style={{ color:theme.textFaint, fontWeight:400 }}>({data.builds.length})</span></p>
-            <p style={{ margin:"2px 0 0", fontSize:12, color:theme.textFaint, fontFamily:F }}>One entry per broken tool or workflow area</p>
-          </div>
-          <button onClick={add} style={{ padding:"11px 18px", background:theme.surface, border:"1.5px solid #EA580C", borderRadius:10, color:"#EA580C", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:F, minHeight:44 }}>+ Add Build</button>
-        </div>
-        {data.builds.length===0 && <div style={{ padding:32, textAlign:"center", border:`2px dashed ${theme.borderInput}`, borderRadius:12 }}><p style={{ margin:0, fontSize:13, color:theme.textFaint, fontFamily:F }}>Click "Add Build" to document what's broken.</p></div>}
-        {data.builds.map((b,i)=><BuildCard key={i} item={b} index={i} onChange={v=>upd(i,v)} onRemove={()=>rem(i)} w={w}/>)}
-        {data.builds.length>0 && (
-          <Card accent="#EA580C">
-            <CardTitle sub="What does the broken state pattern reveal about what they need?">Pattern summary</CardTitle>
-            <TI rows={3} value={data.patternSummary} onChange={v=>set({...data,patternSummary:v})} placeholder="Core insight from the audit…"/>
-          </Card>
-        )}
-      </>)}
     </div>
   );
 }
 
-function StepIntake({ data, set, w, hideRawPrompt }) {
+const GUIDED_QUESTIONS = [
+  { key:"g1", q:"Who is the client and what do they do?",   placeholder:"e.g. A 6-person marketing agency managing 12 client campaigns" },
+  { key:"g2", q:"What's breaking down right now?",          placeholder:"e.g. Nothing talks to each other — Slack, HubSpot, and spreadsheets are all siloed" },
+  { key:"g3", q:"What would success look like for them?",   placeholder:"e.g. One place to see all client status, automations that update without manual entry" },
+];
+
+function assembleGuidedPrompt(g1, g2, g3) {
+  const parts = [];
+  if (g1.trim()) parts.push(g1.trim());
+  if (g2.trim()) parts.push(`Current issue: ${g2.trim()}`);
+  if (g3.trim()) parts.push(`Success looks like: ${g3.trim()}`);
+  return parts.join("\n\n");
+}
+
+function StepIntake({ data, set, w, hideRawPrompt, aiSuggestedFields = new Set(), auditData, setAudit }) {
+  const ai = (field) => aiSuggestedFields.has(field);
+  const hasAiFields = aiSuggestedFields.size > 0;
+
   return (
     <div>
-      {!hideRawPrompt && (
-        <Card accent="#7C3AED">
-          <CardTitle sub="Paste exactly as the user described — don't clean it up">Raw scenario prompt</CardTitle>
-          <TI rows={4} value={data.rawPrompt} onChange={v=>set({...data,rawPrompt:v})} placeholder="e.g. We're a 6-person marketing agency managing 12 clients. We use Slack and HubSpot but nothing talks to each other…"/>
-        </Card>
+      {hasAiFields && (
+        <Banner emoji="✦" title="AI pre-filled these fields" body="Review each suggestion below — correct anything that looks off before saving." color="#7C3AED"/>
       )}
+      {/* Existing setup question — moved here from Current State step */}
+      {!hideRawPrompt && (<>
+        <Card>
+          <CardTitle>Does this client have an existing setup?</CardTitle>
+          <TogGroup options={["Yes, they have something","No — starting from scratch"]} value={auditData?.hasExisting} onChange={v=>setAudit({...auditData,hasExisting:v})} color={BLUE}/>
+        </Card>
+        {auditData?.hasExisting==="No — starting from scratch" && (
+          <div style={{ padding:24, textAlign:"center", background:"#ECFDF5", border:"1px solid #6EE7B7", borderRadius:12, marginBottom:14 }}>
+            <span style={{ fontSize:28 }}>🌱</span>
+            <p style={{ margin:"8px 0 0", fontSize:14, color:"#065F46", fontFamily:F, fontWeight:600 }}>Greenfield build — fill in the scenario details below.</p>
+          </div>
+        )}
+      </>)}
       <Card>
         <CardTitle>Team basics</CardTitle>
         <Grid2 w={w}>
-          <Field label="Team size"><TI value={data.teamSize} onChange={v=>set({...data,teamSize:v})} placeholder="e.g. 6"/></Field>
-          <Field label="Primary workflow type"><SelDesc value={data.workflowType} onChange={v=>set({...data,workflowType:v})} options={WORKFLOW_TYPES}/></Field>
+          <Field label="Team size" aiBadge={ai("teamSize")}><TI value={data.teamSize} onChange={v=>set({...data,teamSize:v})} placeholder="e.g. 6"/></Field>
+          <Field label="Primary workflow type" aiBadge={ai("workflowType")}><SelDesc value={data.workflowType} onChange={v=>set({...data,workflowType:v})} options={WORKFLOW_TYPES}/></Field>
         </Grid2>
       </Card>
       <Card>
-        <CardTitle sub="Expand a category — multiple allowed">Industry</CardTitle>
+        <CardTitle sub="Expand a category — multiple allowed">Industry{ai("industries") && <AiBadge/>}</CardTitle>
         <IndustryPicker selected={data.industries} onChange={v=>set({...data,industries:v})}/>
       </Card>
       <Card>
-        <CardTitle sub="Select every framework they reference or need support with">Process frameworks</CardTitle>
+        <CardTitle sub="Select every framework they reference or need support with">Process frameworks{ai("processFrameworks") && <AiBadge/>}</CardTitle>
         <FrameworkPicker selected={data.processFrameworks} onChange={v=>set({...data,processFrameworks:v})}/>
       </Card>
       <Card>
         <CardTitle>Tools & pain points</CardTitle>
-        <Field label="Tools currently in use" hint="select all"><ChipGroup options={TOOLS} selected={data.tools} onChange={v=>set({...data,tools:v})} color={BLUE}/></Field>
+        <Field label="Tools currently in use" hint="select all" aiBadge={ai("tools")}><ChipGroup options={TOOLS} selected={data.tools} onChange={v=>set({...data,tools:v})} color={BLUE}/></Field>
         <HR label="pain points"/>
-        <Field label="Core pain points"><ChipGroup options={PAIN_POINTS} selected={data.painPoints} onChange={v=>set({...data,painPoints:v})} color="#7C3AED"/></Field>
+        <Field label="Core pain points" aiBadge={ai("painPoints")}><ChipGroup options={PAIN_POINTS} selected={data.painPoints} onChange={v=>set({...data,painPoints:v})} color="#7C3AED"/></Field>
         <HR/>
         <Field label="What have they already tried that didn't work?" hint="optional"><TI rows={2} value={data.priorAttempts} onChange={v=>set({...data,priorAttempts:v})} placeholder="Previous tools, failed automations…"/></Field>
       </Card>
@@ -1082,30 +1159,72 @@ function WorkflowBuildCard({ wf, wfIdx, onChange, onRemove, w, suggestedAutomati
   );
 }
 
-function StepBuild({ data, set, w, suggestedAutomations }) {
+function StepBuild({ data, set, w, suggestedAutomations, auditData, setAudit, isEditing }) {
   const { theme } = useTheme();
   const workflows = data.workflows || [];
   const addWf = () => set({ ...data, workflows: [...workflows, emptyWorkflow()] });
   const updWf = (i,v) => set({ ...data, workflows: workflows.map((wf,idx)=>idx===i?v:wf) });
   const remWf = i => set({ ...data, workflows: workflows.filter((_,idx)=>idx!==i) });
+
+  const hasExisting = auditData?.hasExisting === "Yes, they have something";
+  const builds = auditData?.builds || [];
+  const addBuild = () => setAudit({ ...auditData, builds: [...builds, emptyBuild()] });
+  const updBuild = (i,v) => setAudit({ ...auditData, builds: builds.map((b,idx)=>idx===i?v:b) });
+  const remBuild = i => setAudit({ ...auditData, builds: builds.filter((_,idx)=>idx!==i) });
+
   return (
     <div>
-      <Banner emoji="🏗️" title="Map each workflow build in detail." body="Add one workflow per distinct space or flow. Each workflow has its own lists — and each list has its own statuses, custom fields, and automations." color="#0284C7"/>
+      <Banner emoji="🏗️" title="Document what's broken, then map what you're building." body="Log the existing setups being replaced first, then add each new workflow space by space." color="#0284C7"/>
+
+      {/* ── Does this client have an existing setup? ───────────────────────── */}
+      <Card>
+        <CardTitle>Does this client have an existing setup?</CardTitle>
+        <TogGroup options={["Yes, they have something","No — starting from scratch"]} value={auditData?.hasExisting} onChange={v=>setAudit({...auditData,hasExisting:v})} color={BLUE}/>
+      </Card>
+      {auditData?.hasExisting==="No — starting from scratch" && (
+        <div style={{ padding:24, textAlign:"center", background:"#ECFDF5", border:"1px solid #6EE7B7", borderRadius:12, marginBottom:14 }}>
+          <span style={{ fontSize:28 }}>🌱</span>
+          <p style={{ margin:"8px 0 0", fontSize:14, color:"#065F46", fontFamily:F, fontWeight:600 }}>Greenfield build — skip to the new workflow section below.</p>
+        </div>
+      )}
+
+      {/* ── Audit builds (existing broken setups) ──────────────────────────── */}
+      {hasExisting && (<>
+        <HR label="existing builds — what's broken"/>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12, flexWrap:"wrap", gap:10 }}>
+          <div>
+            <p style={{ margin:0, fontSize:14, fontWeight:700, color:theme.text, fontFamily:F }}>Builds to audit <span style={{ color:theme.textFaint, fontWeight:400 }}>({builds.length})</span></p>
+            <p style={{ margin:"2px 0 0", fontSize:12, color:theme.textFaint, fontFamily:F }}>One entry per broken tool or workflow area</p>
+          </div>
+          <button onClick={addBuild} style={{ padding:"11px 18px", background:theme.surface, border:"1.5px solid #EA580C", borderRadius:10, color:"#EA580C", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:F, minHeight:44 }}>+ Add Build</button>
+        </div>
+        {builds.length === 0
+          ? <div style={{ padding:32, textAlign:"center", border:`2px dashed ${theme.borderInput}`, borderRadius:12, marginBottom:14 }}><p style={{ margin:0, fontSize:13, color:theme.textFaint, fontFamily:F }}>Click "Add Build" to document what's broken.</p></div>
+          : builds.map((b,i) => <BuildCard key={i} item={b} index={i} onChange={v=>updBuild(i,v)} onRemove={()=>remBuild(i)} w={w} defaultOpen={!isEditing}/>)
+        }
+        {builds.length > 0 && (
+          <Card accent="#EA580C">
+            <CardTitle sub="What does the broken state pattern reveal about what they need?">Pattern summary</CardTitle>
+            <TI rows={3} value={auditData.patternSummary} onChange={v=>setAudit({...auditData,patternSummary:v})} placeholder="Core insight from the audit…"/>
+          </Card>
+        )}
+      </>)}
+
+      {/* ── New build workflows ─────────────────────────────────────────────── */}
+      <HR label="new build"/>
       {workflows.length === 0 ? (
         <div style={{ padding:"40px 24px", textAlign:"center", background:theme.surface, border:"1.5px dashed #BFDBFE", borderRadius:14, marginBottom:14 }}>
           <p style={{ margin:"0 0 16px", fontSize:14, color:theme.textMuted, fontFamily:F }}>No workflows yet. Add one to start mapping the build.</p>
           <button type="button" onClick={addWf} style={{ padding:"10px 24px", background:"#0284C7", border:"none", borderRadius:10, color:"#fff", fontSize:13, fontWeight:700, fontFamily:F, cursor:"pointer" }}>+ Add first workflow</button>
         </div>
-      ) : (
-        <>
-          {workflows.map((wf,i)=>(
-            <WorkflowBuildCard key={i} wf={wf} wfIdx={i} onChange={v=>updWf(i,v)} onRemove={()=>remWf(i)} w={w} suggestedAutomations={suggestedAutomations}/>
-          ))}
-          <button type="button" onClick={addWf} style={{ width:"100%", padding:"11px 0", background:"transparent", border:"1.5px dashed #BFDBFE", borderRadius:10, color:"#0284C7", fontSize:13, fontWeight:600, fontFamily:F, cursor:"pointer", marginBottom:14 }}>
-            + Add another workflow
-          </button>
-        </>
-      )}
+      ) : (<>
+        {workflows.map((wf,i) => (
+          <WorkflowBuildCard key={i} wf={wf} wfIdx={i} onChange={v=>updWf(i,v)} onRemove={()=>remWf(i)} w={w} suggestedAutomations={suggestedAutomations}/>
+        ))}
+        <button type="button" onClick={addWf} style={{ width:"100%", padding:"11px 0", background:"transparent", border:"1.5px dashed #BFDBFE", borderRadius:10, color:"#0284C7", fontSize:13, fontWeight:600, fontFamily:F, cursor:"pointer", marginBottom:14 }}>
+          + Add another workflow
+        </button>
+      </>)}
       <Card><CardTitle hint="optional">Overall build notes</CardTitle><TI rows={3} value={data.buildNotes} onChange={v=>set({...data,buildNotes:v})} placeholder="General notes that apply across all workflows…"/></Card>
     </div>
   );
@@ -1240,8 +1359,47 @@ export default function CaseFileForm({ onSubmit, isSaving, initialData, initialN
   const [enteredBy, setEnteredBy] = useState(initialEnteredBy || "");
   const [caseName, setCaseName] = useState(initialName || "");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [parseError, setParseError] = useState(null);
   const w = useWidth();
   const { theme } = useTheme();
+  const parsePromutMutation = useParsePrompt();
+
+  // Compute which intake fields were pre-filled by AI (brief flow only)
+  const [aiSuggestedFields, setAiSuggestedFields] = useState(() => {
+    if (hideRawPrompt && initialData?.intake) {
+      const fields = new Set();
+      const i = initialData.intake;
+      if (i.industries?.length) fields.add("industries");
+      if (i.teamSize) fields.add("teamSize");
+      if (i.workflowType) fields.add("workflowType");
+      if (i.tools?.length) fields.add("tools");
+      if (i.painPoints?.length) fields.add("painPoints");
+      if (i.processFrameworks?.length) fields.add("processFrameworks");
+      return fields;
+    }
+    return new Set();
+  });
+
+  const handleAiParse = async () => {
+    const prompt = data.intake.rawPrompt.trim();
+    if (!prompt) return;
+    setParseError(null);
+    try {
+      const parsed = await parsePromutMutation.mutateAsync(prompt);
+      const newFields = new Set();
+      const newIntake = { ...data.intake };
+      if (parsed.industry) { newIntake.industries = [parsed.industry]; newFields.add("industries"); }
+      if (parsed.team_size) { newIntake.teamSize = parsed.team_size; newFields.add("teamSize"); }
+      if (parsed.workflow_type) { newIntake.workflowType = parsed.workflow_type; newFields.add("workflowType"); }
+      if (parsed.tools?.length) { newIntake.tools = parsed.tools; newFields.add("tools"); }
+      if (parsed.pain_points?.length) { newIntake.painPoints = parsed.pain_points; newFields.add("painPoints"); }
+      if (parsed.process_frameworks?.length) { newIntake.processFrameworks = parsed.process_frameworks; newFields.add("processFrameworks"); }
+      setData(d => ({ ...d, intake: newIntake }));
+      setAiSuggestedFields(newFields);
+    } catch {
+      setParseError("Couldn't parse the prompt — check your connection and try again.");
+    }
+  };
 
   const isMobile = w < 640;
   const cs = STEPS[step];
@@ -1316,14 +1474,16 @@ export default function CaseFileForm({ onSubmit, isSaving, initialData, initialN
 
             <>
               {step===0 && <StepAudit   data={data.audit}     set={v=>setSD("audit",v)}     w={w} caseName={caseName} setCaseName={setCaseName}
+                              intakeData={data.intake} setIntake={v=>setSD("intake",v)}
+                              hideRawPrompt={hideRawPrompt} onAiParse={handleAiParse} isParsing={parsePromutMutation.isPending} parseError={parseError}
                               {...(isEditing && {
                                 projectUpdates: data.projectUpdates||[],
                                 onProjectUpdatesChange: v=>setSD("projectUpdates",v),
                                 scopeCreep: data.delta?.scopeCreep||[],
                                 onScopeCreepChange: v=>setData(d=>({...d,delta:{...d.delta,scopeCreep:v}})),
                               })}/>}
-              {step===1 && <StepIntake  data={data.intake}    set={v=>setSD("intake",v)}    w={w} hideRawPrompt={hideRawPrompt}/>}
-              {step===2 && <StepBuild   data={data.build}     set={v=>setSD("build",v)}     w={w} suggestedAutomations={suggestedAutomations}/>}
+              {step===1 && <StepIntake  data={data.intake}    set={v=>setSD("intake",v)}    w={w} hideRawPrompt={hideRawPrompt} aiSuggestedFields={aiSuggestedFields} auditData={data.audit} setAudit={v=>setSD("audit",v)}/>}
+              {step===2 && <StepBuild   data={data.build}     set={v=>setSD("build",v)}     w={w} suggestedAutomations={suggestedAutomations} auditData={data.audit} setAudit={v=>setSD("audit",v)} isEditing={isEditing}/>}
               {step===3 && <StepDelta   data={data.delta}     set={v=>setSD("delta",v)}     w={w}/>}
               {step===4 && <StepReasoning data={data.reasoning} set={v=>setSD("reasoning",v)} w={w}/>}
               {step===5 && <StepOutcome data={data.outcome}   set={v=>setSD("outcome",v)}   w={w}/>}
