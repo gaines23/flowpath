@@ -12,10 +12,10 @@ import RegisterPage from "./pages/auth/RegisterPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import DashboardPage from "./pages/dashboard/DashboardPage";
-import CaseFileListPage from "./pages/casefile/CaseFileListPage";
-import NewCaseFilePage from "./pages/casefile/NewCaseFilePage";
-import CaseFileDetailPage from "./pages/casefile/CaseFileDetailPage";
-import EditCaseFilePage from "./pages/casefile/EditCaseFilePage";
+import ProjectListPage from "./pages/project/ProjectListPage";
+import NewProjectPage from "./pages/project/NewProjectPage";
+import ProjectDetailPage from "./pages/project/ProjectDetailPage";
+import EditProjectPage from "./pages/project/EditProjectPage";
 import GeneratePage from "./pages/generate/GeneratePage";
 import SettingsPage from "./pages/settings/SettingsPage";
 import SharedBriefPage from "./pages/shared/SharedBriefPage";
@@ -53,10 +53,10 @@ export default function App() {
 
           <Route path="/dashboard" element={<Protected><DashboardPage /></Protected>} />
           <Route path="/generate" element={<Protected><GeneratePage /></Protected>} />
-          <Route path="/case-files" element={<Protected><CaseFileListPage /></Protected>} />
-          <Route path="/case-files/new" element={<Protected><NewCaseFilePage /></Protected>} />
-          <Route path="/case-files/:id" element={<Protected><CaseFileDetailPage /></Protected>} />
-          <Route path="/case-files/:id/edit" element={<Protected><EditCaseFilePage /></Protected>} />
+          <Route path="/projects" element={<Protected><ProjectListPage /></Protected>} />
+          <Route path="/projects/new" element={<Protected><NewProjectPage /></Protected>} />
+          <Route path="/projects/:id" element={<Protected><ProjectDetailPage /></Protected>} />
+          <Route path="/projects/:id/edit" element={<Protected><EditProjectPage /></Protected>} />
           <Route path="/settings" element={<Protected><SettingsPage /></Protected>} />
 
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
