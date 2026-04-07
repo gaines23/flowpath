@@ -1,5 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
 import { AuthProvider } from "./hooks/useAuth";
+import { useTheme } from "./hooks/useTheme";
+import { createMuiTheme } from "./utils/muiTheme";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
 import AppLayout from "./components/layout/AppLayout";
 
@@ -24,8 +28,20 @@ function Protected({ children }) {
   );
 }
 
+/** Reads the custom theme mode and provides a matching MUI theme to the tree. */
+function MuiThemeSync({ children }) {
+  const { mode } = useTheme();
+  return (
+    <MuiThemeProvider theme={createMuiTheme(mode)}>
+      <CssBaseline enableColorScheme />
+      {children}
+    </MuiThemeProvider>
+  );
+}
+
 export default function App() {
   return (
+    <MuiThemeSync>
     <BrowserRouter>
       <AuthProvider>
         <Routes>
@@ -56,5 +72,6 @@ export default function App() {
         </Routes>
       </AuthProvider>
     </BrowserRouter>
+    </MuiThemeSync>
   );
 }
