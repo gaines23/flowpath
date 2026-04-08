@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useCallback, useState } from "react";
 import {
   ReactFlow,
   Background,
@@ -8,6 +8,8 @@ import {
   useNodesState,
   useEdgesState,
 } from "@xyflow/react";
+import { toPng } from "html-to-image";
+import jsPDF from "jspdf";
 import "@xyflow/react/dist/style.css";
 import dagre from "dagre";
 
@@ -338,6 +340,8 @@ export function WorkflowMapPanel({ workflow, onClose, asModal = false }) {
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initEdges);
+  const panelRef = useRef(null);
+  const [exportOpen, setExportOpen] = useState(false);
 
   useEffect(() => {
     const { nodes: n, edges: e } = buildGraph(workflow);
@@ -346,8 +350,38 @@ export function WorkflowMapPanel({ workflow, onClose, asModal = false }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workflow]);
 
+  const slug = (workflow.name || "workflow").replace(/[^a-z0-9]/gi, "_").toLowerCase();
+
+  const handleExportPng = useCallback(() => {
+    if (!panelRef.current) return;
+    toPng(panelRef.current, { backgroundColor: "#ffffff", pixelRatio: 2, skipFonts: true })
+      .then(dataUrl => {
+        const a = document.createElement("a");
+        a.href = dataUrl;
+        a.download = `${slug}_map.png`;
+        a.click();
+      });
+  }, [slug]);
+
+  const handleExportPdf = useCallback(() => {
+    if (!panelRef.current) return;
+    toPng(panelRef.current, { backgroundColor: "#ffffff", pixelRatio: 2, skipFonts: true })
+      .then(dataUrl => {
+        const img = new Image();
+        img.src = dataUrl;
+        img.onload = () => {
+          const imgW = img.naturalWidth;
+          const imgH = img.naturalHeight;
+          const isLandscape = imgW > imgH;
+          const pdf = new jsPDF({ orientation: isLandscape ? "landscape" : "portrait", unit: "px", format: [imgW, imgH] });
+          pdf.addImage(dataUrl, "PNG", 0, 0, imgW, imgH);
+          pdf.save(`${slug}_map.pdf`);
+        };
+      });
+  }, [slug]);
+
   const panel = (
-    <div style={{
+    <div ref={panelRef} style={{
       display: "flex", flexDirection: "column",
       height: asModal ? "min(88vh, 620px)" : "calc(100vh - 80px)",
       width: asModal ? "min(92vw, 820px)" : undefined,
@@ -370,6 +404,48 @@ export function WorkflowMapPanel({ workflow, onClose, asModal = false }) {
         <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: "#111827", fontFamily: F }}>
           {workflow.name || "Workflow"}
         </span>
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => setExportOpen(o => !o)}
+            style={{
+              background: "none", border: "1px solid #BAE6FD", cursor: "pointer",
+              fontSize: 11, color: "#0284C7", padding: "3px 9px",
+              lineHeight: 1.4, borderRadius: 5, fontFamily: F, fontWeight: 600,
+              display: "flex", alignItems: "center", gap: 4,
+            }}
+          >
+            Export <span style={{ fontSize: 9 }}>▾</span>
+          </button>
+          {exportOpen && (
+            <>
+              <div
+                style={{ position: "fixed", inset: 0, zIndex: 10 }}
+                onClick={() => setExportOpen(false)}
+              />
+              <div style={{
+                position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 11,
+                background: "#fff", border: "1px solid #BAE6FD", borderRadius: 7,
+                boxShadow: "0 4px 16px rgba(2,132,199,0.12)", overflow: "hidden",
+                minWidth: 110,
+              }}>
+                {[
+                  { label: "Export PNG", action: () => { handleExportPng(); setExportOpen(false); } },
+                  { label: "Export PDF", action: () => { handleExportPdf(); setExportOpen(false); } },
+                ].map(({ label, action }) => (
+                  <button key={label} onClick={action} style={{
+                    display: "block", width: "100%", textAlign: "left",
+                    background: "none", border: "none", cursor: "pointer",
+                    fontSize: 11, color: "#111827", fontFamily: F, fontWeight: 500,
+                    padding: "7px 12px",
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = "#F0F9FF"}
+                  onMouseLeave={e => e.currentTarget.style.background = "none"}
+                  >{label}</button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
         <button
           onClick={onClose}
           style={{
