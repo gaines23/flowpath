@@ -1,3 +1,7 @@
+import urllib.request
+import urllib.error
+from html.parser import HTMLParser
+
 from django.utils import timezone
 from rest_framework import generics, status, filters
 from rest_framework.decorators import api_view, permission_classes
@@ -326,4 +330,113 @@ def stats(request):
             for row in sat_by_industry_rows
         ],
         "scope_creep_tools": [{"tool": row[0], "count": row[1]} for row in scope_creep_rows],
+    })
+
+
+class _MetaParser(HTMLParser):
+    """Minimal HTML parser — extracts <title> and <meta> tags only."""
+    def __init__(self):
+        super().__init__()
+        self.title = ""
+        self._in_title = False
+        self.metas = {}  # name/property → content
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if tag == "title":
+            self._in_title = True
+        if tag == "meta":
+            key = attrs.get("name") or attrs.get("property") or ""
+            content = attrs.get("content", "")
+            if key and content:
+                self.metas[key.lower()] = content
+
+    def handle_data(self, data):
+        if self._in_title:
+            self.title += data
+
+    def handle_endtag(self, tag):
+        if tag == "title":
+            self._in_title = False
+
+
+_INDUSTRY_KEYWORDS = {
+    "Marketing Agency": ["marketing agency", "advertising", "digital marketing", "campaigns", "brand strategy"],
+    "SaaS / Software Product": ["saas", "software platform", "cloud platform", "software as a service"],
+    "Technology": ["technology", "software", "developer tools", "tech company"],
+    "Healthcare & Life Sciences": ["healthcare", "medical", "clinical", "patient care", "health system"],
+    "Finance & Insurance": ["finance", "financial services", "investment", "insurance", "accounting"],
+    "E-commerce & Retail": ["ecommerce", "e-commerce", "online store", "retail", "shopify"],
+    "Construction & Real Estate": ["real estate", "construction", "property management", "realty"],
+    "Education": ["education", "e-learning", "training", "university", "school"],
+    "Non-profit & Government": ["nonprofit", "non-profit", "charity", "foundation", "ngo"],
+    "Creative & Design": ["design agency", "creative agency", "branding", "studio", "creative studio"],
+}
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def scrape_website(request):
+    """
+    POST /api/v1/briefs/scrape-website/
+    Fetches a client URL and extracts company name, description, and industry hints.
+    Returns { success, company_name, description, industry_hints } on success
+    or      { success: false, error } on failure.
+    """
+    url = (request.data.get("url") or "").strip()
+    if not url:
+        return Response({"success": False, "error": "URL is required."}, status=400)
+
+    if not url.startswith(("http://", "https://")):
+        url = "https://" + url
+
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; Flowpath/1.0; +https://flowpath.app)"},
+        )
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            charset = resp.headers.get_content_charset() or "utf-8"
+            html = resp.read(120_000).decode(charset, errors="replace")
+    except urllib.error.HTTPError as e:
+        return Response({"success": False, "error": f"Site returned {e.code}."})
+    except urllib.error.URLError:
+        return Response({"success": False, "error": "Could not connect to that URL."})
+    except Exception:
+        return Response({"success": False, "error": "Could not read that website."})
+
+    parser = _MetaParser()
+    parser.feed(html)
+
+    # Company name: prefer og:site_name, fall back to <title>
+    company_name = parser.metas.get("og:site_name", "").strip()
+    if not company_name and parser.title:
+        raw_title = parser.title.strip()
+        for sep in (" | ", " - ", " — ", " · ", " :: "):
+            if sep in raw_title:
+                company_name = raw_title.split(sep)[0].strip()
+                break
+        if not company_name:
+            company_name = raw_title
+
+    # Description: prefer og:description, fall back to meta description
+    description = (
+        parser.metas.get("og:description")
+        or parser.metas.get("description")
+        or ""
+    ).strip()
+
+    # Industry detection from title + description text
+    probe = (company_name + " " + description).lower()
+    industry_hints = [
+        industry
+        for industry, keywords in _INDUSTRY_KEYWORDS.items()
+        if any(kw in probe for kw in keywords)
+    ][:3]
+
+    return Response({
+        "success": True,
+        "company_name": company_name,
+        "description": description,
+        "industry_hints": industry_hints,
     })

@@ -9,4 +9,5 @@ urlpatterns = [
     path("shared/<uuid:share_token>/", views.public_brief, name="case_file_public"),
     path("roadblocks/warnings/", views.roadblock_warnings, name="roadblock_warnings"),
     path("stats/", views.stats, name="brief_stats"),
+    path("scrape-website/", views.scrape_website, name="scrape_website"),
 ]

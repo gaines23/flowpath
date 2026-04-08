@@ -22,6 +22,12 @@ export default function IntakeSection({ intake, isPrinting, theme }) {
       collapsible
       forceOpen={isPrinting}
     >
+      {intake.client_url && (
+        <div style={{ padding: "10px 0", borderBottom: `1px solid ${theme.borderSubtle}` }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: theme.textFaint, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Client website</span>
+          <a href={intake.client_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: "#7C3AED", fontFamily: F, wordBreak: "break-all" }}>{intake.client_url}</a>
+        </div>
+      )}
       <DetailRow label="Team size" value={intake.team_size} />
       <DetailRow label="Workflow type" value={intake.workflow_type} />
 

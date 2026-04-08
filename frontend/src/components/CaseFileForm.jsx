@@ -11,6 +11,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { useParsePrompt } from "../hooks/useWorkflows";
+import api from "../api/client";
 
 // ── All data constants (same as workflow-intake.jsx) ──────────────────────────
 const INDUSTRY_MAP = {
@@ -152,7 +153,7 @@ const PHASE_DESC = [
 
 const DEFAULT_STATE = {
   audit:         {hasExisting:null,overallAssessment:"",builds:[],patternSummary:""},
-  intake:        {rawPrompt:"",industries:[],teamSize:"",workflowType:"",processFrameworks:[],tools:[],painPoints:[],priorAttempts:""},
+  intake:        {clientUrl:"",rawPrompt:"",industries:[],teamSize:"",workflowType:"",processFrameworks:[],tools:[],painPoints:[],priorAttempts:""},
   build:         {buildNotes:"",workflows:[]},
   delta:         {userIntent:"",successCriteria:"",actualBuild:"",diverged:null,divergenceReason:"",compromises:"",scopeCreep:[],roadblocks:[]},
   reasoning:     {whyStructure:"",alternatives:"",whyRejected:"",assumptions:"",whenOpposite:"",lessons:"",complexity:3},
@@ -690,6 +691,41 @@ function StepAudit({ data, set, caseName, setCaseName, projectUpdates, onProject
   const switchToRaw = () => setGuidedMode(false);
   const canParse = !hideRawPrompt && (intakeData?.rawPrompt||"").trim().length > 20 && !!onAiParse;
 
+  const [isScraping, setIsScraping] = useState(false);
+  const [scrapeError, setScrapeError] = useState(null);
+  const [scrapeSuccess, setScrapeSuccess] = useState(false);
+
+  const handleScrape = async () => {
+    const url = (intakeData?.clientUrl || "").trim();
+    if (!url) return;
+    setIsScraping(true);
+    setScrapeError(null);
+    setScrapeSuccess(false);
+    try {
+      const { data: result } = await api.post("/v1/briefs/scrape-website/", { url });
+      if (!result.success) {
+        setScrapeError(result.error || "Could not read that website.");
+      } else {
+        const { company_name, description, industry_hints } = result;
+        const newG1 = !g1.trim() && description
+          ? (company_name ? `${company_name} — ${description}` : description)
+          : g1;
+        if (newG1 !== g1) setG1(newG1);
+        const assembled = assembleGuidedPrompt(newG1, g2, g3);
+        const merged = industry_hints?.length
+          ? [...new Set([...(intakeData?.industries || []), ...industry_hints])]
+          : intakeData?.industries || [];
+        setIntake({ ...intakeData, rawPrompt: assembled, industries: merged });
+        set({ ...data, overallAssessment: assembled });
+        setScrapeSuccess(true);
+      }
+    } catch {
+      setScrapeError("Could not reach that URL.");
+    } finally {
+      setIsScraping(false);
+    }
+  };
+
   return (
     <div>
       <Banner emoji="🔍" title="Before we recommend anything, let's understand what already exists." body="Documenting the current state — and exactly why it's failing — is the most important input for an accurate recommendation." color="#7C3AED"/>
@@ -701,6 +737,26 @@ function StepAudit({ data, set, caseName, setCaseName, projectUpdates, onProject
       {/* Guided client conversation — moved here from Scenario step */}
       {!hideRawPrompt && (
         <Card accent="#7c3aed">
+          {/* Client URL auto-fill */}
+          <div style={{ marginBottom:18 }}>
+            <p style={{ margin:"0 0 6px", fontSize:13, fontWeight:600, color:theme.text, fontFamily:F }}>Client website <span style={{ fontWeight:400, color:theme.textFaint }}>(optional)</span></p>
+            <div style={{ display:"flex", gap:8 }}>
+              <div style={{ flex:1 }}>
+                <TI
+                  value={intakeData?.clientUrl || ""}
+                  onChange={v => { setIntake({ ...intakeData, clientUrl: v }); setScrapeSuccess(false); setScrapeError(null); }}
+                  placeholder="https://clientwebsite.com"
+                />
+              </div>
+              <button type="button" onClick={handleScrape} disabled={isScraping || !(intakeData?.clientUrl||"").trim()}
+                style={{ padding:"0 14px", borderRadius:8, fontSize:13, fontWeight:700, fontFamily:F, cursor:(isScraping || !(intakeData?.clientUrl||"").trim())?"not-allowed":"pointer", background:"#7C3AED", color:"#fff", border:"none", opacity:(isScraping || !(intakeData?.clientUrl||"").trim())?0.5:1, whiteSpace:"nowrap", flexShrink:0, transition:"opacity 0.15s" }}>
+                {isScraping ? "Fetching…" : "Auto-fill"}
+              </button>
+            </div>
+            {scrapeSuccess && <p style={{ margin:"6px 0 0", fontSize:12, color:"#16A34A", fontFamily:F }}>✓ Filled from website — review the fields below</p>}
+            {scrapeError && <p style={{ margin:"6px 0 0", fontSize:12, color:"#DC2626", fontFamily:F }}>{scrapeError}</p>}
+          </div>
+
           {guidedMode ? (<>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:18 }}>
               <div>
@@ -851,6 +907,9 @@ function StepIntake({ data, set, w, hideRawPrompt, aiSuggestedFields = new Set()
   return (
     <div>
       {(!hideRawPrompt || hasAiFields) && <AiInfoTip hasAiFields={hasAiFields}/>}
+      <Card>
+        <Field label="Client website" hint="optional"><TI value={data.clientUrl||""} onChange={v=>set({...data,clientUrl:v})} placeholder="https://clientwebsite.com"/></Field>
+      </Card>
       <Card>
         <CardTitle>Team basics</CardTitle>
         <Grid2 w={w}>

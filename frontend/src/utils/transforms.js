@@ -41,6 +41,7 @@ export function formToProjectPayload(formData, loggedByName = "", name = "") {
 
     // Layer 2 – Intake
     intake: {
+      client_url: intake.clientUrl || "",
       raw_prompt: intake.rawPrompt,
       industries: intake.industries,
       team_size: intake.teamSize,
@@ -186,6 +187,7 @@ export function projectToFormState(caseFile) {
       })),
     },
     intake: {
+      clientUrl: intake?.client_url || "",
       rawPrompt: intake?.raw_prompt || "",
       industries: intake?.industries || [],
       teamSize: intake?.team_size || "",

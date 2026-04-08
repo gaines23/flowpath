@@ -143,6 +143,7 @@ class CurrentBuild(models.Model):
 class IntakeLayer(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     case_file = models.OneToOneField(CaseFile, on_delete=models.CASCADE, related_name="intake")
+    client_url = models.URLField(blank=True)
     raw_prompt = models.TextField(blank=True)
     industries = models.JSONField(default=list)
     team_size = models.CharField(max_length=50, blank=True)
