@@ -26,8 +26,6 @@ export default function BuildSection({ build, isPrinting, theme, mapWfIndex, set
       title="Build Documentation"
       subtitle="Document everything that was built"
       color="#0284C7"
-      collapsible
-      forceOpen={isPrinting}
     >
       {/* Spaces */}
       {build.spaces && (

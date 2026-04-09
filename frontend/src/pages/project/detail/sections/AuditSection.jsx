@@ -7,11 +7,10 @@ import CurrentBuildCard from "../components/CurrentBuildCard";
  * Layer 1 — What's in place now? (Audit)
  *
  * Props:
- *   audit      — cf.audit object
- *   isPrinting — force all collapsibles open during print
- *   theme      — theme object from useTheme()
+ *   audit  — cf.audit object
+ *   theme  — theme object from useTheme()
  */
-export default function AuditSection({ audit, isPrinting, theme }) {
+export default function AuditSection({ audit, theme }) {
   if (!audit) return null;
 
   return (
@@ -19,8 +18,6 @@ export default function AuditSection({ audit, isPrinting, theme }) {
       title="What's in place now?"
       subtitle="Document the client's current setup and what's breaking"
       color="#7C3AED"
-      collapsible
-      forceOpen={isPrinting}
     >
       <DetailRow label="Has existing setup" value={audit.has_existing === true ? "Yes" : audit.has_existing === false ? "No — greenfield" : "—"} />
       <DetailRow label="Overall assessment " value={audit.overall_assessment} fullWidth />
@@ -42,6 +39,7 @@ export default function AuditSection({ audit, isPrinting, theme }) {
           {audit.builds.map((b, i) => <CurrentBuildCard key={b.id || i} build={b} index={i} />)}
         </div>
       )}
+
     </Section>
   );
 }
