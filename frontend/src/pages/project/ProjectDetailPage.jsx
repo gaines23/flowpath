@@ -245,31 +245,26 @@ export default function CaseFileDetailPage() {
         }
       `}</style>
 
-      <div style={{ maxWidth: 1060, margin: "0 auto" }}>
+      {/* Print-only: full PDF layout (outside shell so print CSS can expand it) */}
+      <div className="fp-print-only">
+        <PrintView cf={cf} />
+      </div>
 
-        {/* ── Main content column ─────────────────────────────────────────── */}
-        <div id="fp-print-root" style={{ padding: isMobile ? "20px 16px 80px" : "28px 32px 80px" }}>
+      {/* ── App shell ───────────────────────────────────────────────────────── */}
+      <div className="fp-no-print" style={{ height: isMobile ? "calc(100vh - 56px)" : "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
-          {/* Print-only: full PDF layout */}
-          <div className="fp-print-only">
-            <PrintView cf={cf} />
-          </div>
+        {/* ── Pinned header ─────────────────────────────────────────────────── */}
+        <div style={{ flexShrink: 0, borderBottom: `1px solid ${theme.border}`, boxShadow: "0 1px 4px rgba(0,0,0,0.04)", background: theme.surface }}>
+          <div style={{ maxWidth: 1060, margin: "0 auto", padding: isMobile ? "0 16px" : "0 32px" }}>
 
-          {/* Screen view */}
-          <div className="fp-no-print">
-
-            {/* Success banner */}
             {showBanner && (
-              <div style={{ padding: "12px 16px", background: "#ECFDF5", border: "1px solid #6EE7B7", borderRadius: 10, marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 18 }}>✅</span>
-                <span style={{ fontSize: 14, color: "#065F46", fontFamily: F, fontWeight: 600, flex: 1 }}>
-                  Project saved successfully. It's now part of the knowledge base.
-                </span>
+              <div style={{ padding: "10px 14px", background: "#ECFDF5", border: "1px solid #6EE7B7", borderRadius: 10, margin: "12px 0 0", display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 16 }}>✅</span>
+                <span style={{ fontSize: 13, color: "#065F46", fontFamily: F, fontWeight: 600, flex: 1 }}>Project saved successfully. It's now part of the knowledge base.</span>
                 <button onClick={() => setShowBanner(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#6EE7B7", lineHeight: 1, padding: 0 }}>×</button>
               </div>
             )}
 
-            {/* Page header — unchanged */}
             <CaseFileHeader
               cf={cf}
               theme={theme}
@@ -284,8 +279,7 @@ export default function CaseFileDetailPage() {
               setIsPrinting={setIsPrinting}
             />
 
-            {/* Meta chips — unchanged */}
-            <div className="fp-meta-chips" style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 28 }}>
+            <div className="fp-meta-chips" style={{ display: "flex", flexWrap: "wrap", gap: 8, paddingBottom: 12 }}>
               {cf.industries?.map(i => (
                 <span key={i} style={{ fontSize: 12, padding: "4px 12px", borderRadius: 12, background: theme.blueLight, border: `1px solid ${theme.blueBorder}`, color: theme.blue, fontFamily: F, fontWeight: 500 }}>{i}</span>
               ))}
@@ -297,11 +291,9 @@ export default function CaseFileDetailPage() {
               ))}
             </div>
 
-            {/* ── Section nav + content ────────────────────────────────────── */}
-
-            {/* Mobile: horizontal scrollable tabs */}
+            {/* Mobile: horizontal scrollable section tabs */}
             {isMobile && (
-              <div style={{ display: "flex", gap: 0, overflowX: "auto", scrollbarWidth: "none", borderBottom: `1px solid ${theme.border}`, marginBottom: 20 }}>
+              <div style={{ display: "flex", gap: 0, overflowX: "auto", scrollbarWidth: "none", borderTop: `1px solid ${theme.border}` }}>
                 {DETAIL_SECTIONS.map((s, i) => (
                   <button key={s.id} onClick={() => setActiveSection(i)}
                     style={{ display: "flex", alignItems: "center", gap: 4, padding: "10px 12px", background: "transparent", border: "none", cursor: "pointer", flexShrink: 0, borderBottom: i === activeSection ? `3px solid ${s.color}` : "3px solid transparent", transition: "border-color 0.2s" }}>
@@ -310,57 +302,59 @@ export default function CaseFileDetailPage() {
                 ))}
               </div>
             )}
-
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 0 }}>
-
-              {/* Left sidebar nav (desktop only) */}
-              {!isMobile && (
-                <div style={{ width: 210, flexShrink: 0, position: "sticky", top: 24, height: "calc(100vh - 48px)", overflowY: "auto", borderRight: `1px solid ${theme.border}`, display: "flex", flexDirection: "column", padding: "20px 0 0" }}>
-                  {[...new Set(DETAIL_SECTIONS.map(s => s.group))].map(group => (
-                    <div key={group} style={{ marginBottom: 8 }}>
-                      <p style={{ margin: "0 0 4px", padding: "0 16px", fontSize: 10, fontWeight: 700, color: theme.textFaint, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.08em" }}>{group}</p>
-                      {DETAIL_SECTIONS.filter(s => s.group === group).map(s => {
-                        const i = DETAIL_SECTIONS.indexOf(s);
-                        const active = i === activeSection;
-                        return (
-                          <button key={s.id} onClick={() => setActiveSection(i)}
-                            style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "9px 16px", background: active ? `${s.color}10` : "transparent", border: "none", borderLeft: active ? `3px solid ${s.color}` : "3px solid transparent", cursor: "pointer", textAlign: "left", transition: "all 0.15s" }}>
-                            <span style={{ fontSize: 12, fontWeight: active ? 700 : 500, color: active ? s.color : theme.textSec, fontFamily: F, lineHeight: 1.3 }}>{s.label}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Active section content */}
-              <div style={{ flex: 1, minWidth: 0, padding: isMobile ? 0 : "24px 32px 120px" }}>
-                {activeSection === 0 && <ProjectUpdatesView projectUpdates={project_updates}    theme={theme} />}
-                {activeSection === 1 && <ScopeCreepView    scopeCreep={delta?.scope_creep} theme={theme} />}
-                {activeSection === 2 && <IntakeSection    intake={intake}       theme={theme} />}
-                {activeSection === 3 && <AuditSection     audit={audit}         theme={theme} />}
-                {activeSection === 4 && <BuildSection     build={build}         isPrinting={isPrinting} theme={theme} mapWfIndex={mapWfIndex} setMapWfIndex={setMapWfIndex} />}
-                {activeSection === 5 && <DeltaSection     delta={delta}         theme={theme} />}
-                {activeSection === 6 && <ReasoningSection reasoning={reasoning} theme={theme} />}
-                {activeSection === 7 && <OutcomeSection   outcome={outcome}     theme={theme} />}
-              </div>
-            </div>
-
-          </div>{/* end fp-no-print screen view */}
+          </div>
         </div>
 
-        {/* ── Workflow map modal ───────────────────────────────────────────── */}
-        {mapWfIndex !== null && build?.workflows?.[mapWfIndex] && (
-          <WorkflowMapPanel
-            workflow={build.workflows[mapWfIndex]}
-            onClose={() => setMapWfIndex(null)}
-            asModal
-          />
-        )}
+        {/* ── Body: sidebar + scrollable content ────────────────────────────── */}
+        <div style={{ flex: 1, overflow: "hidden", display: "flex" }}>
+          <div style={{ maxWidth: 1060, margin: "0 auto", width: "100%", display: "flex" }}>
+
+            {/* Left sidebar nav (desktop only) */}
+            {!isMobile && (
+              <div style={{ width: 210, flexShrink: 0, overflowY: "auto", borderRight: `1px solid ${theme.border}`, display: "flex", flexDirection: "column", padding: "20px 0" }}>
+                {[...new Set(DETAIL_SECTIONS.map(s => s.group))].map(group => (
+                  <div key={group} style={{ marginBottom: 8 }}>
+                    <p style={{ margin: "0 0 4px", padding: "0 16px", fontSize: 10, fontWeight: 700, color: theme.textFaint, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.08em" }}>{group}</p>
+                    {DETAIL_SECTIONS.filter(s => s.group === group).map(s => {
+                      const i = DETAIL_SECTIONS.indexOf(s);
+                      const active = i === activeSection;
+                      return (
+                        <button key={s.id} onClick={() => setActiveSection(i)}
+                          style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "9px 16px", background: active ? `${s.color}10` : "transparent", border: "none", borderLeft: active ? `3px solid ${s.color}` : "3px solid transparent", cursor: "pointer", textAlign: "left", transition: "all 0.15s" }}>
+                          <span style={{ fontSize: 12, fontWeight: active ? 700 : 500, color: active ? s.color : theme.textSec, fontFamily: F, lineHeight: 1.3 }}>{s.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Active section content — only this scrolls */}
+            <div id="fp-print-root" style={{ flex: 1, minWidth: 0, overflowY: "auto", padding: isMobile ? "20px 16px" : "28px 32px" }}>
+              {activeSection === 0 && <ProjectUpdatesView projectUpdates={project_updates}    theme={theme} />}
+              {activeSection === 1 && <ScopeCreepView    scopeCreep={delta?.scope_creep} theme={theme} />}
+              {activeSection === 2 && <IntakeSection    intake={intake}       theme={theme} />}
+              {activeSection === 3 && <AuditSection     audit={audit}         theme={theme} />}
+              {activeSection === 4 && <BuildSection     build={build}         isPrinting={isPrinting} theme={theme} mapWfIndex={mapWfIndex} setMapWfIndex={setMapWfIndex} />}
+              {activeSection === 5 && <DeltaSection     delta={delta}         theme={theme} />}
+              {activeSection === 6 && <ReasoningSection reasoning={reasoning} theme={theme} />}
+              {activeSection === 7 && <OutcomeSection   outcome={outcome}     theme={theme} />}
+            </div>
+
+          </div>
+        </div>
+
       </div>
 
-      {/* Share modal */}
+      {/* ── Portals (outside shell) ──────────────────────────────────────────── */}
+      {mapWfIndex !== null && build?.workflows?.[mapWfIndex] && (
+        <WorkflowMapPanel
+          workflow={build.workflows[mapWfIndex]}
+          onClose={() => setMapWfIndex(null)}
+          asModal
+        />
+      )}
       {showShare && <ShareModal cf={cf} onClose={() => setShowShare(false)} />}
     </>
   );
