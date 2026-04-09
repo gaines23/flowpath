@@ -1640,7 +1640,6 @@ export default function ProjectForm({ onSubmit, isSaving, initialData, initialNa
 
   const visibleSections = isEditing ? SECTIONS : SECTIONS.filter(s => s.group !== "The Updates");
   const sidebarGroups = [...new Set(visibleSections.map(s => s.group))];
-  const HEADER_H = isMobile ? 92 : 60;
 
   if (showIntro) return (
     <div style={{ background:theme.bg, minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", padding:"40px 20px" }}>
@@ -1683,10 +1682,10 @@ export default function ProjectForm({ onSubmit, isSaving, initialData, initialNa
   );
 
   return (
-    <div style={{ background:theme.bg, minHeight:"100vh" }}>
+    <div style={{ background:theme.bg, height: isMobile ? "calc(100vh - 56px)" : "100vh", display:"flex", flexDirection:"column", overflow:"hidden" }}>
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div style={{ position:"sticky", top: isMobile ? 56 : 0, zIndex:20, background:theme.surface, borderBottom:`1px solid ${theme.border}`, boxShadow:"0 1px 4px rgba(0,0,0,0.04)" }}>
+      <div style={{ flexShrink:0, zIndex:20, background:theme.surface, borderBottom:`1px solid ${theme.border}`, boxShadow:"0 1px 4px rgba(0,0,0,0.04)" }}>
         <div style={{ maxWidth:1060, margin:"0 auto", padding:`0 ${px}px` }}>
 
           {/* Top row */}
@@ -1726,11 +1725,12 @@ export default function ProjectForm({ onSubmit, isSaving, initialData, initialNa
       </div>
 
       {/* ── Body: sidebar + content ──────────────────────────────────────── */}
-      <div style={{ maxWidth:1060, margin:"0 auto", display:"flex", alignItems:"flex-start" }}>
+      <div style={{ flex:1, overflow:"hidden", display:"flex" }}>
+      <div style={{ maxWidth:1060, margin:"0 auto", width:"100%", display:"flex" }}>
 
         {/* Left sidebar (desktop only) */}
         {!isMobile && (
-          <div style={{ width:210, flexShrink:0, position:"sticky", top:HEADER_H, height:`calc(100vh - ${HEADER_H}px)`, overflowY:"auto", borderRight:`1px solid ${theme.border}`, display:"flex", flexDirection:"column", padding:"20px 0 0" }}>
+          <div style={{ width:210, flexShrink:0, overflowY:"auto", borderRight:`1px solid ${theme.border}`, display:"flex", flexDirection:"column", padding:"20px 0 0" }}>
             <div style={{ flex:1 }}>
               {sidebarGroups.map(group => (
                 <div key={group} style={{ marginBottom:8 }}>
@@ -1761,7 +1761,7 @@ export default function ProjectForm({ onSubmit, isSaving, initialData, initialNa
         )}
 
         {/* Content area */}
-        <div style={{ flex:1, minWidth:0, padding:`24px ${px}px 120px` }}>
+        <div style={{ flex:1, minWidth:0, overflowY:"auto", padding:`24px ${px}px 24px` }}>
 
           {/* Section heading */}
           <div style={{ marginBottom:24 }}>
@@ -1797,9 +1797,10 @@ export default function ProjectForm({ onSubmit, isSaving, initialData, initialNa
           {step===7 && <StepOutcome data={data.outcome} set={v=>setSD("outcome",v)} w={w}/>}
         </div>
       </div>
+      </div>
 
       {/* ── Sticky footer ────────────────────────────────────────────────── */}
-      <div style={{ position:"fixed", bottom:0, left:0, right:0, background:theme.surface, borderTop:`1px solid ${theme.border}`, padding:`12px ${isMobile?16:24}px`, boxShadow:"0 -4px 16px rgba(0,0,0,0.06)", zIndex:20 }}>
+      <div style={{ flexShrink:0, background:theme.surface, borderTop:`1px solid ${theme.border}`, padding:`12px ${isMobile?16:24}px`, boxShadow:"0 -4px 16px rgba(0,0,0,0.06)", zIndex:20 }}>
         <div style={{ maxWidth:1060, margin:"0 auto", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
 
           {/* Left: Cancel or Prev */}
