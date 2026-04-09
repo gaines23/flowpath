@@ -96,7 +96,7 @@ function ScopeCreepView({ scopeCreep, theme }) {
 const DETAIL_SECTIONS = [
   { id:"projectUpdates", label:"Project Updates",      subtitle:"Timestamped notes and attachments",              color:"#0284C7", group:"The Updates"  },
   { id:"scopeCreep",     label:"Scope Creep",           subtitle:"Unplanned additions to the build",               color:"#D97706", group:"The Updates"  },
-  { id:"intake",         label:"Who's the client?",    subtitle:"Scenario, industry, team, and tools",            color:"#7C3AED", group:"The Situation" },
+  { id:"intake",         label:"Who's the client?",    subtitle:"Scenario, industry, team, and tools",            color:"#7C3AED", group:"The Project"   },
   { id:"audit",          label:"What's in place now?", subtitle:"Current setup and what's breaking",              color:"#7C3AED", group:"The Build"     },
   { id:"build",          label:"The Build",            subtitle:"Everything that was built",                      color:"#0284C7", group:"The Build"     },
   { id:"delta",          label:"Intent vs Reality",    subtitle:"Gap between intent and delivery",                color:"#059668", group:"The Outcome"   },

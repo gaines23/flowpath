@@ -142,8 +142,8 @@ export const CLICKUP_ACTIONS = [
 const SECTIONS = [
   { id:"projectUpdates", label:"Project Updates",      subtitle:"Timestamped notes and attachments",                                color:"#0284C7", group:"The Updates"  },
   { id:"scopeCreep",     label:"Scope Creep",           subtitle:"Unplanned additions to the build",                                color:"#D97706", group:"The Updates"  },
-  { id:"audit",          label:"What's in place now?", subtitle:"Document the client's current setup and what's breaking",          color:"#7C3AED", group:"The Situation" },
-  { id:"intake",         label:"Who's the client?",    subtitle:"Capture the scenario, industry, team, and tools",                  color:"#7C3AED", group:"The Situation" },
+  { id:"audit",          label:"What's in place now?", subtitle:"Document the client's current setup and what's breaking",          color:"#7C3AED", group:"The Project"   },
+  { id:"intake",         label:"Who's the client?",    subtitle:"Capture the scenario, industry, team, and tools",                  color:"#7C3AED", group:"The Project"   },
   { id:"build",          label:"The Build",            subtitle:"Document everything that was built",                               color:"#0284C7", group:"The Build"     },
   { id:"delta",          label:"Intent vs Reality",    subtitle:"Log the gap between what was wanted and what was delivered",       color:"#059668", group:"The Outcome"   },
   { id:"reasoning",      label:"Decision Reasoning",   subtitle:"Record the reasoning behind every major decision",                 color:"#059668", group:"The Outcome"   },
