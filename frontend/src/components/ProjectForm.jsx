@@ -10,7 +10,7 @@
  */
 import { useState, useEffect, useRef } from "react";
 import { useTheme } from "../hooks/useTheme";
-import { useParsePrompt } from "../hooks/useWorkflows";
+import { useParsePrompt, useMatchTemplates } from "../hooks/useWorkflows";
 import { WorkflowMapPanel } from "./WorkflowMapPanel";
 
 // ── All data constants (same as workflow-intake.jsx) ──────────────────────────
@@ -905,6 +905,107 @@ function AiInfoTip({ hasAiFields }) {
   );
 }
 
+function SuggestedBuildsPanel({ builds, onApply }) {
+  const { theme } = useTheme();
+  const [previewIdx, setPreviewIdx] = useState(null);
+  if (!builds?.length) return null;
+  const color = "#60A5FA";
+  const COMPLEXITY_LABELS = ["", "Very simple", "Simple", "Moderate", "Complex", "Very complex"];
+  const preview = previewIdx !== null ? builds[previewIdx] : null;
+
+  return (
+    <div style={{ marginBottom:16 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10 }}>
+        <span style={{ fontSize:12, fontWeight:700, color, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>Suggested builds</span>
+        <AiBadge/>
+      </div>
+
+      {/* Card list */}
+      <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+        {builds.map((result, i) => {
+          const { template, score, match_reasons } = result;
+          const isActive = previewIdx === i;
+          const scoreColor = score >= 70 ? { bg:"#ECFDF5", border:"#6EE7B7", text:"#059669" }
+            : score >= 40 ? { bg:"#EFF6FF", border:"#BFDBFE", text:"#1D4ED8" }
+            : { bg:theme.surfaceAlt, border:theme.border, text:theme.textFaint };
+          return (
+            <button key={i} type="button" onClick={() => setPreviewIdx(isActive ? null : i)}
+              style={{ textAlign:"left", background: isActive ? theme.blueLight : theme.surface, border:`1.5px solid ${isActive ? color : theme.borderInput}`, borderRadius:10, padding:"12px 14px", cursor:"pointer", transition:"border-color 0.15s, background 0.15s", width:"100%" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:8, marginBottom:4 }}>
+                <span style={{ fontSize:13, fontWeight:700, color: isActive ? color : theme.text, fontFamily:F }}>{template.name}</span>
+                <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
+                  <span style={{ fontSize:11, fontWeight:700, padding:"2px 8px", background:scoreColor.bg, border:`1px solid ${scoreColor.border}`, borderRadius:8, color:scoreColor.text, fontFamily:F }}>{score}% match</span>
+                  <span style={{ fontSize:11, color:isActive ? color : theme.textFaint, fontFamily:F }}>{isActive ? "▲" : "▼"}</span>
+                </div>
+              </div>
+              <p style={{ margin:"0 0 6px", fontSize:12, color:theme.textMuted, fontFamily:F, lineHeight:1.45 }}>{template.description}</p>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:4, alignItems:"center" }}>
+                {(match_reasons || []).slice(0, 3).map((r, j) => (
+                  <span key={j} style={{ fontSize:11, padding:"1px 7px", borderRadius:6, background:theme.surfaceAlt, border:`1px solid ${theme.border}`, color:theme.textMuted, fontFamily:F }}>{r}</span>
+                ))}
+                {template.estimated_complexity && (
+                  <span style={{ fontSize:11, color:theme.textFaint, fontFamily:F, marginLeft:"auto" }}>
+                    {COMPLEXITY_LABELS[template.estimated_complexity] || ""}
+                  </span>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Expanded preview */}
+      {preview && (() => {
+        const { template } = preview;
+        return (
+          <div style={{ marginTop:10, border:`1.5px solid ${color}40`, borderRadius:12, background:theme.surface, overflow:"hidden" }}>
+            <div style={{ padding:"14px 16px", borderBottom:`1px solid ${theme.borderSubtle}`, display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:10 }}>
+              <div>
+                <p style={{ margin:0, fontSize:14, fontWeight:700, color:theme.text, fontFamily:F }}>{template.name}</p>
+                {template.description && <p style={{ margin:"3px 0 0", fontSize:12, color:theme.textMuted, fontFamily:F, lineHeight:1.5 }}>{template.description}</p>}
+              </div>
+              <button type="button" onClick={() => setPreviewIdx(null)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:16, color:theme.textFaint, lineHeight:1, padding:"0 2px", flexShrink:0 }}>×</button>
+            </div>
+            <div style={{ padding:"14px 16px", display:"flex", flexDirection:"column", gap:12 }}>
+              {template.spaces && (
+                <div>
+                  <p style={{ margin:"0 0 4px", fontSize:11, fontWeight:700, color:theme.textFaint, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>Spaces</p>
+                  <p style={{ margin:0, fontSize:13, color:theme.text, fontFamily:F }}>{template.spaces}</p>
+                </div>
+              )}
+              {template.lists && (
+                <div>
+                  <p style={{ margin:"0 0 4px", fontSize:11, fontWeight:700, color:theme.textFaint, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>Lists</p>
+                  <p style={{ margin:0, fontSize:13, color:theme.text, fontFamily:F }}>{template.lists}</p>
+                </div>
+              )}
+              {template.statuses && (
+                <div>
+                  <p style={{ margin:"0 0 4px", fontSize:11, fontWeight:700, color:theme.textFaint, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>Status flow</p>
+                  <p style={{ margin:0, fontSize:13, color:theme.text, fontFamily:F }}>{template.statuses}</p>
+                </div>
+              )}
+              {template.build_notes && (
+                <div>
+                  <p style={{ margin:"0 0 4px", fontSize:11, fontWeight:700, color:theme.textFaint, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>Build notes</p>
+                  <p style={{ margin:0, fontSize:13, color:theme.textSec, fontFamily:F, lineHeight:1.6 }}>{template.build_notes}</p>
+                </div>
+              )}
+            </div>
+            <div style={{ padding:"12px 16px", borderTop:`1px solid ${theme.borderSubtle}`, display:"flex", justifyContent:"flex-end" }}>
+              <button type="button"
+                onClick={() => { onApply(template); setPreviewIdx(null); }}
+                style={{ padding:"9px 20px", background:color, border:"none", borderRadius:9, color:"#fff", fontSize:13, fontWeight:700, fontFamily:F, cursor:"pointer" }}>
+                Use Template →
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
+
 function StepIntake({ data, set, w, hideRawPrompt, aiSuggestedFields = new Set() }) {
   const ai = (field) => aiSuggestedFields.has(field) || (!hideRawPrompt && AI_FILLABLE_FIELDS.has(field));
   const hasAiFields = aiSuggestedFields.size > 0;
@@ -1316,7 +1417,7 @@ function formWfToMapWf(wf) {
   };
 }
 
-function StepBuild({ data, set, w, suggestedAutomations, auditData }) {
+function StepBuild({ data, set, w, suggestedAutomations, auditData, suggestedBuilds = [] }) {
   const { theme } = useTheme();
   const [mapWfIndex, setMapWfIndex] = useState(null);
   const workflows = data.workflows || [];
@@ -1326,9 +1427,32 @@ function StepBuild({ data, set, w, suggestedAutomations, auditData }) {
 
   const builds = auditData?.builds || [];
 
+  const handleApplyTemplate = (template) => {
+    const listNames = (template.lists || "").split(",").map(l => l.trim()).filter(Boolean);
+    const newLists = listNames.length
+      ? listNames.map(name => ({ name, statuses: template.statuses || "", customFields: template.custom_fields || "", automations: [] }))
+      : [emptyList()];
+    const newWf = {
+      name: template.workflow_type || template.name,
+      notes: template.build_notes || "",
+      pipeline: [],
+      lists: newLists,
+      status: "Mapping",
+      replaces: "",
+      learnings: { rating: "", whatWorked: "", whatToAvoid: "" },
+    };
+    set({ ...data, workflows: [...workflows, newWf] });
+  };
+
   return (
     <div>
       <Banner emoji="🏗️" title="Map what you're building." body="Add each new mapped workflow space by space." color="#0284C7"/>
+
+      {suggestedBuilds.length > 0 && (
+        <Card>
+          <SuggestedBuildsPanel builds={suggestedBuilds} onApply={handleApplyTemplate}/>
+        </Card>
+      )}
 
       {/* ── Mapped workflows ────────────────────────────────────────────────── */}
       <HR label="mapped workflows — what you're building"/>
@@ -1353,7 +1477,7 @@ function StepBuild({ data, set, w, suggestedAutomations, auditData }) {
   );
 }
 
-function StepDelta({ data, set, w }) {
+function StepDelta({ data, set, w, aiSuggestedFields = new Set() }) {
   const { theme } = useTheme();
   const roadblocks = data.roadblocks || [];
   const addRb = () => set({...data, roadblocks:[...roadblocks, emptyRB()]});
@@ -1363,8 +1487,8 @@ function StepDelta({ data, set, w }) {
     <div>
       <Banner emoji="⚖️" title="Where did intent and reality diverge?" body="Capture not just what was built, but the gap between what was asked for and what was achievable." color="#DC2626"/>
       <Card>
-        <CardTitle>User's original intent</CardTitle>
-        <Field label="What did they want in their own words?"><TI rows={3} value={data.userIntent} onChange={v=>set({...data,userIntent:v})} placeholder="The ideal end-state they described…"/></Field>
+        <CardTitle>User's original intent{aiSuggestedFields.has("userIntent") && <AiBadge/>}</CardTitle>
+        <Field label="What did they want in their own words?" aiBadge={aiSuggestedFields.has("userIntent")}><TI rows={3} value={data.userIntent} onChange={v=>set({...data,userIntent:v})} placeholder="The ideal end-state they described…"/></Field>
         <Field label="How would they know it worked?" hint="success criteria"><TI rows={2} value={data.successCriteria} onChange={v=>set({...data,successCriteria:v})} placeholder="e.g. New project appears within 5 min of HubSpot deal closing…"/></Field>
       </Card>
       <Card>
@@ -1519,6 +1643,8 @@ export default function ProjectForm({ onSubmit, isSaving, initialData, initialNa
   const w = useWidth();
   const { theme } = useTheme();
   const parsePromutMutation = useParsePrompt();
+  const matchTemplatesMutation = useMatchTemplates();
+  const [suggestedBuilds, setSuggestedBuilds] = useState([]);
 
   // Compute which intake fields were pre-filled by AI (brief flow only)
   const [aiSuggestedFields, setAiSuggestedFields] = useState(() => {
@@ -1549,7 +1675,22 @@ export default function ProjectForm({ onSubmit, isSaving, initialData, initialNa
       if (parsed.workflow_type) { newIntake.workflowType = parsed.workflow_type; newFields.add("workflowType"); }
       if (parsed.tools?.length) { newIntake.tools = parsed.tools; newFields.add("tools"); }
       if (parsed.pain_points?.length) { newIntake.painPoints = parsed.pain_points; newFields.add("painPoints"); }
-      if (parsed.process_frameworks?.length) { newIntake.processFrameworks = parsed.process_frameworks; newFields.add("processFrameworks"); }
+      if (parsed.process_frameworks?.length) {
+        const allFrameworkNames = Object.values(WORKFLOW_PROCESS_MAP).flat().map(p => p.name);
+        const matched = parsed.process_frameworks.map(aiName => {
+          const lower = aiName.toLowerCase();
+          return (
+            allFrameworkNames.find(f => f.toLowerCase() === lower) ||
+            allFrameworkNames.find(f => {
+              const fl = f.toLowerCase();
+              return fl.includes(lower) || lower.includes(fl.split(/[\s/]+/)[0]);
+            }) ||
+            null
+          );
+        }).filter(Boolean);
+        const uniqueFrameworks = [...new Set(matched)];
+        if (uniqueFrameworks.length) { newIntake.processFrameworks = uniqueFrameworks; newFields.add("processFrameworks"); }
+      }
 
       // Pre-fill the existing setup section from AI inference
       const auditUpdates = {};
@@ -1594,10 +1735,17 @@ export default function ProjectForm({ onSubmit, isSaving, initialData, initialNa
         ...d,
         intake: newIntake,
         audit: { ...d.audit, ...auditUpdates },
+        delta: { ...d.delta, userIntent: d.delta.userIntent || prompt },
       }));
+      newFields.add("userIntent");
       setAiSuggestedFields(newFields);
+
+      // Non-critical: also fetch template suggestions for the suggested builds panel
+      matchTemplatesMutation.mutateAsync(prompt)
+        .then(res => setSuggestedBuilds(res.matches?.slice(0, 3) || []))
+        .catch(() => {});
     } catch {
-      setParseError("Couldn't parse the prompt — check your connection and try again.");
+      setParseError("We weren't able to read your prompt right now. Please try again in a moment.");
     }
   };
 
@@ -1791,8 +1939,8 @@ export default function ProjectForm({ onSubmit, isSaving, initialData, initialNa
               auditData={data.audit} setAudit={v=>setSD("audit",v)} w={w} isEditing={isEditing}/>
           )}
           {step===3 && <StepIntake data={data.intake} set={v=>setSD("intake",v)} w={w} hideRawPrompt={shouldHidePrompt} aiSuggestedFields={aiSuggestedFields}/>}
-          {step===4 && <StepBuild data={data.build} set={v=>setSD("build",v)} w={w} suggestedAutomations={suggestedAutomations} auditData={data.audit}/>}
-          {step===5 && <StepDelta data={data.delta} set={v=>setSD("delta",v)} w={w}/>}
+          {step===4 && <StepBuild data={data.build} set={v=>setSD("build",v)} w={w} suggestedAutomations={suggestedAutomations} auditData={data.audit} suggestedBuilds={suggestedBuilds}/>}
+          {step===5 && <StepDelta data={data.delta} set={v=>setSD("delta",v)} w={w} aiSuggestedFields={aiSuggestedFields}/>}
           {step===6 && <StepReasoning data={data.reasoning} set={v=>setSD("reasoning",v)} w={w}/>}
           {step===7 && <StepOutcome data={data.outcome} set={v=>setSD("outcome",v)} w={w}/>}
         </div>
