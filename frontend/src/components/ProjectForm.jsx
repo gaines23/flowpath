@@ -138,17 +138,16 @@ export const CLICKUP_ACTIONS = [
   "Apply Template","Archive Task","Send Webhook",
 ];
 
-const PHASES = [
-  {id:"situation", label:"The Situation", short:"Situation", color:"#7C3AED"},
-  {id:"build",     label:"The Build",     short:"Build",     color:"#0284C7"},
-  {id:"outcome",   label:"The Outcome",   short:"Outcome",   color:"#059669"},
-];
 
-
-const PHASE_DESC = [
-  "What's broken and who the client is.",
-  "Document everything that was built.",
-  "How intent, decisions, and results aligned.",
+const SECTIONS = [
+  { id:"projectUpdates", label:"Project Updates",      subtitle:"Timestamped notes and attachments",                                color:"#0284C7", group:"The Updates"  },
+  { id:"scopeCreep",     label:"Scope Creep",           subtitle:"Unplanned additions to the build",                                color:"#D97706", group:"The Updates"  },
+  { id:"intake",         label:"Who's the client?",    subtitle:"Capture the scenario, industry, team, and tools",                  color:"#7C3AED", group:"The Situation" },
+  { id:"audit",          label:"What's in place now?", subtitle:"Document the client's current setup and what's breaking",          color:"#7C3AED", group:"The Build"     },
+  { id:"build",          label:"The Build",            subtitle:"Document everything that was built",                               color:"#0284C7", group:"The Build"     },
+  { id:"delta",          label:"Intent vs Reality",    subtitle:"Log the gap between what was wanted and what was delivered",       color:"#059668", group:"The Outcome"   },
+  { id:"reasoning",      label:"Decision Reasoning",   subtitle:"Record the reasoning behind every major decision",                 color:"#059668", group:"The Outcome"   },
+  { id:"outcome",        label:"Outcome",              subtitle:"Capture the post-build result and long-term usage signal",         color:"#059668", group:"The Outcome"   },
 ];
 
 const DEFAULT_STATE = {
@@ -663,10 +662,80 @@ function AuditProjectUpdateCard({ item, onChange, onRemove }) {
   );
 }
 
-function StepAudit({ data, set, caseName, setCaseName, projectUpdates, onProjectUpdatesChange, scopeCreep, onScopeCreepChange, intakeData, setIntake, deltaData, setDelta, hideRawPrompt, onAiParse, isParsing, parseError }) {
+function StepProjectUpdates({ projectUpdates, onProjectUpdatesChange, isEditing }) {
   const { theme } = useTheme();
   const pu = projectUpdates || [];
+
+  if (!isEditing) {
+    return (
+      <div style={{ padding:"32px 0", textAlign:"center" }}>
+        <p style={{ margin:0, fontSize:14, color:theme.textFaint, fontFamily:F }}>Project updates can be added after the project is saved.</p>
+      </div>
+    );
+  }
+
+  return (
+    <Card>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom: pu.length > 0 ? 12 : 0 }}>
+        <div>
+          <p style={{ margin:0, fontSize:14, fontWeight:700, color:theme.text, fontFamily:F }}>Project Updates</p>
+          <p style={{ margin:"2px 0 0", fontSize:12, color:theme.textFaint, fontFamily:F }}>Timestamped notes & attachments</p>
+        </div>
+        <button type="button" onClick={() => onProjectUpdatesChange([...pu, {content:"",attachments:[],createdAt:new Date().toISOString()}])}
+          style={{ fontSize:12, fontWeight:600, color:"#0284C7", background:"#E0F2FE", border:"1px solid #BAE6FD", borderRadius:8, padding:"6px 10px", cursor:"pointer", fontFamily:F, flexShrink:0 }}>
+          + Add
+        </button>
+      </div>
+      {pu.length === 0
+        ? <p style={{ margin:0, fontSize:12, color:theme.textFaint, fontFamily:F }}>No updates yet — click Add to log progress notes.</p>
+        : pu.map((item, i) => (
+            <AuditProjectUpdateCard key={i} item={item}
+              onChange={v => { const next=[...pu]; next[i]=v; onProjectUpdatesChange(next); }}
+              onRemove={() => onProjectUpdatesChange(pu.filter((_,idx)=>idx!==i))}/>
+          ))
+      }
+    </Card>
+  );
+}
+
+function StepScopeCreep({ scopeCreep, onScopeCreepChange, isEditing }) {
+  const { theme } = useTheme();
   const sc = scopeCreep || [];
+
+  if (!isEditing) {
+    return (
+      <div style={{ padding:"32px 0", textAlign:"center" }}>
+        <p style={{ margin:0, fontSize:14, color:theme.textFaint, fontFamily:F }}>Scope creep can be logged after the project is saved.</p>
+      </div>
+    );
+  }
+
+  return (
+    <Card>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom: sc.length > 0 ? 12 : 0 }}>
+        <div>
+          <p style={{ margin:0, fontSize:14, fontWeight:700, color:theme.text, fontFamily:F }}>Scope Creep</p>
+          <p style={{ margin:"2px 0 0", fontSize:12, color:theme.textFaint, fontFamily:F }}>Unplanned additions to the build</p>
+        </div>
+        <button type="button" onClick={() => onScopeCreepChange([...sc, {area:"",reason:"",impact:"",communicated:null}])}
+          style={{ fontSize:12, fontWeight:600, color:"#D97706", background:"#FEF3C7", border:"1px solid #FDE68A", borderRadius:8, padding:"6px 10px", cursor:"pointer", fontFamily:F, flexShrink:0 }}>
+          + Add
+        </button>
+      </div>
+      {sc.length === 0
+        ? <p style={{ margin:0, fontSize:12, color:theme.textFaint, fontFamily:F }}>No scope creep logged yet.</p>
+        : sc.map((item, i) => (
+            <AuditScopeCreepCard key={i} item={item} index={i}
+              onChange={v => { const next=[...sc]; next[i]=v; onScopeCreepChange(next); }}
+              onRemove={() => onScopeCreepChange(sc.filter((_,idx)=>idx!==i))}/>
+          ))
+      }
+    </Card>
+  );
+}
+
+function StepAudit({ data, set, caseName, setCaseName, intakeData, setIntake, deltaData, setDelta, hideRawPrompt, onAiParse, isParsing, parseError }) {
+  const { theme } = useTheme();
 
   // Guided conversation state (lives here so it persists while on this step)
   const [guidedMode, setGuidedMode] = useState(!(intakeData?.rawPrompt));
@@ -751,53 +820,6 @@ function StepAudit({ data, set, caseName, setCaseName, projectUpdates, onProject
         </Card>
       )}
 
-      {/* Project Updates — edit only */}
-      {onProjectUpdatesChange && (
-        <Card>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom: pu.length > 0 ? 12 : 0 }}>
-            <div>
-              <p style={{ margin:0, fontSize:14, fontWeight:700, color:theme.text, fontFamily:F }}>Project Updates</p>
-              <p style={{ margin:"2px 0 0", fontSize:12, color:theme.textFaint, fontFamily:F }}>Timestamped notes & attachments</p>
-            </div>
-            <button type="button" onClick={() => onProjectUpdatesChange([...pu, {content:"",attachments:[],createdAt:new Date().toISOString()}])}
-              style={{ fontSize:12, fontWeight:600, color:"#0284C7", background:"#E0F2FE", border:"1px solid #BAE6FD", borderRadius:8, padding:"6px 10px", cursor:"pointer", fontFamily:F, flexShrink:0 }}>
-              + Add
-            </button>
-          </div>
-          {pu.length === 0
-            ? <p style={{ margin:0, fontSize:12, color:theme.textFaint, fontFamily:F }}>No updates yet — click Add to log progress notes.</p>
-            : pu.map((item, i) => (
-                <AuditProjectUpdateCard key={i} item={item}
-                  onChange={v => { const next=[...pu]; next[i]=v; onProjectUpdatesChange(next); }}
-                  onRemove={() => onProjectUpdatesChange(pu.filter((_,idx)=>idx!==i))}/>
-              ))
-          }
-        </Card>
-      )}
-
-      {/* Scope Creep — edit only */}
-      {onScopeCreepChange && (
-        <Card>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom: sc.length > 0 ? 12 : 0 }}>
-            <div>
-              <p style={{ margin:0, fontSize:14, fontWeight:700, color:theme.text, fontFamily:F }}>Scope Creep</p>
-              <p style={{ margin:"2px 0 0", fontSize:12, color:theme.textFaint, fontFamily:F }}>Unplanned additions to the build</p>
-            </div>
-            <button type="button" onClick={() => onScopeCreepChange([...sc, {area:"",reason:"",impact:"",communicated:null}])}
-              style={{ fontSize:12, fontWeight:600, color:"#D97706", background:"#FEF3C7", border:"1px solid #FDE68A", borderRadius:8, padding:"6px 10px", cursor:"pointer", fontFamily:F, flexShrink:0 }}>
-              + Add
-            </button>
-          </div>
-          {sc.length === 0
-            ? <p style={{ margin:0, fontSize:12, color:theme.textFaint, fontFamily:F }}>No scope creep logged yet.</p>
-            : sc.map((item, i) => (
-                <AuditScopeCreepCard key={i} item={item} index={i}
-                  onChange={v => { const next=[...sc]; next[i]=v; onScopeCreepChange(next); }}
-                  onRemove={() => onScopeCreepChange(sc.filter((_,idx)=>idx!==i))}/>
-              ))
-          }
-        </Card>
-      )}
     </div>
   );
 }
@@ -1425,58 +1447,6 @@ function StepOutcome({ data, set, w }) {
   );
 }
 
-// ── Mobile step drawer ────────────────────────────────────────────────────────
-function MobileStepDrawer({ step, setStep, cs, open, onClose }) {
-  const { theme } = useTheme();
-  if (!open) return null;
-  return (
-    <>
-      <div onClick={onClose} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:40 }}/>
-      <div style={{ position:"fixed", bottom:0, left:0, right:0, background:theme.surface, borderRadius:"18px 18px 0 0", zIndex:50, padding:"12px 0 32px" }}>
-        <div style={{ width:36, height:4, background:theme.border, borderRadius:4, margin:"0 auto 16px" }}/>
-        <p style={{ margin:"0 0 8px", padding:"0 20px", fontSize:11, fontWeight:700, color:theme.textFaint, fontFamily:F, letterSpacing:"0.08em", textTransform:"uppercase" }}>Jump to phase</p>
-        {PHASES.map((s,i)=>(
-          <button key={s.id} onClick={()=>{setStep(i);onClose();}} style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 20px", background:i===step?s.color+"0D":"transparent", border:"none", cursor:"pointer", borderLeft:i===step?`3px solid ${s.color}`:"3px solid transparent" }}>
-            <div style={{ width:28, height:28, borderRadius:"50%", background:i<step?"#059669":i===step?s.color:theme.skeleton, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-              {i<step
-                ? <span style={{ color:"#fff", fontSize:12, fontWeight:700 }}>✓</span>
-                : <span style={{ fontSize:11, fontWeight:700, color:i===step?"#fff":theme.textFaint, fontFamily:F }}>{i+1}</span>}
-            </div>
-            <div style={{ textAlign:"left" }}>
-              <p style={{ margin:0, fontSize:14, fontWeight:i===step?700:500, color:i===step?s.color:theme.textSec, fontFamily:F }}>{s.label}</p>
-              <p style={{ margin:0, fontSize:11, color:theme.textFaint, fontFamily:F }}>{PHASE_DESC[i]}</p>
-            </div>
-          </button>
-        ))}
-      </div>
-    </>
-  );
-}
-
-// ── Phase accordion section ───────────────────────────────────────────────────
-function PhaseSection({ title, subtitle, color, defaultOpen = false, filled, children }) {
-  const [open, setOpen] = useState(defaultOpen);
-  const { theme } = useTheme();
-  return (
-    <div style={{ marginBottom: open ? 28 : 4 }}>
-      <button type="button" onClick={()=>setOpen(o=>!o)}
-        style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 14px", background: open ? `${color}12` : theme.surface, borderRadius: open ? "10px 10px 0 0" : 10, border:`1px solid ${open ? color+"40" : theme.border}`, borderBottom: open ? `1.5px solid ${color+"50"}` : `1px solid ${theme.border}`, cursor:"pointer", transition:"background 0.15s, border-color 0.15s" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          {filled
-            ? <span style={{ width:20, height:20, background:"#059669", borderRadius:"50%", display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:10, color:"#fff", fontWeight:700, flexShrink:0 }}>✓</span>
-            : <span style={{ width:20, height:20, borderRadius:"50%", border:`2px solid ${open ? color : theme.borderInput}`, background: open ? `${color}15` : "transparent", flexShrink:0, transition:"all 0.2s" }}/>
-          }
-          <div style={{ textAlign:"left" }}>
-            <p style={{ margin:0, fontSize:14, fontWeight:700, color: open ? color : theme.text, fontFamily:F, transition:"color 0.15s" }}>{title}</p>
-            {subtitle && <p style={{ margin:"1px 0 0", fontSize:11, color:theme.textFaint, fontFamily:F }}>{subtitle}</p>}
-          </div>
-        </div>
-        <span style={{ fontSize:16, color: open ? color : theme.textMuted, display:"inline-block", transform: open ? "rotate(0deg)" : "rotate(-90deg)", transition:"transform 0.2s, color 0.15s", flexShrink:0 }}>▾</span>
-      </button>
-      {open && <div style={{ padding:"18px 14px 4px", border:`1px solid ${color}40`, borderTop:"none", borderRadius:"0 0 10px 10px" }}>{children}</div>}
-    </div>
-  );
-}
 
 // ── AI Confidence Score ───────────────────────────────────────────────────────
 function computeConfidence(data) {
@@ -1543,7 +1513,6 @@ export default function ProjectForm({ onSubmit, isSaving, initialData, initialNa
   const [data, setData] = useState(initialData || DEFAULT_STATE);
   const [enteredBy, setEnteredBy] = useState(initialEnteredBy || "");
   const [caseName, setCaseName] = useState(initialName || "");
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [parseError, setParseError] = useState(null);
   const w = useWidth();
   const { theme } = useTheme();
@@ -1631,9 +1600,8 @@ export default function ProjectForm({ onSubmit, isSaving, initialData, initialNa
   };
 
   const isMobile = w < 640;
-  const cs = PHASES[step];
-  const pct = (step / (PHASES.length - 1)) * 100;
-  const px = isMobile ? 16 : 28;
+  const cs = SECTIONS[step];
+  const px = isMobile ? 16 : 24;
 
   const setSD = (key, val) => setData(d => ({ ...d, [key]: val }));
 
@@ -1642,12 +1610,26 @@ export default function ProjectForm({ onSubmit, isSaving, initialData, initialNa
   const { score: confScore, hint: confHint } = computeConfidence(data);
   const confColor = confScore >= 80 ? "#059669" : confScore >= 50 ? "#7C3AED" : "#D97706";
 
+  const sectionFilled = [
+    !!(data.projectUpdates?.length),
+    !!(data.delta?.scopeCreep?.length),
+    !!(data.intake.industries.length || data.intake.workflowType),
+    !!(data.audit.overallAssessment || data.audit.builds?.length),
+    !!(data.build.buildNotes || data.build.workflows?.length),
+    !!(data.delta.userIntent || data.delta.actualBuild),
+    !!(data.reasoning.whyStructure || data.reasoning.lessons),
+    !!(data.outcome.built || data.outcome.whatWorked),
+  ];
+
+  const sidebarGroups = [...new Set(SECTIONS.map(s => s.group))];
+  const HEADER_H = isMobile ? 92 : 60;
+
   return (
     <div style={{ background:theme.bg, minHeight:"100vh" }}>
 
-      {/* ── Sub-header (inside app layout) ──────────────────────────────── */}
+      {/* ── Header ──────────────────────────────────────────────────────── */}
       <div style={{ position:"sticky", top: isMobile ? 56 : 0, zIndex:20, background:theme.surface, borderBottom:`1px solid ${theme.border}`, boxShadow:"0 1px 4px rgba(0,0,0,0.04)" }}>
-        <div style={{ maxWidth:820, margin:"0 auto", padding:`0 ${px}px` }}>
+        <div style={{ maxWidth:1060, margin:"0 auto", padding:`0 ${px}px` }}>
 
           {/* Top row */}
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", height: isMobile ? 52 : 60 }}>
@@ -1667,126 +1649,117 @@ export default function ProjectForm({ onSubmit, isSaving, initialData, initialNa
             </div>
           </div>
 
-          {/* Phase tabs (desktop + tablet) */}
-          {!isMobile && (
-            <div style={{ display:"flex", gap:0, overflowX:"auto", scrollbarWidth:"none" }}>
-              {PHASES.map((s,i)=>(
-                <button key={s.id} onClick={()=>setStep(i)} style={{ display:"flex", alignItems:"center", gap:6, padding:"10px 16px", background:"transparent", border:"none", cursor:"pointer", flexShrink:0, borderBottom:i===step?`3px solid ${s.color}`:"3px solid transparent", transition:"all 0.2s" }}>
-                  {i<step && <span style={{ width:16, height:16, background:"#059669", borderRadius:"50%", display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:9, color:"#fff", fontWeight:700 }}>✓</span>}
-                  <span style={{ fontSize:12, fontWeight:i===step?700:500, color:i===step?s.color:i<step?theme.textFaint:theme.borderInput, fontFamily:F, whiteSpace:"nowrap" }}>{w < 900 ? s.short : s.label}</span>
+          {/* Mobile: horizontal scrollable section tabs */}
+          {isMobile && (
+            <div style={{ display:"flex", gap:0, overflowX:"auto", scrollbarWidth:"none", borderTop:`1px solid ${theme.border}` }}>
+              {SECTIONS.map((s,i)=>(
+                <button key={s.id} onClick={()=>setStep(i)}
+                  style={{ display:"flex", alignItems:"center", gap:4, padding:"10px 12px", background:"transparent", border:"none", cursor:"pointer", flexShrink:0, borderBottom:i===step?`3px solid ${s.color}`:"3px solid transparent", transition:"border-color 0.2s" }}>
+                  {sectionFilled[i] && <span style={{ width:12, height:12, background:"#059669", borderRadius:"50%", display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:7, color:"#fff", fontWeight:700, flexShrink:0 }}>✓</span>}
+                  <span style={{ fontSize:11, fontWeight:i===step?700:500, color:i===step?s.color:theme.textFaint, fontFamily:F, whiteSpace:"nowrap" }}>{s.label}</span>
                 </button>
               ))}
             </div>
           )}
-
-          {/* Mobile progress dots */}
-          {isMobile && (
-            <div style={{ display:"flex", gap:5, padding:"10px 0 11px" }}>
-              {PHASES.map((_,i)=>(
-                <div key={i} onClick={()=>setStep(i)} style={{ flex:i===step?3:1, height:4, borderRadius:4, background:i===step?cs.color:i<step?theme.textFaint:theme.border, cursor:"pointer", transition:"all 0.3s" }}/>
-              ))}
-            </div>
-          )}
         </div>
-
-        {/* Progress bar */}
-        {!isMobile && (
-          <div style={{ height:3, background:theme.skeleton }}>
-            <div style={{ height:"100%", background:cs.color, width:`${pct}%`, transition:"width 0.4s ease" }}/>
-          </div>
-        )}
       </div>
 
-      {/* Mobile drawer */}
-      <MobileStepDrawer step={step} setStep={setStep} cs={cs} open={drawerOpen} onClose={()=>setDrawerOpen(false)}/>
+      {/* ── Body: sidebar + content ──────────────────────────────────────── */}
+      <div style={{ maxWidth:1060, margin:"0 auto", display:"flex", alignItems:"flex-start" }}>
 
-      {/* ── Content ─────────────────────────────────────────────────────── */}
-      {(() => {
-        return (
-          <div style={{ maxWidth:820, margin:"0 auto", padding:`24px ${px}px 140px` }}>
-
-            {/* Mobile: logged by */}
-            {isMobile && (
-              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:20, background:theme.surface, border:`1px solid ${theme.border}`, borderRadius:12, padding:"10px 14px" }}>
-                <span style={{ fontSize:12, color:theme.textFaint, fontFamily:F, fontWeight:500, flexShrink:0 }}>Logged by</span>
-                <input value={enteredBy} onChange={e=>setEnteredBy(e.target.value)} placeholder="Your name"
-                  style={{ flex:1, fontFamily:F, fontSize:14, color:theme.textSec, background:"transparent", border:"none", outline:"none" }}/>
+        {/* Left sidebar (desktop only) */}
+        {!isMobile && (
+          <div style={{ width:210, flexShrink:0, position:"sticky", top:HEADER_H, height:`calc(100vh - ${HEADER_H}px)`, overflowY:"auto", borderRight:`1px solid ${theme.border}`, display:"flex", flexDirection:"column", padding:"20px 0 0" }}>
+            {sidebarGroups.map(group => (
+              <div key={group} style={{ marginBottom:8 }}>
+                <p style={{ margin:"0 0 4px", padding:"0 16px", fontSize:10, fontWeight:700, color:theme.textFaint, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.08em" }}>{group}</p>
+                {SECTIONS.filter(s=>s.group===group).map(s => {
+                  const i = SECTIONS.indexOf(s);
+                  const active = i === step;
+                  return (
+                    <button key={s.id} onClick={()=>setStep(i)}
+                      style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"9px 16px", background:active?`${s.color}10`:"transparent", border:"none", borderLeft:active?`3px solid ${s.color}`:"3px solid transparent", cursor:"pointer", textAlign:"left", transition:"all 0.15s" }}>
+                      {sectionFilled[i]
+                        ? <span style={{ width:18, height:18, background:"#059669", borderRadius:"50%", display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:9, color:"#fff", fontWeight:700, flexShrink:0 }}>✓</span>
+                        : <span style={{ width:18, height:18, borderRadius:"50%", border:`2px solid ${active?s.color:theme.borderInput}`, background:active?`${s.color}15`:"transparent", flexShrink:0, transition:"all 0.15s" }}/>
+                      }
+                      <span style={{ fontSize:12, fontWeight:active?700:500, color:active?s.color:theme.textSec, fontFamily:F, lineHeight:1.3 }}>{s.label}</span>
+                    </button>
+                  );
+                })}
               </div>
-            )}
-
-            <>
-              {/* ── Phase 0: The Situation ──────────────────────────────── */}
-              {step===0 && (<>
-                <PhaseSection title="What's in place now?" subtitle="Document the client's current setup and what's breaking" color="#7C3AED" defaultOpen filled={!!(data.audit.overallAssessment || data.audit.builds.length)}>
-                  <StepAudit data={data.audit} set={v=>setSD("audit",v)} w={w} caseName={caseName} setCaseName={setCaseName}
-                    intakeData={data.intake} setIntake={v=>setSD("intake",v)}
-                    setDelta={v=>setSD("delta",v)} deltaData={data.delta}
-                    hideRawPrompt={shouldHidePrompt} onAiParse={handleAiParse} isParsing={parsePromutMutation.isPending} parseError={parseError}
-                    {...(isEditing && {
-                      projectUpdates: data.projectUpdates||[],
-                      onProjectUpdatesChange: v=>setSD("projectUpdates",v),
-                      scopeCreep: data.delta?.scopeCreep||[],
-                      onScopeCreepChange: v=>setData(d=>({...d,delta:{...d.delta,scopeCreep:v}})),
-                    })}/>
-                </PhaseSection>
-                <PhaseSection title="Who's the client?" subtitle="Capture the scenario, industry, team, and tools" color="#7C3AED" filled={!!(data.intake.industries.length || data.intake.workflowType)}>
-                  <StepIntake data={data.intake} set={v=>setSD("intake",v)} w={w} hideRawPrompt={shouldHidePrompt} aiSuggestedFields={aiSuggestedFields}/>
-                </PhaseSection>
-              </>)}
-
-              {/* ── Phase 1: The Build ──────────────────────────────────── */}
-              {step===1 && <StepBuild data={data.build} set={v=>setSD("build",v)} w={w} suggestedAutomations={suggestedAutomations} auditData={data.audit} setAudit={v=>setSD("audit",v)} isEditing={isEditing}/>}
-
-              {/* ── Phase 2: The Outcome ────────────────────────────────── */}
-              {step===2 && (<>
-                <PhaseSection title="Intent vs Reality" subtitle="Log the gap between what was wanted and what was delivered" color="#059668" defaultOpen filled={!!(data.delta.userIntent || data.delta.actualBuild)}>
-                  <StepDelta data={data.delta} set={v=>setSD("delta",v)} w={w}/>
-                </PhaseSection>
-                <PhaseSection title="Decision Reasoning" subtitle="Record the reasoning behind every major decision" color="#059668" filled={!!(data.reasoning.whyStructure || data.reasoning.lessons)}>
-                  <StepReasoning data={data.reasoning} set={v=>setSD("reasoning",v)} w={w}/>
-                </PhaseSection>
-                <PhaseSection title="Outcome" subtitle="Capture the post-build result and long-term usage signal" color="#059668" filled={!!(data.outcome.built || data.outcome.whatWorked)}>
-                  <StepOutcome data={data.outcome} set={v=>setSD("outcome",v)} w={w}/>
-                </PhaseSection>
-              </>)}
-            </>
+            ))}
           </div>
-        );
-      })()}
+        )}
+
+        {/* Content area */}
+        <div style={{ flex:1, minWidth:0, padding:`24px ${px}px 120px` }}>
+
+          {/* Section heading */}
+          <div style={{ marginBottom:24 }}>
+            <p style={{ margin:"0 0 2px", fontSize:11, fontWeight:700, color:theme.textFaint, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.08em" }}>{cs.group}</p>
+            <p style={{ margin:"0 0 4px", fontSize:20, fontWeight:700, color:cs.color, fontFamily:F }}>{cs.label}</p>
+            <p style={{ margin:0, fontSize:13, color:theme.textFaint, fontFamily:F }}>{cs.subtitle}</p>
+          </div>
+
+          {/* Logged by (mobile) */}
+          {isMobile && (
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:20, background:theme.surface, border:`1px solid ${theme.border}`, borderRadius:12, padding:"10px 14px" }}>
+              <span style={{ fontSize:12, color:theme.textFaint, fontFamily:F, fontWeight:500, flexShrink:0 }}>Logged by</span>
+              <input value={enteredBy} onChange={e=>setEnteredBy(e.target.value)} placeholder="Your name"
+                style={{ flex:1, fontFamily:F, fontSize:14, color:theme.textSec, background:"transparent", border:"none", outline:"none" }}/>
+            </div>
+          )}
+
+          {/* ── Section content ──────────────────────────────────────────── */}
+          {step===0 && <StepProjectUpdates projectUpdates={data.projectUpdates||[]} onProjectUpdatesChange={v=>setSD("projectUpdates",v)} isEditing={isEditing}/>}
+          {step===1 && <StepScopeCreep scopeCreep={data.delta?.scopeCreep||[]} onScopeCreepChange={v=>setData(d=>({...d,delta:{...d.delta,scopeCreep:v}}))} isEditing={isEditing}/>}
+          {step===2 && <StepIntake data={data.intake} set={v=>setSD("intake",v)} w={w} hideRawPrompt={shouldHidePrompt} aiSuggestedFields={aiSuggestedFields}/>}
+          {step===3 && (
+            <StepAudit data={data.audit} set={v=>setSD("audit",v)} w={w} caseName={caseName} setCaseName={setCaseName}
+              intakeData={data.intake} setIntake={v=>setSD("intake",v)}
+              setDelta={v=>setSD("delta",v)} deltaData={data.delta}
+              hideRawPrompt={shouldHidePrompt} onAiParse={handleAiParse} isParsing={parsePromutMutation.isPending} parseError={parseError}/>
+          )}
+          {step===4 && <StepBuild data={data.build} set={v=>setSD("build",v)} w={w} suggestedAutomations={suggestedAutomations} auditData={data.audit} setAudit={v=>setSD("audit",v)} isEditing={isEditing}/>}
+          {step===5 && <StepDelta data={data.delta} set={v=>setSD("delta",v)} w={w}/>}
+          {step===6 && <StepReasoning data={data.reasoning} set={v=>setSD("reasoning",v)} w={w}/>}
+          {step===7 && <StepOutcome data={data.outcome} set={v=>setSD("outcome",v)} w={w}/>}
+        </div>
+      </div>
 
       {/* ── Sticky footer ────────────────────────────────────────────────── */}
       <div style={{ position:"fixed", bottom:0, left:0, right:0, background:theme.surface, borderTop:`1px solid ${theme.border}`, padding:`12px ${isMobile?16:24}px`, boxShadow:"0 -4px 16px rgba(0,0,0,0.06)", zIndex:20 }}>
-        <div style={{ maxWidth:820, margin:"0 auto", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          {step === 0 && onCancel ? (
+        <div style={{ maxWidth:1060, margin:"0 auto", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+
+          {/* Left: Cancel or Prev */}
+          {step===0 && onCancel ? (
             <button onClick={onCancel}
               style={{ padding:`11px ${isMobile?18:24}px`, border:`1.5px solid ${theme.borderInput}`, borderRadius:10, background:theme.surface, color:theme.textSec, fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:F, minHeight:44 }}>
               Cancel
             </button>
           ) : (
-            <button onClick={()=>setStep(s=>s-1)} disabled={step===0}
+            <button onClick={()=>setStep(s=>Math.max(0,s-1))} disabled={step===0}
               style={{ padding:`11px ${isMobile?18:24}px`, border:`1.5px solid ${theme.borderInput}`, borderRadius:10, background:theme.surface, color:step===0?theme.borderInput:theme.textSec, fontSize:13, fontWeight:600, cursor:step===0?"not-allowed":"pointer", fontFamily:F, opacity:step===0?0.45:1, minHeight:44 }}>
               ← Back
             </button>
           )}
 
-          {!isMobile && (
-            <div style={{ display:"flex", gap:5, alignItems:"center" }}>
-              {PHASES.map((_,i)=>(
-                <div key={i} onClick={()=>setStep(i)} style={{ width:i===step?20:6, height:6, borderRadius:3, background:i===step?cs.color:i<step?"#D1D5DB":"#E5E7EB", cursor:"pointer", transition:"all 0.3s" }}/>
-              ))}
-            </div>
-          )}
-
-          {step < PHASES.length - 1 ? (
-            <button onClick={()=>setStep(s=>s+1)} style={{ padding:`11px ${isMobile?22:28}px`, border:"none", borderRadius:10, background:cs.color, color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:F, boxShadow:`0 2px 10px ${cs.color}45`, minHeight:44 }}>
-              Continue →
-            </button>
-          ) : (
-            <button onClick={handleSave} disabled={isSaving}
-              style={{ padding:`11px ${isMobile?22:28}px`, border:"none", borderRadius:10, background:isSaving?"#6EE7B7":"#059669", color:"#fff", fontSize:13, fontWeight:700, cursor:isSaving?"not-allowed":"pointer", fontFamily:F, boxShadow:"0 2px 10px rgba(5,150,105,0.35)", minHeight:44 }}>
-              {isSaving ? "Saving…" : "Save Project File ✓"}
-            </button>
-          )}
+          {/* Right: Save + Next (or just Save on last) */}
+          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+            {(isEditing || step===SECTIONS.length-1) && (
+              <button onClick={handleSave} disabled={isSaving}
+                style={{ padding:`11px ${isMobile?18:22}px`, border:"none", borderRadius:10, background:isSaving?"#6EE7B7":"#059669", color:"#fff", fontSize:13, fontWeight:700, cursor:isSaving?"not-allowed":"pointer", fontFamily:F, boxShadow:"0 2px 10px rgba(5,150,105,0.35)", minHeight:44 }}>
+                {isSaving ? "Saving…" : step===SECTIONS.length-1 ? "Save Project File ✓" : "Save ✓"}
+              </button>
+            )}
+            {step < SECTIONS.length-1 && (
+              <button onClick={()=>setStep(s=>s+1)}
+                style={{ padding:`11px ${isMobile?22:28}px`, border:"none", borderRadius:10, background:cs.color, color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:F, boxShadow:`0 2px 10px ${cs.color}45`, minHeight:44 }}>
+                Continue →
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

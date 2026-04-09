@@ -11,7 +11,7 @@ import RoadblockCard from "../components/RoadblockCard";
  *   isPrinting — force all collapsibles open during print
  *   theme      — theme object from useTheme()
  */
-export default function DeltaSection({ delta, isPrinting, theme }) {
+export default function DeltaSection({ delta, theme }) {
   if (!delta) return null;
 
   return (
@@ -19,8 +19,6 @@ export default function DeltaSection({ delta, isPrinting, theme }) {
       title="Intent vs Reality"
       subtitle="Log the gap between what was wanted and what was delivered"
       color="#059669"
-      collapsible
-      forceOpen={isPrinting}
     >
       <DetailRow label="User intent " value={delta.user_intent} fullWidth />
       <DetailRow label="Success criteria " value={delta.success_criteria} fullWidth />
