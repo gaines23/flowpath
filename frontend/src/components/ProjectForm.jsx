@@ -142,8 +142,8 @@ export const CLICKUP_ACTIONS = [
 const SECTIONS = [
   { id:"projectUpdates", label:"Project Updates",      subtitle:"Timestamped notes and attachments",                                color:"#0284C7", group:"The Updates"  },
   { id:"scopeCreep",     label:"Scope Creep",           subtitle:"Unplanned additions to the build",                                color:"#D97706", group:"The Updates"  },
+  { id:"audit",          label:"What's in place now?", subtitle:"Document the client's current setup and what's breaking",          color:"#7C3AED", group:"The Situation" },
   { id:"intake",         label:"Who's the client?",    subtitle:"Capture the scenario, industry, team, and tools",                  color:"#7C3AED", group:"The Situation" },
-  { id:"audit",          label:"What's in place now?", subtitle:"Document the client's current setup and what's breaking",          color:"#7C3AED", group:"The Build"     },
   { id:"build",          label:"The Build",            subtitle:"Document everything that was built",                               color:"#0284C7", group:"The Build"     },
   { id:"delta",          label:"Intent vs Reality",    subtitle:"Log the gap between what was wanted and what was delivered",       color:"#059668", group:"The Outcome"   },
   { id:"reasoning",      label:"Decision Reasoning",   subtitle:"Record the reasoning behind every major decision",                 color:"#059668", group:"The Outcome"   },
@@ -734,10 +734,9 @@ function StepScopeCreep({ scopeCreep, onScopeCreepChange, isEditing }) {
   );
 }
 
-function StepAudit({ data, set, caseName, setCaseName, intakeData, setIntake, deltaData, setDelta, hideRawPrompt, onAiParse, isParsing, parseError }) {
+function StepAudit({ caseName, setCaseName, hideRawPrompt, intakeData, setIntake, deltaData, setDelta, onAiParse, isParsing, parseError }) {
   const { theme } = useTheme();
 
-  // Guided conversation state (lives here so it persists while on this step)
   const [guidedMode, setGuidedMode] = useState(!(intakeData?.rawPrompt));
   const [g1, setG1] = useState("");
   const [g2, setG2] = useState("");
@@ -750,7 +749,6 @@ function StepAudit({ data, set, caseName, setCaseName, intakeData, setIntake, de
     if (field === "g3") setG3(value);
     const assembled = assembleGuidedPrompt(next.g1, next.g2, next.g3);
     setIntake({ ...intakeData, rawPrompt: assembled });
-    set({ ...data, overallAssessment: assembled });
     if (setDelta && field === "g3") {
       setDelta({ ...deltaData, successCriteria: value });
     }
@@ -767,8 +765,6 @@ function StepAudit({ data, set, caseName, setCaseName, intakeData, setIntake, de
         <CardTitle sub="Give this project file a short, memorable name">Project name</CardTitle>
         <TI value={caseName} onChange={setCaseName} placeholder="e.g. Company/Client Name"/>
       </Card>
-
-      {/* Guided client conversation — moved here from Scenario step */}
       {!hideRawPrompt && (
         <Card accent="#7c3aed">
           {guidedMode ? (<>
@@ -819,7 +815,6 @@ function StepAudit({ data, set, caseName, setCaseName, intakeData, setIntake, de
           {parseError && <p style={{ margin:"8px 0 0", fontSize:12, color:"#DC2626", fontFamily:F }}>{parseError}</p>}
         </Card>
       )}
-
     </div>
   );
 }
@@ -867,7 +862,6 @@ function AiInfoTip({ hasAiFields }) {
 }
 
 function StepIntake({ data, set, w, hideRawPrompt, aiSuggestedFields = new Set() }) {
-  // On the new form (guided flow), badge = "AI can fill this"; after parsing or on edit/brief form, badge = "AI filled this"
   const ai = (field) => aiSuggestedFields.has(field) || (!hideRawPrompt && AI_FILLABLE_FIELDS.has(field));
   const hasAiFields = aiSuggestedFields.size > 0;
 
@@ -1509,7 +1503,7 @@ function computeConfidence(data) {
 // ── Main CaseFileForm ─────────────────────────────────────────────────────────
 export default function ProjectForm({ onSubmit, isSaving, initialData, initialName, initialEnteredBy, isEditing, onCancel, hideRawPrompt, suggestedAutomations }) {
   const shouldHidePrompt = hideRawPrompt || isEditing;
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(isEditing ? 0 : 2);
   const [data, setData] = useState(initialData || DEFAULT_STATE);
   const [enteredBy, setEnteredBy] = useState(initialEnteredBy || "");
   const [caseName, setCaseName] = useState(initialName || "");
@@ -1613,15 +1607,16 @@ export default function ProjectForm({ onSubmit, isSaving, initialData, initialNa
   const sectionFilled = [
     !!(data.projectUpdates?.length),
     !!(data.delta?.scopeCreep?.length),
-    !!(data.intake.industries.length || data.intake.workflowType),
     !!(data.audit.overallAssessment || data.audit.builds?.length),
+    !!(data.intake.industries.length || data.intake.workflowType),
     !!(data.build.buildNotes || data.build.workflows?.length),
     !!(data.delta.userIntent || data.delta.actualBuild),
     !!(data.reasoning.whyStructure || data.reasoning.lessons),
     !!(data.outcome.built || data.outcome.whatWorked),
   ];
 
-  const sidebarGroups = [...new Set(SECTIONS.map(s => s.group))];
+  const visibleSections = isEditing ? SECTIONS : SECTIONS.filter(s => s.group !== "The Updates");
+  const sidebarGroups = [...new Set(visibleSections.map(s => s.group))];
   const HEADER_H = isMobile ? 92 : 60;
 
   return (
@@ -1652,13 +1647,16 @@ export default function ProjectForm({ onSubmit, isSaving, initialData, initialNa
           {/* Mobile: horizontal scrollable section tabs */}
           {isMobile && (
             <div style={{ display:"flex", gap:0, overflowX:"auto", scrollbarWidth:"none", borderTop:`1px solid ${theme.border}` }}>
-              {SECTIONS.map((s,i)=>(
-                <button key={s.id} onClick={()=>setStep(i)}
-                  style={{ display:"flex", alignItems:"center", gap:4, padding:"10px 12px", background:"transparent", border:"none", cursor:"pointer", flexShrink:0, borderBottom:i===step?`3px solid ${s.color}`:"3px solid transparent", transition:"border-color 0.2s" }}>
-                  {sectionFilled[i] && <span style={{ width:12, height:12, background:"#059669", borderRadius:"50%", display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:7, color:"#fff", fontWeight:700, flexShrink:0 }}>✓</span>}
-                  <span style={{ fontSize:11, fontWeight:i===step?700:500, color:i===step?s.color:theme.textFaint, fontFamily:F, whiteSpace:"nowrap" }}>{s.label}</span>
-                </button>
-              ))}
+              {visibleSections.map((s)=>{
+                const i = SECTIONS.indexOf(s);
+                return (
+                  <button key={s.id} onClick={()=>setStep(i)}
+                    style={{ display:"flex", alignItems:"center", gap:4, padding:"10px 12px", background:"transparent", border:"none", cursor:"pointer", flexShrink:0, borderBottom:i===step?`3px solid ${s.color}`:"3px solid transparent", transition:"border-color 0.2s" }}>
+                    {sectionFilled[i] && <span style={{ width:12, height:12, background:"#059669", borderRadius:"50%", display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:7, color:"#fff", fontWeight:700, flexShrink:0 }}>✓</span>}
+                    <span style={{ fontSize:11, fontWeight:i===step?700:500, color:i===step?s.color:theme.textFaint, fontFamily:F, whiteSpace:"nowrap" }}>{s.label}</span>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
@@ -1673,7 +1671,7 @@ export default function ProjectForm({ onSubmit, isSaving, initialData, initialNa
             {sidebarGroups.map(group => (
               <div key={group} style={{ marginBottom:8 }}>
                 <p style={{ margin:"0 0 4px", padding:"0 16px", fontSize:10, fontWeight:700, color:theme.textFaint, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.08em" }}>{group}</p>
-                {SECTIONS.filter(s=>s.group===group).map(s => {
+                {visibleSections.filter(s=>s.group===group).map(s => {
                   const i = SECTIONS.indexOf(s);
                   const active = i === step;
                   return (
@@ -1714,13 +1712,14 @@ export default function ProjectForm({ onSubmit, isSaving, initialData, initialNa
           {/* ── Section content ──────────────────────────────────────────── */}
           {step===0 && <StepProjectUpdates projectUpdates={data.projectUpdates||[]} onProjectUpdatesChange={v=>setSD("projectUpdates",v)} isEditing={isEditing}/>}
           {step===1 && <StepScopeCreep scopeCreep={data.delta?.scopeCreep||[]} onScopeCreepChange={v=>setData(d=>({...d,delta:{...d.delta,scopeCreep:v}}))} isEditing={isEditing}/>}
-          {step===2 && <StepIntake data={data.intake} set={v=>setSD("intake",v)} w={w} hideRawPrompt={shouldHidePrompt} aiSuggestedFields={aiSuggestedFields}/>}
-          {step===3 && (
-            <StepAudit data={data.audit} set={v=>setSD("audit",v)} w={w} caseName={caseName} setCaseName={setCaseName}
+          {step===2 && (
+            <StepAudit caseName={caseName} setCaseName={setCaseName}
+              hideRawPrompt={shouldHidePrompt}
               intakeData={data.intake} setIntake={v=>setSD("intake",v)}
-              setDelta={v=>setSD("delta",v)} deltaData={data.delta}
-              hideRawPrompt={shouldHidePrompt} onAiParse={handleAiParse} isParsing={parsePromutMutation.isPending} parseError={parseError}/>
+              deltaData={data.delta} setDelta={v=>setSD("delta",v)}
+              onAiParse={handleAiParse} isParsing={parsePromutMutation.isPending} parseError={parseError}/>
           )}
+          {step===3 && <StepIntake data={data.intake} set={v=>setSD("intake",v)} w={w} hideRawPrompt={shouldHidePrompt} aiSuggestedFields={aiSuggestedFields}/>}
           {step===4 && <StepBuild data={data.build} set={v=>setSD("build",v)} w={w} suggestedAutomations={suggestedAutomations} auditData={data.audit} setAudit={v=>setSD("audit",v)} isEditing={isEditing}/>}
           {step===5 && <StepDelta data={data.delta} set={v=>setSD("delta",v)} w={w}/>}
           {step===6 && <StepReasoning data={data.reasoning} set={v=>setSD("reasoning",v)} w={w}/>}
@@ -1733,17 +1732,21 @@ export default function ProjectForm({ onSubmit, isSaving, initialData, initialNa
         <div style={{ maxWidth:1060, margin:"0 auto", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
 
           {/* Left: Cancel or Prev */}
-          {step===0 && onCancel ? (
-            <button onClick={onCancel}
-              style={{ padding:`11px ${isMobile?18:24}px`, border:`1.5px solid ${theme.borderInput}`, borderRadius:10, background:theme.surface, color:theme.textSec, fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:F, minHeight:44 }}>
-              Cancel
-            </button>
-          ) : (
-            <button onClick={()=>setStep(s=>Math.max(0,s-1))} disabled={step===0}
-              style={{ padding:`11px ${isMobile?18:24}px`, border:`1.5px solid ${theme.borderInput}`, borderRadius:10, background:theme.surface, color:step===0?theme.borderInput:theme.textSec, fontSize:13, fontWeight:600, cursor:step===0?"not-allowed":"pointer", fontFamily:F, opacity:step===0?0.45:1, minHeight:44 }}>
-              ← Back
-            </button>
-          )}
+          {(() => {
+            const minStep = isEditing ? 0 : 2;
+            const atFirst = step === minStep;
+            return atFirst && onCancel ? (
+              <button onClick={onCancel}
+                style={{ padding:`11px ${isMobile?18:24}px`, border:`1.5px solid ${theme.borderInput}`, borderRadius:10, background:theme.surface, color:theme.textSec, fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:F, minHeight:44 }}>
+                Cancel
+              </button>
+            ) : (
+              <button onClick={()=>setStep(s=>Math.max(minStep,s-1))} disabled={atFirst}
+                style={{ padding:`11px ${isMobile?18:24}px`, border:`1.5px solid ${theme.borderInput}`, borderRadius:10, background:theme.surface, color:atFirst?theme.borderInput:theme.textSec, fontSize:13, fontWeight:600, cursor:atFirst?"not-allowed":"pointer", fontFamily:F, opacity:atFirst?0.45:1, minHeight:44 }}>
+                ← Back
+              </button>
+            );
+          })()}
 
           {/* Right: Save + Next (or just Save on last) */}
           <div style={{ display:"flex", gap:8, alignItems:"center" }}>
