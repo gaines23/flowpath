@@ -161,7 +161,7 @@ export default function TasksPage() {
   const deleteTodo = useDeleteTodo();
 
   // Client-side filtering
-  const todos = allTodos.filter((t) => {
+  const filteredTodos = allTodos.filter((t) => {
     if (filters.status !== "all" && t.status !== filters.status) return false;
     if (filters.priority !== "all" && t.priority !== filters.priority) return false;
     if (filters.case_file_name && t.case_file_name !== filters.case_file_name) return false;
@@ -172,14 +172,46 @@ export default function TasksPage() {
           !(t.description || "").toLowerCase().includes(q)) return false;
     }
     return true;
-  }).sort((a, b) => {
-    if (a.status === "done" && b.status !== "done") return 1;
-    if (b.status === "done" && a.status !== "done") return -1;
-    if (!a.due_date && !b.due_date) return 0;
-    if (!a.due_date) return 1;
-    if (!b.due_date) return -1;
-    return a.due_date.localeCompare(b.due_date);
   });
+
+  // Grouping by due date bucket, priority within each group (high → med → low)
+  const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
+  const today    = new Date().toISOString().slice(0, 10);
+  const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+  const nextWeek = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
+
+  const getGroup = (t) => {
+    if (t.status === "done") return "done";
+    if (!t.due_date)         return "no_date";
+    if (t.due_date < today)  return "overdue";
+    if (t.due_date === today) return "today";
+    if (t.due_date === tomorrow) return "tomorrow";
+    if (t.due_date <= nextWeek) return "this_week";
+    return "later";
+  };
+
+  const GROUP_ORDER  = ["overdue", "today", "tomorrow", "this_week", "later", "no_date", "done"];
+  const GROUP_LABELS = {
+    overdue:   "Overdue",
+    today:     "Today",
+    tomorrow:  "Tomorrow",
+    this_week: "This Week",
+    later:     "Later",
+    no_date:   "No Due Date",
+    done:      "Done",
+  };
+
+  const grouped = filteredTodos.reduce((acc, t) => {
+    const g = getGroup(t);
+    (acc[g] = acc[g] || []).push(t);
+    return acc;
+  }, {});
+  Object.values(grouped).forEach((arr) =>
+    arr.sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 1) - (PRIORITY_ORDER[b.priority] ?? 1))
+  );
+
+  // Flat list for the empty-state count
+  const todos = filteredTodos;
 
   // Union of API projects + any todo project names not already in the API list.
   const apiProjectNames = (allProjectsData?.results || []).map((p) => p.name || p.workflow_type || "Untitled");
@@ -389,16 +421,75 @@ export default function TasksPage() {
         </div>
       ) : (
         <div>
-          {todos.map((todo) => (
-            <TaskRow
-              key={todo.id}
-              todo={todo}
-              theme={theme}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onToggleDone={handleToggleDone}
-            />
-          ))}
+          {GROUP_ORDER.filter((g) => grouped[g]?.length > 0).map((g) => {
+            // For multi-date buckets, further sub-group by specific date.
+            // Overdue: descending (most recent overdue = closest to today first).
+            // All others with dates: ascending (soonest first).
+            const flatOnly = g === "today" || g === "tomorrow" || g === "no_date" || g === "done";
+
+            const dateSubGroups = flatOnly ? null : (() => {
+              const byDate = grouped[g].reduce((acc, t) => {
+                const key = t.due_date || "";
+                (acc[key] = acc[key] || []).push(t);
+                return acc;
+              }, {});
+              return Object.entries(byDate).sort(([a], [b]) =>
+                g === "overdue" ? b.localeCompare(a) : a.localeCompare(b)
+              );
+            })();
+
+            const fmtDate = (d) => new Date(d + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+
+            return (
+              <div key={g} style={{ marginBottom: 28 }}>
+                {/* Bucket header */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, fontFamily: F,
+                    color: g === "overdue" ? "#EF4444" : g === "done" ? "#10B981" : theme.textMuted,
+                    textTransform: "uppercase", letterSpacing: "0.07em",
+                  }}>
+                    {GROUP_LABELS[g]}
+                  </span>
+                  <span style={{
+                    fontSize: 10, fontWeight: 600, fontFamily: F, color: theme.textFaint,
+                    background: theme.surfaceAlt || theme.surface,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: 10, padding: "1px 7px",
+                  }}>
+                    {grouped[g].length}
+                  </span>
+                  <div style={{ flex: 1, height: 1, background: theme.border }} />
+                </div>
+
+                {flatOnly ? (
+                  grouped[g].map((todo) => (
+                    <TaskRow key={todo.id} todo={todo} theme={theme}
+                      onEdit={handleEdit} onDelete={handleDelete} onToggleDone={handleToggleDone} />
+                  ))
+                ) : (
+                  dateSubGroups.map(([date, dateTodos]) => (
+                    <div key={date} style={{ marginBottom: 16 }}>
+                      {/* Date sub-header */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, paddingLeft: 2 }}>
+                        <span style={{
+                          fontSize: 11, fontWeight: 600, fontFamily: F,
+                          color: g === "overdue" ? "#EF4444" : theme.textFaint,
+                        }}>
+                          {fmtDate(date)}
+                        </span>
+                        <div style={{ flex: 1, height: 1, background: theme.border, opacity: 0.5 }} />
+                      </div>
+                      {dateTodos.map((todo) => (
+                        <TaskRow key={todo.id} todo={todo} theme={theme}
+                          onEdit={handleEdit} onDelete={handleDelete} onToggleDone={handleToggleDone} />
+                      ))}
+                    </div>
+                  ))
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
