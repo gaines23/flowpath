@@ -2,11 +2,10 @@ import { useState } from "react";
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import { useTheme } from "../../hooks/useTheme";
-import { useAuth } from "../../hooks/useAuth";
 import { useTodos, useCreateTodo, useUpdateTodo, useDeleteTodo } from "../../hooks/useTodos";
 import { useProjects } from "../../hooks/useProjects";
-import { useAdminUsers } from "../../hooks/useUsers";
 import { formatDate } from "../../utils/transforms";
+import TodoModal from "../../components/TodoModal";
 
 const F = "'Plus Jakarta Sans', sans-serif";
 
@@ -42,258 +41,6 @@ function Pill({ cfg, style = {} }) {
     }}>
       {cfg.label}
     </span>
-  );
-}
-
-// ── TodoModal (add & edit) ───────────────────────────────────────────────────
-function TodoModal({ initial, onClose, onSave, isSaving }) {
-  const { theme } = useTheme();
-  const { user } = useAuth();
-  const { data: projectsData } = useProjects({ page: 1 });
-  const { data: members } = useAdminUsers();
-
-  const projects = projectsData?.results || [];
-  const isAdmin = user?.role === "admin";
-
-  const [form, setForm] = useState({
-    title: initial?.title || "",
-    description: initial?.description || "",
-    case_file: initial?.case_file || "",
-    case_file_name: initial?.case_file_name || "",
-    layer_reference: initial?.layer_reference || "",
-    assigned_to: initial?.assigned_to || "",
-    assigned_to_name: initial?.assigned_to_name || "",
-    priority: initial?.priority || "medium",
-    status: initial?.status || "open",
-    due_date: initial?.due_date || "",
-  });
-  const [error, setError] = useState("");
-
-  const set = (field, value) => setForm((f) => ({ ...f, [field]: value }));
-
-  const handleProjectChange = (e) => {
-    const selected = projects.find((p) => p.id === e.target.value);
-    set("case_file", e.target.value);
-    set("case_file_name", selected?.name || selected?.workflow_type || "");
-  };
-
-  const handleAssigneeChange = (e) => {
-    const selected = (members || []).find((m) => m.id === e.target.value);
-    set("assigned_to", e.target.value);
-    set("assigned_to_name", selected
-      ? `${selected.first_name} ${selected.last_name}`.trim() || selected.email
-      : "");
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!form.title.trim()) { setError("Title is required."); return; }
-    onSave({ ...form, title: form.title.trim() });
-  };
-
-  const inputStyle = {
-    width: "100%", padding: "9px 12px",
-    border: `1.5px solid ${theme.borderInput}`, borderRadius: 8,
-    fontSize: 13, fontFamily: F, color: theme.text, background: theme.inputBg,
-    outline: "none", boxSizing: "border-box",
-  };
-  const labelStyle = {
-    fontSize: 11, fontWeight: 700, color: theme.textFaint, fontFamily: F,
-    display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em",
-  };
-  const focusOn  = (e) => { e.target.style.borderColor = theme.blue; e.target.style.boxShadow = `0 0 0 3px ${theme.blueLight}`; };
-  const focusOff = (e) => { e.target.style.borderColor = theme.borderInput; e.target.style.boxShadow = "none"; };
-
-  const SegmentGroup = ({ label, options, value, onChange }) => (
-    <div>
-      <label style={labelStyle}>{label}</label>
-      <div style={{ display: "flex", borderRadius: 8, border: `1.5px solid ${theme.borderInput}`, overflow: "hidden" }}>
-        {options.map(({ key, display }, i) => {
-          const active = value === key;
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => onChange(key)}
-              style={{
-                flex: 1,
-                padding: "8px 4px",
-                fontSize: 12, fontWeight: active ? 700 : 500, fontFamily: F,
-                background: active ? theme.blue : "transparent",
-                color: active ? "#fff" : theme.textMuted,
-                border: "none",
-                borderLeft: i > 0 ? `1px solid ${theme.borderInput}` : "none",
-                cursor: "pointer",
-                transition: "all 0.12s",
-              }}
-            >
-              {display}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-
-  return (
-    <div style={{ position: "fixed", inset: 0, height: "100vh", background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, overflowY: "auto" }}>
-      <div style={{ background: theme.surface, borderRadius: 16, width: "100%", maxWidth: 600, maxHeight: "92vh", overflowY: "auto", boxShadow: "0 24px 64px rgba(0,0,0,0.25)" }}>
-
-        {/* Header */}
-        <div style={{ padding: "22px 28px 18px", borderBottom: `1px solid ${theme.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <h2 style={{ margin: "0 0 2px", fontSize: 18, fontWeight: 800, fontFamily: F, color: theme.text, letterSpacing: "-0.02em" }}>
-              {initial ? "Edit Task" : "New Task"}
-            </h2>
-            <p style={{ margin: 0, fontSize: 12, color: theme.textFaint, fontFamily: F }}>
-              {initial ? "Update task details below" : "Fill in the details to create a new task"}
-            </p>
-          </div>
-          <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${theme.borderInput}`, background: "transparent", fontSize: 16, cursor: "pointer", color: theme.textMuted, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
-        </div>
-
-        <form onSubmit={handleSubmit} style={{ padding: 28 }}>
-          {error && (
-            <div style={{ marginBottom: 18, padding: "10px 14px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, fontSize: 13, color: "#DC2626", fontFamily: F }}>
-              {error}
-            </div>
-          )}
-
-          {/* ── Details section ────────────────────────────────────── */}
-          <div style={{ marginBottom: 24 }}>
-            <p style={{ margin: "0 0 16px", fontSize: 11, fontWeight: 700, color: theme.textFaint, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-              Details
-            </p>
-
-            {/* Row 1: Priority + Status */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-              <SegmentGroup
-                label="Priority"
-                value={form.priority}
-                onChange={(v) => set("priority", v)}
-                options={[
-                  { key: "low",    display: "Low" },
-                  { key: "medium", display: "Med" },
-                  { key: "high",   display: "High" },
-                ]}
-              />
-              <SegmentGroup
-                label="Status"
-                value={form.status}
-                onChange={(v) => set("status", v)}
-                options={[
-                  { key: "open",        display: "Open" },
-                  { key: "in_progress", display: "In Progress" },
-                  { key: "done",        display: "Done" },
-                ]}
-              />
-            </div>
-
-            {/* Row 2: Client Project — full width */}
-            <div style={{ marginBottom: 16 }}>
-              <label style={labelStyle}>Client Project</label>
-              <select value={form.case_file} onChange={handleProjectChange}
-                style={{ ...inputStyle, cursor: "pointer" }} onFocus={focusOn} onBlur={focusOff}>
-                <option value="">— No project —</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name || p.workflow_type || "Untitled"}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Row 3: Layer Ref + Due Date */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: isAdmin ? 16 : 0 }}>
-              <div>
-                <label style={labelStyle}>Layer Reference <span style={{ textTransform: "none", letterSpacing: 0, fontWeight: 400, color: theme.textFaint }}>(optional)</span></label>
-                <select value={form.layer_reference} onChange={(e) => set("layer_reference", e.target.value)}
-                  style={{ ...inputStyle, cursor: "pointer" }} onFocus={focusOn} onBlur={focusOff}>
-                  <option value="">— No layer —</option>
-                  <option value="audit">Audit Layer</option>
-                  <option value="intake">Intake Layer</option>
-                  <option value="build">Build Layer</option>
-                  <option value="delta">Delta Layer</option>
-                  <option value="reasoning">Reasoning Layer</option>
-                  <option value="outcome">Outcome Layer</option>
-                </select>
-              </div>
-              <div>
-                <label style={labelStyle}>Due Date</label>
-                <input
-                  type="date"
-                  value={form.due_date}
-                  onChange={(e) => set("due_date", e.target.value)}
-                  style={{ ...inputStyle, cursor: "pointer", colorScheme: theme.bg === "#111827" ? "dark" : "light" }}
-                  onFocus={focusOn}
-                  onBlur={focusOff}
-                />
-              </div>
-            </div>
-
-            {/* Row 4: Assignee — admin only, full width */}
-            {isAdmin && (
-              <div>
-                <label style={labelStyle}>Assignee</label>
-                <select value={form.assigned_to} onChange={handleAssigneeChange}
-                  style={{ ...inputStyle, cursor: "pointer" }} onFocus={focusOn} onBlur={focusOff}>
-                  <option value="">— Unassigned —</option>
-                  {(members || []).map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {`${m.first_name} ${m.last_name}`.trim() || m.email}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
-
-          {/* ── Task info ─────────────────────────────────────────── */}
-          <div style={{ borderTop: `1px solid ${theme.borderSubtle}`, paddingTop: 20, marginBottom: 20 }}>
-            <p style={{ margin: "0 0 16px", fontSize: 11, fontWeight: 700, color: theme.textFaint, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-              Task Info
-            </p>
-
-            <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle}>Title <span style={{ color: "#EF4444", textTransform: "none", letterSpacing: 0 }}>*</span></label>
-              <input
-                autoFocus
-                type="text"
-                placeholder="What needs to be done?"
-                value={form.title}
-                onChange={(e) => { set("title", e.target.value); setError(""); }}
-                style={{ ...inputStyle, fontSize: 15, fontWeight: 600, padding: "11px 14px" }}
-                onFocus={focusOn}
-                onBlur={focusOff}
-              />
-            </div>
-
-            <div>
-              <label style={labelStyle}>Description <span style={{ textTransform: "none", letterSpacing: 0, fontWeight: 400, color: theme.textFaint }}>(optional)</span></label>
-              <textarea
-                placeholder="Add context, acceptance criteria, or notes…"
-                value={form.description}
-                onChange={(e) => set("description", e.target.value)}
-                rows={3}
-                style={{ ...inputStyle, resize: "vertical", lineHeight: 1.6 }}
-                onFocus={focusOn}
-                onBlur={focusOff}
-              />
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", paddingTop: 4 }}>
-            <button type="button" onClick={onClose}
-              style={{ padding: "10px 20px", background: "transparent", border: `1px solid ${theme.borderInput}`, borderRadius: 9, fontSize: 13, fontWeight: 600, fontFamily: F, color: theme.textMuted, cursor: "pointer" }}>
-              Cancel
-            </button>
-            <button type="submit" disabled={isSaving}
-              style={{ padding: "10px 24px", background: theme.blue, border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, fontFamily: F, color: "#fff", cursor: isSaving ? "not-allowed" : "pointer", opacity: isSaving ? 0.7 : 1 }}>
-              {isSaving ? "Saving…" : initial ? "Save Changes" : "Add Task"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
   );
 }
 
@@ -401,7 +148,7 @@ function TaskRow({ todo, onEdit, onDelete, onToggleDone, theme }) {
 // ── TasksPage ────────────────────────────────────────────────────────────────
 export default function TasksPage() {
   const { theme } = useTheme();
-  const [filters, setFilters] = useState({ status: "open", priority: "all", search: "", case_file_name: null });
+  const [filters, setFilters] = useState({ status: "all", priority: "all", search: "", case_file_name: null });
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
 
@@ -414,7 +161,7 @@ export default function TasksPage() {
   const deleteTodo = useDeleteTodo();
 
   // Client-side filtering
-  const todos = allTodos.filter((t) => {
+  const filteredTodos = allTodos.filter((t) => {
     if (filters.status !== "all" && t.status !== filters.status) return false;
     if (filters.priority !== "all" && t.priority !== filters.priority) return false;
     if (filters.case_file_name && t.case_file_name !== filters.case_file_name) return false;
@@ -425,14 +172,46 @@ export default function TasksPage() {
           !(t.description || "").toLowerCase().includes(q)) return false;
     }
     return true;
-  }).sort((a, b) => {
-    if (a.status === "done" && b.status !== "done") return 1;
-    if (b.status === "done" && a.status !== "done") return -1;
-    if (!a.due_date && !b.due_date) return 0;
-    if (!a.due_date) return 1;
-    if (!b.due_date) return -1;
-    return a.due_date.localeCompare(b.due_date);
   });
+
+  // Grouping by due date bucket, priority within each group (high → med → low)
+  const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
+  const today    = new Date().toISOString().slice(0, 10);
+  const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+  const nextWeek = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
+
+  const getGroup = (t) => {
+    if (t.status === "done") return "done";
+    if (!t.due_date)         return "no_date";
+    if (t.due_date < today)  return "overdue";
+    if (t.due_date === today) return "today";
+    if (t.due_date === tomorrow) return "tomorrow";
+    if (t.due_date <= nextWeek) return "this_week";
+    return "later";
+  };
+
+  const GROUP_ORDER  = ["overdue", "today", "tomorrow", "this_week", "later", "no_date", "done"];
+  const GROUP_LABELS = {
+    overdue:   "Overdue",
+    today:     "Today",
+    tomorrow:  "Tomorrow",
+    this_week: "This Week",
+    later:     "Later",
+    no_date:   "No Due Date",
+    done:      "Done",
+  };
+
+  const grouped = filteredTodos.reduce((acc, t) => {
+    const g = getGroup(t);
+    (acc[g] = acc[g] || []).push(t);
+    return acc;
+  }, {});
+  Object.values(grouped).forEach((arr) =>
+    arr.sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 1) - (PRIORITY_ORDER[b.priority] ?? 1))
+  );
+
+  // Flat list for the empty-state count
+  const todos = filteredTodos;
 
   // Union of API projects + any todo project names not already in the API list.
   const apiProjectNames = (allProjectsData?.results || []).map((p) => p.name || p.workflow_type || "Untitled");
@@ -446,11 +225,23 @@ export default function TasksPage() {
     done:        allTodos.filter((t) => t.status === "done").length,
   };
 
+  const buildPayload = (form) => ({
+    title:           form.title,
+    description:     form.description || "",
+    status:          form.status,
+    priority:        form.priority,
+    case_file:       form.case_file       || null,
+    layer_reference: form.layer_reference || "",
+    assigned_to:     form.assigned_to     || null,
+    due_date:        form.due_date        || null,
+  });
+
   const handleSave = async (form) => {
+    const payload = buildPayload(form);
     if (editTarget) {
-      await updateTodo.mutateAsync({ id: editTarget.id, ...form });
+      await updateTodo.mutateAsync({ id: editTarget.id, ...payload });
     } else {
-      await createTodo.mutateAsync(form);
+      await createTodo.mutateAsync(payload);
     }
     setModalOpen(false);
     setEditTarget(null);
@@ -532,7 +323,7 @@ export default function TasksPage() {
           value={filters.search}
           onChange={(e) => setFilter("search", e.target.value)}
           style={{
-            flex: "1 1 220px", padding: "9px 13px",
+            flex: "1 1 220px", padding: "9px 13px", height: 40, boxSizing: "border-box",
             border: `1.5px solid ${theme.borderInput}`, borderRadius: 8,
             fontSize: 13, fontFamily: F, color: theme.text, background: theme.inputBg, outline: "none",
           }}
@@ -555,16 +346,19 @@ export default function TasksPage() {
               color: theme.text,
               background: theme.inputBg,
               borderRadius: "8px",
-              padding: "0 !important",
+              padding: "0 9px 0 0 !important",
+              height: "40px",
               "& fieldset": { borderColor: theme.borderInput, borderWidth: "1.5px" },
               "&:hover fieldset": { borderColor: theme.borderInput },
               "&.Mui-focused fieldset": { borderColor: theme.blue, borderWidth: "1.5px", boxShadow: `0 0 0 3px ${theme.blueLight}` },
             },
             "& .MuiInputBase-input": {
-              padding: "9px 13px !important",
+              padding: "0 13px !important",
               color: theme.text,
               fontFamily: F,
               fontSize: 13,
+              height: "100%",
+              boxSizing: "border-box",
             },
           }}
           slotProps={{
@@ -597,7 +391,7 @@ export default function TasksPage() {
         <select
           value={filters.priority}
           onChange={(e) => setFilter("priority", e.target.value)}
-          style={{ flex: "0 1 150px", padding: "9px 13px", border: `1.5px solid ${theme.borderInput}`, borderRadius: 8, fontSize: 13, fontFamily: F, color: theme.text, background: theme.inputBg, outline: "none", cursor: "pointer" }}>
+          style={{ flex: "0 1 150px", padding: "9px 13px", height: 40, boxSizing: "border-box", border: `1.5px solid ${theme.borderInput}`, borderRadius: 8, fontSize: 13, fontFamily: F, color: theme.text, background: theme.inputBg, outline: "none", cursor: "pointer" }}>
           <option value="all">All Priorities</option>
           <option value="high">High</option>
           <option value="medium">Medium</option>
@@ -627,16 +421,75 @@ export default function TasksPage() {
         </div>
       ) : (
         <div>
-          {todos.map((todo) => (
-            <TaskRow
-              key={todo.id}
-              todo={todo}
-              theme={theme}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onToggleDone={handleToggleDone}
-            />
-          ))}
+          {GROUP_ORDER.filter((g) => grouped[g]?.length > 0).map((g) => {
+            // For multi-date buckets, further sub-group by specific date.
+            // Overdue: descending (most recent overdue = closest to today first).
+            // All others with dates: ascending (soonest first).
+            const flatOnly = g === "today" || g === "tomorrow" || g === "no_date" || g === "done";
+
+            const dateSubGroups = flatOnly ? null : (() => {
+              const byDate = grouped[g].reduce((acc, t) => {
+                const key = t.due_date || "";
+                (acc[key] = acc[key] || []).push(t);
+                return acc;
+              }, {});
+              return Object.entries(byDate).sort(([a], [b]) =>
+                g === "overdue" ? b.localeCompare(a) : a.localeCompare(b)
+              );
+            })();
+
+            const fmtDate = (d) => new Date(d + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+
+            return (
+              <div key={g} style={{ marginBottom: 28 }}>
+                {/* Bucket header */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, fontFamily: F,
+                    color: g === "overdue" ? "#EF4444" : g === "done" ? "#10B981" : theme.textMuted,
+                    textTransform: "uppercase", letterSpacing: "0.07em",
+                  }}>
+                    {GROUP_LABELS[g]}
+                  </span>
+                  <span style={{
+                    fontSize: 10, fontWeight: 600, fontFamily: F, color: theme.textFaint,
+                    background: theme.surfaceAlt || theme.surface,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: 10, padding: "1px 7px",
+                  }}>
+                    {grouped[g].length}
+                  </span>
+                  <div style={{ flex: 1, height: 1, background: theme.border }} />
+                </div>
+
+                {flatOnly ? (
+                  grouped[g].map((todo) => (
+                    <TaskRow key={todo.id} todo={todo} theme={theme}
+                      onEdit={handleEdit} onDelete={handleDelete} onToggleDone={handleToggleDone} />
+                  ))
+                ) : (
+                  dateSubGroups.map(([date, dateTodos]) => (
+                    <div key={date} style={{ marginBottom: 16 }}>
+                      {/* Date sub-header */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, paddingLeft: 2 }}>
+                        <span style={{
+                          fontSize: 11, fontWeight: 600, fontFamily: F,
+                          color: g === "overdue" ? "#EF4444" : theme.textFaint,
+                        }}>
+                          {fmtDate(date)}
+                        </span>
+                        <div style={{ flex: 1, height: 1, background: theme.border, opacity: 0.5 }} />
+                      </div>
+                      {dateTodos.map((todo) => (
+                        <TaskRow key={todo.id} todo={todo} theme={theme}
+                          onEdit={handleEdit} onDelete={handleDelete} onToggleDone={handleToggleDone} />
+                      ))}
+                    </div>
+                  ))
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
