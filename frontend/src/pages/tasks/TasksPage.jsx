@@ -231,7 +231,7 @@ export default function TasksPage() {
     status:          form.status,
     priority:        form.priority,
     case_file:       form.case_file       || null,
-    layer_reference: form.layer_reference || null,
+    layer_reference: form.layer_reference || "",
     assigned_to:     form.assigned_to     || null,
     due_date:        form.due_date        || null,
   });
