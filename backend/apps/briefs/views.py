@@ -195,6 +195,58 @@ def toggle_status(request, pk):
     })
 
 
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def toggle_client_share(request, pk):
+    """
+    POST /api/v1/briefs/<id>/client-share/
+    Toggles client_share_enabled on/off. Returns the client share URL and state.
+    """
+    try:
+        case_file = CaseFile.objects.get(pk=pk, logged_by=request.user)
+    except CaseFile.DoesNotExist:
+        return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    case_file.client_share_enabled = not case_file.client_share_enabled
+    case_file.save(update_fields=["client_share_enabled"])
+
+    return Response({
+        "client_share_enabled": case_file.client_share_enabled,
+        "client_share_token": str(case_file.client_share_token),
+    })
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def public_client_brief(request, share_token):
+    """
+    GET /api/v1/briefs/client/<share_token>/
+    Public read-only endpoint — shows only progress overview (updates summary).
+    """
+    try:
+        case_file = CaseFile.objects.select_related("logged_by").get(
+            client_share_token=share_token, client_share_enabled=True,
+        )
+    except CaseFile.DoesNotExist:
+        return Response(
+            {"detail": "This link is invalid or has been disabled."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    return Response({
+        "id": str(case_file.id),
+        "name": case_file.name,
+        "logged_by_name": case_file.logged_by.full_name if case_file.logged_by else case_file.logged_by_name or "Unknown",
+        "workflow_type": case_file.workflow_type,
+        "industries": case_file.industries,
+        "tools": case_file.tools,
+        "updates_summary": case_file.updates_summary,
+        "updates_summary_generated_at": case_file.updates_summary_generated_at,
+        "status": case_file.status,
+        "created_at": case_file.created_at,
+    })
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def public_brief(request, share_token):

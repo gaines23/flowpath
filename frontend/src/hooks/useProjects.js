@@ -122,6 +122,22 @@ export function useShareProject(id) {
   });
 }
 
+// ── Toggle client share link ──────────────────────────────────────────────
+export function useClientShareProject(id) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post(`/v1/briefs/${id}/client-share/`);
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(projectKeys.detail(id), (old) =>
+        old ? { ...old, client_share_enabled: data.client_share_enabled, client_share_token: data.client_share_token } : old
+      );
+    },
+  });
+}
+
 // ── Dashboard stats ───────────────────────────────────────────────────────────
 export function useProjectStats() {
   return useQuery({

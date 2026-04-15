@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from "react";
+import { createRoot } from "react-dom/client";
 import { useTheme } from "@hooks/useTheme";
 import { useProjectSummary } from "@hooks/useProjects";
 import { WorkflowMapPanel } from "@components/WorkflowMapPanel";
@@ -7,146 +8,148 @@ import jsPDF from "jspdf";
 import Section from "../components/Section";
 import { F } from "../constants";
 
-// ── PDF export helpers ──────────────────────────────────────────────────────
+// ── Shared brief Section component (matches SharedBriefPage exactly) ────────
 
-const M = 40;          // margin
-const FONT = "helvetica";
-const COLOR_HEADING = [99, 102, 241];   // indigo
-const COLOR_SECTION = [31, 41, 55];     // near-black bold
-const COLOR_BODY = [55, 65, 81];        // body text
-const COLOR_MUTED = [107, 114, 128];    // gray
-const COLOR_BLUE = [2, 132, 199];       // blue for map titles
-const COLOR_FOOTER = [156, 163, 175];
-
-/**
- * Replace unicode characters jsPDF can't render with ASCII equivalents.
- */
-function sanitizeForPdf(text) {
-  return text
-    .replace(/\u2192/g, "->")    // →
-    .replace(/\u2019/g, "'")     // '
-    .replace(/\u2018/g, "'")     // '
-    .replace(/\u201C/g, '"')     // "
-    .replace(/\u201D/g, '"')     // "
-    .replace(/\u2014/g, " -- ")  // —
-    .replace(/\u2013/g, " - ")   // –
-    .replace(/\u2026/g, "...")   // …
-    .replace(/[^\x00-\x7F]/g, ""); // strip any remaining non-ASCII
+function BriefSection({ title, subtitle, color, children }) {
+  return (
+    <div style={{ marginBottom: 28 }}>
+      <div style={{
+        display: "flex", alignItems: "center", gap: 10,
+        padding: "12px 14px",
+        background: `${color}12`,
+        borderRadius: "10px 10px 0 0",
+        border: `1px solid ${color}40`,
+        borderBottom: `1.5px solid ${color}50`,
+      }}>
+        <span style={{ width: 20, height: 20, background: "#059669", borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#fff", fontWeight: 700, flexShrink: 0 }}>&#10003;</span>
+        <div style={{ textAlign: "left" }}>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color, fontFamily: F }}>{title}</p>
+          {subtitle && <p style={{ margin: "1px 0 0", fontSize: 11, color: "#6B7280", fontFamily: F }}>{subtitle}</p>}
+        </div>
+      </div>
+      <div style={{
+        background: "#fff",
+        border: `1px solid ${color}40`,
+        borderTop: "none",
+        borderRadius: "0 0 10px 10px",
+        padding: "18px 14px",
+      }}>
+        {children}
+      </div>
+    </div>
+  );
 }
 
-/**
- * Render structured summary text to PDF pages with proper formatting.
- */
-function renderSummaryToPdf(pdf, rawText, startY, pageW, pageH) {
-  const maxW = pageW - M * 2;
-  let y = startY;
-
-  const newPage = () => { pdf.addPage(); y = M; };
-  const ensureSpace = (needed) => { if (y + needed > pageH - M - 20) newPage(); };
-
-  const lines = rawText.split("\n");
-
-  for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i];
-    const trimmed = raw.trim();
-
-    // Skip --- separators
-    if (/^-{2,}$/.test(trimmed)) {
-      // Draw a thin rule instead
-      ensureSpace(16);
-      pdf.setDrawColor(220, 220, 220);
-      pdf.setLineWidth(0.5);
-      pdf.line(M, y, pageW - M, y);
-      y += 12;
-      continue;
-    }
-
-    // Skip empty lines — add small spacing
-    if (trimmed === "") {
-      y += 6;
-      continue;
-    }
-
-    const clean = sanitizeForPdf(trimmed.replace(/\*\*/g, ""));
-    const isBoldLine = trimmed.startsWith("**") && trimmed.endsWith("**");
-    const hasInlineBold = trimmed.includes("**") && !isBoldLine;
-
-    // Section titles (standalone bold lines like "**Overview**", "**Build Summary**")
-    if (isBoldLine) {
-      // Detect if this is a top-level section vs a workflow/date subheader
-      const sectionNames = ["Overview", "Build Summary", "Key Updates", "Scope Changes",
-        "Risks & Concerns", "Progress Overview", "Action Items & Concerns"];
-      const isTopSection = sectionNames.some(s => clean.toLowerCase().includes(s.toLowerCase()));
-
-      if (isTopSection) {
-        ensureSpace(32);
-        y += 10;
-        pdf.setFont(FONT, "bold");
-        pdf.setFontSize(13);
-        pdf.setTextColor(...COLOR_SECTION);
-        pdf.text(clean, M, y);
-        y += 20;
-      } else {
-        // Workflow name or date subheader
-        ensureSpace(24);
-        y += 6;
-        pdf.setFont(FONT, "bold");
-        pdf.setFontSize(11);
-        pdf.setTextColor(...COLOR_SECTION);
-        pdf.text(clean, M, y);
-        y += 16;
-      }
-      continue;
-    }
-
-    // Lines with inline bold (e.g. "Description: ..." after a bold label)
-    if (hasInlineBold) {
-      ensureSpace(18);
-      // Split into bold/normal segments
-      const segments = trimmed.split(/(\*\*.*?\*\*)/g);
-      let x = M;
-      for (const seg of segments) {
-        const boldMatch = seg.match(/^\*\*(.*?)\*\*$/);
-        const txt = sanitizeForPdf(boldMatch ? boldMatch[1] : seg);
-        if (!txt) continue;
+function SummaryTextBlock({ text }) {
+  if (!text) return null;
+  return (
+    <div style={{ fontSize: 13, color: "#374151", fontFamily: F, lineHeight: 1.8 }}>
+      {text.split("\n").map((line, li) => {
+        const trimmed = line.trim();
+        if (trimmed === "") return <div key={li} style={{ height: 8 }} />;
+        const boldMatch = trimmed.match(/^\*\*(.+?)\*\*$/);
         if (boldMatch) {
-          pdf.setFont(FONT, "bold");
-        } else {
-          pdf.setFont(FONT, "normal");
+          return <p key={li} style={{ margin: "14px 0 4px", fontSize: 14, fontWeight: 700, color: "#1F2937", fontFamily: F }}>{boldMatch[1]}</p>;
         }
-        pdf.setFontSize(10);
-        pdf.setTextColor(...COLOR_BODY);
-        // If it would overflow, wrap to next line
-        const segW = pdf.getTextWidth(txt);
-        if (x + segW > pageW - M && x > M) {
-          y += 14;
-          ensureSpace(16);
-          x = M;
-        }
-        pdf.text(txt, x, y);
-        x += segW;
-      }
-      y += 14;
-      continue;
-    }
+        const parts = trimmed.split(/(\*\*.*?\*\*)/g);
+        const rendered = parts.map((part, pi) => {
+          const m = part.match(/^\*\*(.*?)\*\*$/);
+          if (m) return <strong key={pi}>{m[1]}</strong>;
+          return <span key={pi}>{part}</span>;
+        });
+        return <p key={li} style={{ margin: "2px 0", fontSize: 13, color: "#374151", fontFamily: F, lineHeight: 1.7 }}>{rendered}</p>;
+      })}
+    </div>
+  );
+}
 
-    // Bullet points
-    const isBullet = trimmed.startsWith("- ") || /^\d+\.\s/.test(trimmed);
+// ── PDF page layout (renders exact SharedBriefPage layout as React → image) ─
 
-    pdf.setFont(FONT, "normal");
-    pdf.setFontSize(10);
-    pdf.setTextColor(...COLOR_BODY);
+function PdfPageLayout({ projectName, preparedBy, sectionTitle, sectionSubtitle, sectionColor, summaryText }) {
+  return (
+    <div style={{ width: 780, background: "#F8FAFC", fontFamily: F }}>
+      {/* Top bar */}
+      <div style={{ background: "#fff", borderBottom: "1px solid #E5E7EB", padding: "14px 32px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontFamily: "'Fraunces', serif", fontSize: 20, color: "#111827", fontWeight: 700, letterSpacing: "-0.02em" }}>
+          Flowpath
+        </span>
+        <span style={{ fontSize: 12, color: "#9CA3AF", fontFamily: F, background: "#F3F4F6", border: "1px solid #E5E7EB", borderRadius: 8, padding: "4px 12px" }}>
+          Read-only
+        </span>
+      </div>
 
-    const indent = isBullet ? 12 : 0;
-    const wrapped = pdf.splitTextToSize(clean, maxW - indent);
-    for (let wi = 0; wi < wrapped.length; wi++) {
-      ensureSpace(14);
-      pdf.text(wrapped[wi], M + indent, y);
-      y += 14;
-    }
-  }
+      <div style={{ padding: "36px 32px 48px" }}>
+        {/* Header */}
+        <div style={{ marginBottom: 28 }}>
+          <h1 style={{ margin: "0 0 6px", fontSize: 28, fontFamily: "'Fraunces', serif", color: "#111827" }}>
+            {projectName}
+          </h1>
+          {preparedBy && (
+            <div style={{ fontSize: 13, color: "#6B7280", fontFamily: F }}>
+              Prepared by <strong style={{ color: "#374151" }}>{preparedBy}</strong>
+            </div>
+          )}
+        </div>
 
-  return y;
+        {/* Section */}
+        <BriefSection title={sectionTitle} subtitle={sectionSubtitle} color={sectionColor}>
+          <SummaryTextBlock text={summaryText} />
+        </BriefSection>
+
+        {/* Footer */}
+        <div style={{ textAlign: "center", paddingTop: 24, borderTop: "1px solid #E5E7EB" }}>
+          <p style={{ fontSize: 12, color: "#9CA3AF", fontFamily: F, margin: 0 }}>
+            Generated by <strong style={{ color: "#6B7280" }}>Flowpath</strong>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MapPageLayout({ mapName }) {
+  return (
+    <div style={{ width: 780, background: "#F8FAFC", fontFamily: F }}>
+      {/* Top bar */}
+      <div style={{ background: "#fff", borderBottom: "1px solid #E5E7EB", padding: "14px 32px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontFamily: "'Fraunces', serif", fontSize: 20, color: "#111827", fontWeight: 700, letterSpacing: "-0.02em" }}>
+          Flowpath
+        </span>
+      </div>
+      <div style={{ padding: "24px 32px 12px" }}>
+        <BriefSection title={`Build Map: ${mapName}`} color="#0284C7">
+          {/* Map image placeholder — will be composited in the PDF */}
+          <div style={{ height: 20 }} />
+        </BriefSection>
+      </div>
+    </div>
+  );
+}
+
+// ── Capture a React element as a PNG data URL ───────────────────────────────
+
+function captureReactElement(element) {
+  return new Promise((resolve) => {
+    const container = document.createElement("div");
+    container.style.cssText = "position:fixed;top:0;left:0;opacity:0;pointer-events:none;z-index:-1;";
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    root.render(element);
+
+    setTimeout(() => {
+      toPng(container.firstChild || container, { backgroundColor: "#F8FAFC", pixelRatio: 2, skipFonts: true })
+        .then((dataUrl) => {
+          root.unmount();
+          document.body.removeChild(container);
+          resolve(dataUrl);
+        })
+        .catch(() => {
+          root.unmount();
+          document.body.removeChild(container);
+          resolve(null);
+        });
+    }, 400);
+  });
 }
 
 // ── Inline summary renderer (for on-screen display) ─────────────────────────
@@ -206,7 +209,6 @@ function OffscreenMapCapture({ workflow, onCaptured }) {
   const handleRef = useCallback((el) => {
     if (!el || captured.current) return;
     captured.current = true;
-    // Wait for ReactFlow to fully render and fit view
     setTimeout(() => {
       toPng(el, { backgroundColor: "#ffffff", pixelRatio: 2, skipFonts: true })
         .then((dataUrl) => onCaptured(dataUrl))
@@ -214,7 +216,6 @@ function OffscreenMapCapture({ workflow, onCaptured }) {
     }, 1500);
   }, [onCaptured]);
 
-  // Render offscreen but still in layout flow so ReactFlow can measure
   return (
     <div style={{
       position: "fixed", top: 0, left: 0,
@@ -233,6 +234,8 @@ function OffscreenMapCapture({ workflow, onCaptured }) {
 
 export default function SummarySection({
   caseFileId,
+  projectName = "Project",
+  preparedBy = "",
   summaryType = "full",
   title = "Full Project Summary",
   subtitle = "AI-generated summary of the full project for reporting",
@@ -264,7 +267,6 @@ export default function SummarySection({
     enabled: triggerFetch,
   });
 
-  // Use freshly generated data if available, otherwise fall back to saved
   const data = freshData || (savedSummary ? {
     summary: savedSummary,
     generated_at: savedGeneratedAt,
@@ -272,7 +274,6 @@ export default function SummarySection({
     data_counts: {},
   } : null);
 
-  // Determine the "last generated" timestamp
   const generatedAt = freshData?.generated_at || savedGeneratedAt;
 
   const handleGenerate = () => {
@@ -282,83 +283,111 @@ export default function SummarySection({
 
   // ── PDF Export ────────────────────────────────────────────────────────────
 
-  const buildAndDownloadPdf = useCallback((summaryText, maps) => {
+  const buildAndDownloadPdf = useCallback(async (summaryText, maps) => {
     const pageW = 595;
     const pageH = 842;
+
+    // Determine section label
+    const sectionTitle = summaryType === "full" ? "Project Summary" : "Progress Overview";
+    const sectionSubtitle = summaryType === "full"
+      ? "Full project summary for reporting"
+      : "Project updates and scope change summary";
+    const sectionColor = summaryType === "full" ? "#6366F1" : "#6366F1";
+
+    // 1. Capture the summary page as an image (matches SharedBriefPage layout)
+    const summaryImg = await captureReactElement(
+      <PdfPageLayout
+        projectName={projectName}
+        preparedBy={preparedBy}
+        sectionTitle={sectionTitle}
+        sectionSubtitle={sectionSubtitle}
+        sectionColor={sectionColor}
+        summaryText={summaryText}
+      />
+    );
+
     const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
 
-    // Header
-    pdf.setFont(FONT, "bold");
-    pdf.setFontSize(20);
-    pdf.setTextColor(...COLOR_HEADING);
-    pdf.text("Project Summary", M, M + 14);
+    // Place summary image — may span multiple pages
+    if (summaryImg) {
+      const img = new Image();
+      img.src = summaryImg;
+      const imgW = img.naturalWidth || 1560;
+      const imgH = img.naturalHeight || 2000;
 
-    // Date range
-    pdf.setFont(FONT, "normal");
-    pdf.setFontSize(9);
-    pdf.setTextColor(...COLOR_MUTED);
-    const dateLabel = data?.date_range?.start
-      ? `${data.date_range.start} to ${data.date_range.end || "present"}`
-      : "All time";
-    pdf.text(dateLabel, M, M + 30);
+      const fitW = pageW;
+      const scale = fitW / imgW;
+      const totalH = imgH * scale;
 
-    // Thin line under header
-    pdf.setDrawColor(200, 200, 200);
-    pdf.setLineWidth(0.5);
-    pdf.line(M, M + 38, pageW - M, M + 38);
+      // If it fits on one page
+      if (totalH <= pageH) {
+        pdf.addImage(summaryImg, "PNG", 0, 0, fitW, totalH);
+      } else {
+        // Split across pages by slicing the image
+        let yOffset = 0;
+        let firstPage = true;
+        while (yOffset < totalH) {
+          if (!firstPage) pdf.addPage();
+          firstPage = false;
+          // Draw the full image offset upward so the current slice is visible
+          pdf.addImage(summaryImg, "PNG", 0, -yOffset, fitW, totalH);
+          yOffset += pageH;
+        }
+      }
+    }
 
-    // Summary body
-    renderSummaryToPdf(pdf, summaryText, M + 52, pageW, pageH);
-
-    // Workflow map pages
+    // 2. Workflow map pages
     for (const map of maps) {
       if (!map.dataUrl) continue;
-
       pdf.addPage();
 
-      // Map page header
-      pdf.setFont(FONT, "bold");
-      pdf.setFontSize(14);
-      pdf.setTextColor(...COLOR_BLUE);
-      pdf.text(`Build Map: ${sanitizeForPdf(map.name)}`, M, M + 14);
+      // Capture the map header layout
+      const mapHeaderImg = await captureReactElement(
+        <MapPageLayout mapName={map.name} />
+      );
 
-      pdf.setDrawColor(186, 230, 253);
-      pdf.setLineWidth(0.5);
-      pdf.line(M, M + 22, pageW - M, M + 22);
+      let headerH = 0;
+      if (mapHeaderImg) {
+        const hImg = new Image();
+        hImg.src = mapHeaderImg;
+        const hW = hImg.naturalWidth || 1560;
+        const hH = hImg.naturalHeight || 200;
+        const hScale = pageW / hW;
+        headerH = hH * hScale;
+        pdf.addImage(mapHeaderImg, "PNG", 0, 0, pageW, headerH);
+      }
 
-      // Embed the captured map image
-      const maxImgW = pageW - M * 2;
-      const maxImgH = pageH - M * 2 - 50;
-
-      // Load image to get dimensions
-      const img = new Image();
-      img.src = map.dataUrl;
-      const imgW = img.naturalWidth || 1800;
-      const imgH = img.naturalHeight || 1400;
-      const scale = Math.min(maxImgW / imgW, maxImgH / imgH, 1);
-      const drawW = imgW * scale;
-      const drawH = imgH * scale;
-      const drawX = M + (maxImgW - drawW) / 2;
-
-      pdf.addImage(map.dataUrl, "PNG", drawX, M + 32, drawW, drawH);
+      // Place the map image below the header
+      const mapTop = headerH > 0 ? headerH - 20 : 60; // overlap slightly into the section body
+      const maxImgW = pageW - 40;
+      const maxImgH = pageH - mapTop - 40;
+      const mImg = new Image();
+      mImg.src = map.dataUrl;
+      const mW = mImg.naturalWidth || 1800;
+      const mH = mImg.naturalHeight || 1400;
+      const mScale = Math.min(maxImgW / mW, maxImgH / mH, 1);
+      const drawW = mW * mScale;
+      const drawH = mH * mScale;
+      const drawX = (pageW - drawW) / 2;
+      pdf.addImage(map.dataUrl, "PNG", drawX, mapTop, drawW, drawH);
     }
 
-    // Footer on every page
+    // 3. Page numbers
     const pageCount = pdf.getNumberOfPages();
-    pdf.setFont(FONT, "normal");
+    pdf.setFont("helvetica", "normal");
     pdf.setFontSize(8);
-    pdf.setTextColor(...COLOR_FOOTER);
+    pdf.setTextColor(156, 163, 175);
     for (let i = 1; i <= pageCount; i++) {
       pdf.setPage(i);
-      pdf.text(
-        `Generated by Flowpath  |  Page ${i} of ${pageCount}`,
-        M, pageH - 20,
-      );
+      const label = `Page ${i} of ${pageCount}`;
+      const labelW = pdf.getTextWidth(label);
+      pdf.text(label, (pageW - labelW) / 2, pageH - 14);
     }
 
-    pdf.save("project_summary.pdf");
+    const slug = projectName.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+    pdf.save(`${slug}_summary.pdf`);
     setIsExporting(false);
-  }, [data]);
+  }, [data, projectName, preparedBy, summaryType]);
 
   const startExport = useCallback(() => {
     if (!data?.summary) return;
@@ -383,7 +412,6 @@ export default function SummarySection({
       if (nextIdx < workflows.length) {
         return { wfIndex: nextIdx, maps };
       }
-      // All captured — build PDF
       buildAndDownloadPdf(data.summary, maps);
       return null;
     });
@@ -528,7 +556,7 @@ export default function SummarySection({
         </p>
       )}
 
-      {/* Offscreen map capture — visible to layout engine but transparent */}
+      {/* Offscreen map capture */}
       {captureQueue && workflows?.[captureQueue.wfIndex] && (
         <OffscreenMapCapture
           key={`capture-${captureQueue.wfIndex}`}

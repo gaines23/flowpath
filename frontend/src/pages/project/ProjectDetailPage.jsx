@@ -31,7 +31,7 @@ import { F } from "./detail/constants";
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ProjectUpdatesView({ projectUpdates, theme, caseFileId, savedUpdatesSummary, savedUpdatesGeneratedAt }) {
+function ProjectUpdatesView({ projectUpdates, theme, caseFileId, projectName, preparedBy, savedUpdatesSummary, savedUpdatesGeneratedAt }) {
   const [view, setView] = useState("notes"); // "notes" | "summary"
 
   const toggleBtn = (
@@ -56,6 +56,8 @@ function ProjectUpdatesView({ projectUpdates, theme, caseFileId, savedUpdatesSum
       {view === "summary" ? (
         <SummarySection
           caseFileId={caseFileId}
+          projectName={projectName}
+          preparedBy={preparedBy}
           summaryType="updates"
           title="Project Updates Summary"
           subtitle="AI summary of updates and scope creep"
@@ -375,8 +377,8 @@ export default function CaseFileDetailPage() {
 
             {/* Active section content — only this scrolls */}
             <div id="fp-print-root" style={{ flex: 1, minWidth: 0, overflowY: "auto", padding: isMobile ? "20px 16px" : "28px 32px" }}>
-              {activeSection === 0 && <SummarySection    caseFileId={id} summaryType="full" title="Full Project Summary" subtitle="AI summary of the full project for reporting" color="#6366F1" workflows={build?.workflows} onOpenMap={setMapWfIndex} savedSummary={cf.full_summary} savedGeneratedAt={cf.full_summary_generated_at} />}
-              {activeSection === 1 && <ProjectUpdatesView projectUpdates={project_updates} theme={theme} caseFileId={id} savedUpdatesSummary={cf.updates_summary} savedUpdatesGeneratedAt={cf.updates_summary_generated_at} />}
+              {activeSection === 0 && <SummarySection    caseFileId={id} projectName={cf.name || cf.workflow_type || "Project"} preparedBy={cf.logged_by_name} summaryType="full" title="Full Project Summary" subtitle="AI summary of the full project for reporting" color="#6366F1" workflows={build?.workflows} onOpenMap={setMapWfIndex} savedSummary={cf.full_summary} savedGeneratedAt={cf.full_summary_generated_at} />}
+              {activeSection === 1 && <ProjectUpdatesView projectUpdates={project_updates} theme={theme} caseFileId={id} projectName={cf.name || cf.workflow_type || "Project"} preparedBy={cf.logged_by_name} savedUpdatesSummary={cf.updates_summary} savedUpdatesGeneratedAt={cf.updates_summary_generated_at} />}
               {activeSection === 2 && <ScopeCreepView    scopeCreep={delta?.scope_creep} theme={theme} />}
               {activeSection === 3 && <IntakeSection    intake={intake}       theme={theme} layerTodos={todosByLayer.intake    || []} />}
               {activeSection === 4 && <AuditSection     audit={audit}         theme={theme} layerTodos={todosByLayer.audit     || []} />}
