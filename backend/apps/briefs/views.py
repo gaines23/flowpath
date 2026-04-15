@@ -622,9 +622,21 @@ def project_summary(request, pk):
             status=status.HTTP_502_BAD_GATEWAY,
         )
 
+    # Persist summary for future loads and shared/print views
+    now = timezone.now()
+    if summary_type == "full" and not start_date and not end_date:
+        case_file.full_summary = summary_text
+        case_file.full_summary_generated_at = now
+        case_file.save(update_fields=["full_summary", "full_summary_generated_at"])
+    elif summary_type == "updates" and not start_date and not end_date:
+        case_file.updates_summary = summary_text
+        case_file.updates_summary_generated_at = now
+        case_file.save(update_fields=["updates_summary", "updates_summary_generated_at"])
+
     return Response({
         "summary": summary_text,
         "summary_type": summary_type,
+        "generated_at": now.isoformat() if not start_date and not end_date else None,
         "date_range": {"start": start_date, "end": end_date},
         "data_counts": {
             "build_notes": bool(build_notes),

@@ -87,6 +87,12 @@ class CaseFile(models.Model):
     share_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     share_enabled = models.BooleanField(default=False)
 
+    # Cached AI-generated summaries
+    full_summary = models.TextField(blank=True)
+    full_summary_generated_at = models.DateTimeField(null=True, blank=True)
+    updates_summary = models.TextField(blank=True)
+    updates_summary_generated_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         db_table = "case_files"
         ordering = ["-created_at"]

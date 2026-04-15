@@ -240,6 +240,8 @@ export default function SummarySection({
   embedded = false,
   workflows = [],
   onOpenMap,
+  savedSummary = "",
+  savedGeneratedAt = null,
 }) {
   const { theme } = useTheme();
   const [mode, setMode] = useState("all");
@@ -256,11 +258,22 @@ export default function SummarySection({
       ? { startDate, endDate }
       : { startDate: undefined, endDate: undefined };
 
-  const { data, isLoading, isError, error } = useProjectSummary(caseFileId, {
+  const { data: freshData, isLoading, isError, error } = useProjectSummary(caseFileId, {
     summaryType,
     ...queryDates,
     enabled: triggerFetch,
   });
+
+  // Use freshly generated data if available, otherwise fall back to saved
+  const data = freshData || (savedSummary ? {
+    summary: savedSummary,
+    generated_at: savedGeneratedAt,
+    date_range: { start: null, end: null },
+    data_counts: {},
+  } : null);
+
+  // Determine the "last generated" timestamp
+  const generatedAt = freshData?.generated_at || savedGeneratedAt;
 
   const handleGenerate = () => {
     setTriggerFetch(false);
@@ -433,14 +446,21 @@ export default function SummarySection({
         </div>
       )}
 
-      {/* Generate */}
-      <button
-        onClick={handleGenerate}
-        disabled={isLoading || (mode === "range" && !startDate && !endDate)}
-        style={{ ...btnBase, background: isLoading ? theme.border : color, color: "#fff", opacity: isLoading || (mode === "range" && !startDate && !endDate) ? 0.5 : 1, marginBottom: 20 }}
-      >
-        {isLoading ? "Generating..." : "Generate Summary"}
-      </button>
+      {/* Generate / Regenerate */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+        <button
+          onClick={handleGenerate}
+          disabled={isLoading || (mode === "range" && !startDate && !endDate)}
+          style={{ ...btnBase, background: isLoading ? theme.border : color, color: "#fff", opacity: isLoading || (mode === "range" && !startDate && !endDate) ? 0.5 : 1 }}
+        >
+          {isLoading ? "Generating..." : data ? "Regenerate Summary" : "Generate Summary"}
+        </button>
+        {generatedAt && !isLoading && (
+          <span style={{ fontSize: 11, color: theme.textFaint, fontFamily: F }}>
+            Last generated {new Date(generatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} at {new Date(generatedAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+          </span>
+        )}
+      </div>
 
       {/* Error */}
       {isError && (
@@ -463,12 +483,16 @@ export default function SummarySection({
             ) : (
               <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 8, background: "#EEF2FF", border: "1px solid #C7D2FE", color: "#4F46E5", fontFamily: F, fontWeight: 600 }}>All time</span>
             )}
-            <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 8, background: theme.surfaceAlt || "#F9FAFB", border: `1px solid ${theme.border}`, color: theme.textMuted, fontFamily: F }}>
-              {data.data_counts?.project_updates || 0} updates
-            </span>
-            <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 8, background: theme.surfaceAlt || "#F9FAFB", border: `1px solid ${theme.border}`, color: theme.textMuted, fontFamily: F }}>
-              {data.data_counts?.scope_creep_items || 0} scope creep items
-            </span>
+            {data.data_counts?.project_updates != null && (
+              <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 8, background: theme.surfaceAlt || "#F9FAFB", border: `1px solid ${theme.border}`, color: theme.textMuted, fontFamily: F }}>
+                {data.data_counts.project_updates} updates
+              </span>
+            )}
+            {data.data_counts?.scope_creep_items != null && (
+              <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 8, background: theme.surfaceAlt || "#F9FAFB", border: `1px solid ${theme.border}`, color: theme.textMuted, fontFamily: F }}>
+                {data.data_counts.scope_creep_items} scope creep items
+              </span>
+            )}
           </div>
 
           {/* Summary text */}

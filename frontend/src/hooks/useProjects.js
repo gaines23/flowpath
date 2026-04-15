@@ -135,6 +135,7 @@ export function useProjectStats() {
 
 // ── Project summary (AI-generated) ───────────────────────────────────────────
 export function useProjectSummary(id, { summaryType = "full", startDate, endDate, enabled = false } = {}) {
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: projectKeys.summary(id, { summaryType, startDate, endDate }),
     queryFn: async () => {
@@ -143,6 +144,8 @@ export function useProjectSummary(id, { summaryType = "full", startDate, endDate
       if (startDate) params.set("start_date", startDate);
       if (endDate)   params.set("end_date", endDate);
       const { data } = await api.get(`/v1/briefs/${id}/summary/?${params}`);
+      // Refresh project detail cache so saved summary fields stay in sync
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(id) });
       return data;
     },
     enabled: !!id && enabled,
