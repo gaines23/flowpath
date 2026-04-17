@@ -91,9 +91,9 @@ function StatusBadge({ status, theme }) {
   return (
     <span style={{
       fontSize: 10, fontWeight: 700, padding: "2px 10px", borderRadius: 10,
-      background: isOpen ? "#EFF6FF" : "#ECFDF5",
-      border: `1px solid ${isOpen ? "#BFDBFE" : "#6EE7B7"}`,
-      color: isOpen ? "#1D4ED8" : "#065F46",
+      background: isOpen ? "#EEEAF8" : "#ECFDF5",
+      border: `1px solid ${isOpen ? "#C8C2E8" : "#6EE7B7"}`,
+      color: isOpen ? "#7B72B8" : "#065F46",
       fontFamily: F, textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap",
     }}>
       {isOpen ? "Open" : "Closed"}
@@ -287,7 +287,7 @@ export default function CaseFileListPage() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 24 }}>
         {[
           { label: "Total Projects", value: statsLoading ? "—" : stats?.total_case_files ?? totalCount, color: theme.blue },
-          { label: "Open", value: openCount, color: "#2563EB" },
+          { label: "Open", value: openCount, color: "#9B93E8" },
           { label: "Closed", value: closedCount, color: "#059669" },
           { label: "Avg Satisfaction", value: statsLoading ? "—" : stats?.avg_satisfaction ? `${stats.avg_satisfaction}/5` : "—", color: "#7C3AED" },
           { label: "Roadblocks", value: statsLoading ? "—" : stats?.total_roadblocks ?? 0, color: "#D97706" },
