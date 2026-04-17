@@ -314,7 +314,8 @@ function TogGroup({ options, value, onChange, color=BLUE }) {
 function Card({ children, accent, style }) {
   const { theme } = useTheme();
   return (
-    <div style={{ background:theme.surface, border:accent?`1px solid ${accent}20`:`1px solid ${theme.border}`, borderRadius:12, padding:"18px 18px", marginBottom:12, borderLeft:accent?`3px solid ${accent}`:undefined, ...style }}>
+    <div style={{ borderTop:`1px solid ${theme.border}`, padding:"18px 0", ...style }}>
+      {/* {accent && <div style={{ width:3, height:18, borderRadius:2, background:accent, marginBottom:12 }} />} */}
       {children}
     </div>
   );
@@ -1788,7 +1789,7 @@ export default function ProjectForm({ onSubmit, isSaving, initialData, initialNa
   ];
 
   const visibleSections = isEditing ? SECTIONS : SECTIONS.filter(s => s.group !== "The Updates");
-  const sidebarGroups = [...new Set(visibleSections.map(s => s.group))];
+
 
   if (showIntro) return (
     <div style={{ background:theme.bg, minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", padding:"40px 20px" }}>
@@ -1855,9 +1856,50 @@ export default function ProjectForm({ onSubmit, isSaving, initialData, initialNa
             </div>
           </div>
 
-          {/* Mobile: horizontal scrollable section tabs */}
-          {isMobile && (
-            <div style={{ display:"flex", gap:0, overflowX:"auto", scrollbarWidth:"none", borderTop:`1px solid ${theme.border}` }}>
+          {/* ── Step progress bar (desktop) ────────────────────────────────── */}
+          {!isMobile && (
+            <div style={{ display:"flex", alignItems:"flex-start", borderTop:`1px solid ${theme.border}`, padding:"12px 0 8px" }}>
+              {visibleSections.flatMap((s, idx) => {
+                const i = SECTIONS.indexOf(s);
+                const filled = sectionFilled[i];
+                const active = i === step;
+                const isLast = idx === visibleSections.length - 1;
+                const items = [
+                  <div key={`dot-${s.id}`}
+                    onClick={() => setStep(i)}
+                    style={{ display:"flex", flexDirection:"column", alignItems:"center", cursor:"pointer", flexShrink:0 }}>
+                    <div style={{
+                      width:26, height:26, borderRadius:"50%",
+                      display:"flex", alignItems:"center", justifyContent:"center",
+                      background: filled ? "#059669" : active ? `${s.color}15` : theme.surface,
+                      border: filled ? "2px solid #059669" : active ? `2px solid ${s.color}` : `2px solid ${theme.borderInput}`,
+                      transition:"all 0.2s",
+                    }}>
+                      {filled
+                        ? <span style={{ color:"#fff", fontSize:11, fontWeight:700, lineHeight:1 }}>✓</span>
+                        : <span style={{ color: active ? s.color : theme.textFaint, fontSize:10, fontWeight:700, fontFamily:F, lineHeight:1 }}>{idx+1}</span>}
+                    </div>
+                    <span style={{
+                      marginTop:4, fontSize:12, fontWeight: active ? 700 : 500,
+                      color: filled ? "#059669" : active ? s.color : theme.textFaint,
+                      fontFamily:F, whiteSpace:"nowrap", textAlign:"center",
+                    }}>{s.label}</span>
+                  </div>
+                ];
+                if (!isLast) items.push(
+                  <div key={`line-${s.id}`} style={{ flex:1, height:2, marginTop:13, background: filled ? "#059669" : theme.borderInput, transition:"background 0.3s" }} />
+                );
+                return items;
+              })}
+            </div>
+          )}
+
+          {/* Mobile: progress strip + horizontal scrollable section tabs */}
+          {isMobile && (<>
+            <div style={{ height:3, background:theme.borderInput, borderTop:`1px solid ${theme.border}` }}>
+              <div style={{ height:"100%", width:`${Math.round((visibleSections.filter(s => sectionFilled[SECTIONS.indexOf(s)]).length / visibleSections.length) * 100)}%`, background:"#059669", borderRadius:2, transition:"width 0.4s ease" }} />
+            </div>
+            <div style={{ display:"flex", gap:0, overflowX:"auto", scrollbarWidth:"none" }}>
               {visibleSections.map((s)=>{
                 const i = SECTIONS.indexOf(s);
                 return (
@@ -1869,81 +1911,43 @@ export default function ProjectForm({ onSubmit, isSaving, initialData, initialNa
                 );
               })}
             </div>
-          )}
+          </>)}
         </div>
       </div>
 
-      {/* ── Body: sidebar + content ──────────────────────────────────────── */}
+      {/* ── Body: content ──────────────────────────────────────────────── */}
       <div style={{ flex:1, overflow:"hidden", display:"flex" }}>
-      <div style={{ maxWidth:1060, margin:"0 auto", width:"100%", display:"flex" }}>
-
-        {/* Left sidebar (desktop only) */}
-        {!isMobile && (
-          <div style={{ width:210, flexShrink:0, overflowY:"auto", borderRight:`1px solid ${theme.border}`, display:"flex", flexDirection:"column", padding:"20px 0 0" }}>
-            <div style={{ flex:1 }}>
-              {sidebarGroups.map(group => (
-                <div key={group} style={{ marginBottom:8 }}>
-                  <p style={{ margin:"0 0 4px", padding:"0 16px", fontSize:10, fontWeight:700, color:theme.textFaint, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.08em" }}>{group}</p>
-                  {visibleSections.filter(s=>s.group===group).map(s => {
-                    const i = SECTIONS.indexOf(s);
-                    const active = i === step;
-                    return (
-                      <button key={s.id} onClick={()=>setStep(i)}
-                        style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"9px 16px", background:active?`${s.color}10`:"transparent", border:"none", borderLeft:active?`3px solid ${s.color}`:"3px solid transparent", cursor:"pointer", textAlign:"left", transition:"all 0.15s" }}>
-                        {sectionFilled[i]
-                          ? <span style={{ width:18, height:18, background:"#059669", borderRadius:"50%", display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:9, color:"#fff", fontWeight:700, flexShrink:0 }}>✓</span>
-                          : <span style={{ width:18, height:18, borderRadius:"50%", border:`2px solid ${active?s.color:theme.borderInput}`, background:active?`${s.color}15`:"transparent", flexShrink:0, transition:"all 0.15s" }}/>
-                        }
-                        <span style={{ fontSize:12, fontWeight:active?700:500, color:active?s.color:theme.textSec, fontFamily:F, lineHeight:1.3 }}>{s.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-            <div style={{ padding:"12px 16px", borderTop:`1px solid ${theme.border}` }}>
-              <p style={{ margin:"0 0 5px", fontSize:10, fontWeight:700, color:theme.textFaint, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.08em" }}>Logged by</p>
-              <input value={enteredBy} onChange={e=>setEnteredBy(e.target.value)} placeholder="Your name"
-                style={{ width:"100%", fontFamily:F, fontSize:13, color:theme.textSec, background:theme.bg, border:`1px solid ${theme.borderInput}`, borderRadius:8, padding:"7px 10px", outline:"none", boxSizing:"border-box" }}/>
-            </div>
-          </div>
-        )}
+      <div style={{ maxWidth:900, margin:"0 auto", width:"100%", display:"flex" }}>
 
         {/* Content area */}
         <div style={{ flex:1, minWidth:0, overflowY:"auto", padding:`24px ${px}px 24px` }}>
+          <div style={{ background:theme.surface, border:`1px solid ${theme.border}`, borderRadius:14, padding: isMobile ? "20px 16px" : "28px 28px" }}>
 
-          {/* Section heading */}
-          <div style={{ marginBottom:24 }}>
-            <p style={{ margin:"0 0 2px", fontSize:11, fontWeight:700, color:theme.textFaint, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.08em" }}>{cs.group}</p>
-            <p style={{ margin:"0 0 4px", fontSize:20, fontWeight:700, color:cs.color, fontFamily:F }}>{cs.label}</p>
-            <p style={{ margin:0, fontSize:13, color:theme.textFaint, fontFamily:F }}>{cs.subtitle}</p>
-          </div>
-
-          {/* Logged by (mobile only — desktop shows this in the sidebar) */}
-          {isMobile && (
-            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:20, background:theme.surface, border:`1px solid ${theme.border}`, borderRadius:12, padding:"10px 14px" }}>
-              <span style={{ fontSize:12, color:theme.textFaint, fontFamily:F, fontWeight:500, flexShrink:0 }}>Logged by</span>
-              <input value={enteredBy} onChange={e=>setEnteredBy(e.target.value)} placeholder="Your name"
-                style={{ flex:1, fontFamily:F, fontSize:14, color:theme.textSec, background:"transparent", border:"none", outline:"none" }}/>
+            {/* Section heading */}
+            <div style={{ marginBottom:20 }}>
+              <p style={{ margin:"0 0 2px", fontSize:11, fontWeight:700, color:theme.textFaint, fontFamily:F, textTransform:"uppercase", letterSpacing:"0.08em" }}>{cs.group}</p>
+              <p style={{ margin:"0 0 4px", fontSize:20, fontWeight:700, color:cs.color, fontFamily:F }}>{cs.label}</p>
+              <p style={{ margin:0, fontSize:13, color:theme.textFaint, fontFamily:F }}>{cs.subtitle}</p>
             </div>
-          )}
 
-          {/* ── Section content ──────────────────────────────────────────── */}
-          {step===0 && <StepProjectUpdates projectUpdates={data.projectUpdates||[]} onProjectUpdatesChange={v=>setSD("projectUpdates",v)} isEditing={isEditing}/>}
-          {step===1 && <StepScopeCreep scopeCreep={data.delta?.scopeCreep||[]} onScopeCreepChange={v=>setData(d=>({...d,delta:{...d.delta,scopeCreep:v}}))} isEditing={isEditing}/>}
-          {step===2 && (
-            <StepAudit caseName={caseName} setCaseName={setCaseName}
-              hideRawPrompt={shouldHidePrompt}
-              intakeData={data.intake} setIntake={v=>setSD("intake",v)}
-              deltaData={data.delta} setDelta={v=>setSD("delta",v)}
-              onAiParse={handleAiParse} isParsing={parsePromutMutation.isPending} parseError={parseError}
-              auditData={data.audit} setAudit={v=>setSD("audit",v)} w={w} isEditing={isEditing}/>
-          )}
-          {step===3 && <StepIntake data={data.intake} set={v=>setSD("intake",v)} w={w} hideRawPrompt={shouldHidePrompt} aiSuggestedFields={aiSuggestedFields}/>}
-          {step===4 && <StepBuild data={data.build} set={v=>setSD("build",v)} w={w} suggestedAutomations={suggestedAutomations} auditData={data.audit} suggestedBuilds={suggestedBuilds}/>}
-          {step===5 && <StepDelta data={data.delta} set={v=>setSD("delta",v)} w={w} aiSuggestedFields={aiSuggestedFields}/>}
-          {step===6 && <StepReasoning data={data.reasoning} set={v=>setSD("reasoning",v)} w={w}/>}
-          {step===7 && <StepOutcome data={data.outcome} set={v=>setSD("outcome",v)} w={w}/>}
+            {/* ── Section content ──────────────────────────────────────────── */}
+            {step===0 && <StepProjectUpdates projectUpdates={data.projectUpdates||[]} onProjectUpdatesChange={v=>setSD("projectUpdates",v)} isEditing={isEditing}/>}
+            {step===1 && <StepScopeCreep scopeCreep={data.delta?.scopeCreep||[]} onScopeCreepChange={v=>setData(d=>({...d,delta:{...d.delta,scopeCreep:v}}))} isEditing={isEditing}/>}
+            {step===2 && (
+              <StepAudit caseName={caseName} setCaseName={setCaseName}
+                hideRawPrompt={shouldHidePrompt}
+                intakeData={data.intake} setIntake={v=>setSD("intake",v)}
+                deltaData={data.delta} setDelta={v=>setSD("delta",v)}
+                onAiParse={handleAiParse} isParsing={parsePromutMutation.isPending} parseError={parseError}
+                auditData={data.audit} setAudit={v=>setSD("audit",v)} w={w} isEditing={isEditing}/>
+            )}
+            {step===3 && <StepIntake data={data.intake} set={v=>setSD("intake",v)} w={w} hideRawPrompt={shouldHidePrompt} aiSuggestedFields={aiSuggestedFields}/>}
+            {step===4 && <StepBuild data={data.build} set={v=>setSD("build",v)} w={w} suggestedAutomations={suggestedAutomations} auditData={data.audit} suggestedBuilds={suggestedBuilds}/>}
+            {step===5 && <StepDelta data={data.delta} set={v=>setSD("delta",v)} w={w} aiSuggestedFields={aiSuggestedFields}/>}
+            {step===6 && <StepReasoning data={data.reasoning} set={v=>setSD("reasoning",v)} w={w}/>}
+            {step===7 && <StepOutcome data={data.outcome} set={v=>setSD("outcome",v)} w={w}/>}
+
+          </div>
         </div>
       </div>
       </div>
