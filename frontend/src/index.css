@@ -18,15 +18,15 @@
 }
 
 [data-theme="dark"] {
-  --color-bg: #111827;
-  --color-surface: #1F2937;
+  --color-bg: #0a0a0a;
+  --color-surface: #1e1b3a66;
   --color-text: #F9FAFB;
   --color-text-heading: #F1F5F9;
-  --color-text-muted: #9CA3AF;
+  --color-text-muted: #9994B8;
   --color-blue: #B8B0D9;
-  --color-border: #374151;
-  --scrollbar-thumb: #4B5563;
-  --scrollbar-thumb-hover: #6B7280;
+  --color-border: #2A2748;
+  --scrollbar-thumb: #38345C;
+  --scrollbar-thumb-hover: #5B52A0;
   --focus-outline: #B8B0D9;
 }
 

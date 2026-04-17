@@ -158,9 +158,22 @@ export default function AppLayout({ children }) {
       {userMenuOpen && (
         <div style={{
           position: "absolute", bottom: 0, left: "100%", marginLeft: 6, width: 180,
-          background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 10,
+          background: theme.surfaceRaised, border: `1px solid ${theme.border}`, borderRadius: 10,
           boxShadow: "0 4px 16px rgba(0,0,0,0.12)", overflow: "hidden", zIndex: 10,
         }}>
+          <button onClick={toggle}
+            style={{
+              display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", width: "100%",
+              background: "none", border: "none", cursor: "pointer", color: theme.text,
+              fontFamily: F, fontSize: 13, fontWeight: 500, textAlign: "left",
+              transition: "background 0.12s",
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = theme.surfaceAlt}
+            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+            <span style={{ fontSize: 15, width: 16, textAlign: "center", lineHeight: 1 }}>{mode === "dark" ? "☀" : "☽"}</span>
+            {mode === "dark" ? "Light mode" : "Dark mode"}
+          </button>
+          <div style={{ height: 1, background: theme.borderSubtle, margin: "0 14px" }} />
           <Link to="/settings" onClick={() => { setUserMenuOpen(false); setMobileOpen(false); }}
             style={{
               display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",

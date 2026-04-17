@@ -19,7 +19,7 @@ export function createMuiTheme(mode = "light") {
       },
       background: {
         default: t.bg,
-        paper:   t.surface,
+        paper:   t.surfaceRaised,
       },
       text: {
         primary:   t.text,
