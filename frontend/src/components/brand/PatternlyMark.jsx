@@ -60,7 +60,7 @@ export function PatternlyWordmark({ tagline = "Spot the pattern. Skip the meetin
         style={{
           fontSize: 28,
           fontWeight: 500,
-          color: theme.text,
+          color: "#9B93E8",
           fontFamily: "'Plus Jakarta Sans', sans-serif",
           letterSpacing: "-0.03em",
         }}
@@ -72,7 +72,7 @@ export function PatternlyWordmark({ tagline = "Spot the pattern. Skip the meetin
           style={{
             margin: 0,
             fontSize: 13,
-            color: theme.textFaint,
+            color: "#6E68A0",
             fontFamily: "'Plus Jakarta Sans', sans-serif",
           }}
         >
