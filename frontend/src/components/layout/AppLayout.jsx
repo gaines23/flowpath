@@ -52,6 +52,16 @@ function NavIcon({ name, size = 18, color }) {
         <path d="M12 13.5l4-3.5-4-3.5M16 10H7.5"/><path d="M13 4H5.5A1.5 1.5 0 004 5.5v9A1.5 1.5 0 005.5 16H13"/>
       </svg>
     );
+    case "collapse": return (
+      <svg style={s} viewBox="0 0 20 20" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12.5 5L7.5 10L12.5 15"/>
+      </svg>
+    );
+    case "expand": return (
+      <svg style={s} viewBox="0 0 20 20" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M7.5 5L12.5 10L7.5 15"/>
+      </svg>
+    );
     default: return null;
   }
 }
@@ -115,6 +125,7 @@ export default function AppLayout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef(null);
 
@@ -134,11 +145,13 @@ export default function AppLayout({ children }) {
     : to === "/tasks"    ? location.pathname === "/tasks"
     : location.pathname.startsWith(to);
 
-  const NavLink = ({ item }) => {
+  const NavLink = ({ item, isCollapsed }) => {
     const active = isActive(item.to);
     return (
-      <Link to={item.to} onClick={() => setMobileOpen(false)} style={{
-        display: "flex", alignItems: "center", gap: 12, padding: "10px 14px",
+      <Link to={item.to} onClick={() => setMobileOpen(false)} title={isCollapsed ? item.label : undefined} style={{
+        display: "flex", alignItems: "center", gap: isCollapsed ? 0 : 12,
+        padding: isCollapsed ? "10px 0" : "10px 14px",
+        justifyContent: isCollapsed ? "center" : "flex-start",
         borderRadius: 10, marginBottom: 2, textDecoration: "none",
         background: active ? theme.navActiveBg : "transparent",
         color: active ? theme.navActiveText : theme.navInactiveText,
@@ -146,7 +159,7 @@ export default function AppLayout({ children }) {
         transition: "all 0.15s",
       }}>
         <NavIcon name={item.icon} size={18} color={active ? theme.navActiveText : theme.navInactiveText} />
-        {item.label}
+        {!isCollapsed && <span style={{ whiteSpace: "nowrap", overflow: "hidden" }}>{item.label}</span>}
       </Link>
     );
   };
@@ -154,8 +167,8 @@ export default function AppLayout({ children }) {
   const userInitial = user?.first_name ? user.first_name.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || "?";
   const userName = user?.first_name ? `${user.first_name}`.trim() : user?.email;
 
-  const SidebarFooter = () => (
-    <div ref={userMenuRef} style={{ position: "relative", padding: "0 10px 10px", marginBottom: 10 }}>
+  const SidebarFooter = ({ isCollapsed }) => (
+    <div ref={userMenuRef} style={{ position: "relative", padding: isCollapsed ? "0 6px 10px" : "0 10px 10px", marginBottom: 10 }}>
       {userMenuOpen && (
         <div style={{
           position: "absolute", bottom: 0, left: "100%", marginLeft: 6, width: 180,
@@ -201,22 +214,30 @@ export default function AppLayout({ children }) {
           </button>
         </div>
       )}
-      <button onClick={() => setUserMenuOpen(o => !o)} style={{
-        display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", width: "100%",
+      <button onClick={() => setUserMenuOpen(o => !o)} title={isCollapsed ? userName : undefined} style={{
+        display: "flex", alignItems: "center", gap: isCollapsed ? 0 : 12,
+        padding: isCollapsed ? "12px 0" : "12px 14px",
+        justifyContent: isCollapsed ? "center" : "flex-start",
+        width: "100%",
         borderTop: `1px solid ${theme.borderSubtle}`, background: "none", border: "none",
         borderTopWidth: 1, borderTopStyle: "solid", borderTopColor: theme.borderSubtle,
         cursor: "pointer", textAlign: "left",
       }}>
         <div style={{
-          width: 36, height: 36, borderRadius: "50%", background: "#7C3AED",
+          width: isCollapsed ? 32 : 36, height: isCollapsed ? 32 : 36, borderRadius: "50%", background: "#7C3AED",
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 15, fontWeight: 700, color: "#fff", fontFamily: F, flexShrink: 0,
+          fontSize: isCollapsed ? 13 : 15, fontWeight: 700, color: "#fff", fontFamily: F, flexShrink: 0,
+          transition: "all 0.2s",
         }}>{userInitial}</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, fontFamily: F }}>{userName}</div>
-          <div style={{ fontSize: 11, color: theme.textFaint, fontFamily: F, textTransform: "capitalize" }}>{user?.role}</div>
-        </div>
-        <span style={{ fontSize: 16, color: theme.textFaint, flexShrink: 0, transition: "transform 0.2s", transform: userMenuOpen ? "rotate(90deg)" : "none" }}>›</span>
+        {!isCollapsed && (
+          <>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, fontFamily: F }}>{userName}</div>
+              <div style={{ fontSize: 11, color: theme.textFaint, fontFamily: F, textTransform: "capitalize" }}>{user?.role}</div>
+            </div>
+            <span style={{ fontSize: 16, color: theme.textFaint, flexShrink: 0, transition: "transform 0.2s", transform: userMenuOpen ? "rotate(90deg)" : "none" }}>›</span>
+          </>
+        )}
       </button>
     </div>
   );
@@ -225,19 +246,40 @@ export default function AppLayout({ children }) {
     <div className="fp-app-root" style={{ display: "flex", minHeight: "100vh", background: theme.bg }}>
 
       {/* Sidebar */}
-      <aside className="fp-sidebar" style={{ width: 220, background: theme.surface, borderRight: `1px solid ${theme.border}`, display: "flex", flexDirection: "column", position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 20 }}>
-        <div style={{ padding: "18px 16px 14px", borderBottom: `1px solid ${theme.borderSubtle}` }}>
+      <aside className="fp-sidebar" style={{
+        width: collapsed ? 64 : 220, background: theme.surface,
+        borderRight: `1px solid ${theme.border}`, display: "flex", flexDirection: "column",
+        position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 20,
+        transition: "width 0.2s ease",
+      }}>
+        <div style={{ padding: collapsed ? "18px 12px 14px" : "18px 16px 14px", borderBottom: `1px solid ${theme.borderSubtle}`, display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "flex-start" }}>
           <Link to="/dashboard" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
-            <PatternlyMark size={32} />
-            <span style={{ fontSize: 16, fontWeight: 600, color: "#9B93E8", fontFamily: F, letterSpacing: "-0.03em" }}>Patternly</span>
+            <PatternlyMark size={collapsed ? 28 : 32} />
+            {!collapsed && <span style={{ fontSize: 16, fontWeight: 600, color: "#9B93E8", fontFamily: F, letterSpacing: "-0.03em", whiteSpace: "nowrap" }}>Patternly</span>}
           </Link>
         </div>
-        <nav className="fp-sidebar-nav" style={{ flex: 1, padding: "12px 10px", overflowY: "auto" }}>
-          {MAIN_NAV.map(item => <NavLink key={item.to} item={item} />)}
-          <div style={{ height: 1, background: theme.borderSubtle, margin: "10px 14px" }} />
-          {QUICK_NAV.map(item => <NavLink key={item.to} item={item} />)}
+        <nav className="fp-sidebar-nav" style={{ flex: 1, padding: collapsed ? "12px 6px" : "12px 10px", overflowY: "auto" }}>
+          {MAIN_NAV.map(item => <NavLink key={item.to} item={item} isCollapsed={collapsed} />)}
+          <div style={{ height: 1, background: theme.borderSubtle, margin: collapsed ? "10px 4px" : "10px 14px" }} />
+          {QUICK_NAV.map(item => <NavLink key={item.to} item={item} isCollapsed={collapsed} />)}
         </nav>
-        <div className="fp-sidebar-footer"><SidebarFooter /></div>
+        <button
+          onClick={() => setCollapsed(c => !c)}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center",
+            margin: collapsed ? "0 6px 8px" : "0 10px 8px",
+            padding: "8px 0", borderRadius: 8,
+            border: `1px solid ${theme.borderSubtle}`, background: "transparent",
+            cursor: "pointer", color: theme.textMuted,
+            transition: "all 0.15s",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = theme.surfaceAlt; e.currentTarget.style.color = theme.text; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = theme.textMuted; }}
+        >
+          <NavIcon name={collapsed ? "expand" : "collapse"} size={16} color="currentColor" />
+        </button>
+        <div className="fp-sidebar-footer"><SidebarFooter isCollapsed={collapsed} /></div>
       </aside>
 
       {/* Mobile header */}
@@ -275,7 +317,7 @@ export default function AppLayout({ children }) {
       )}
 
       {/* Main content */}
-      <main className="fp-main" style={{ marginLeft: 220, flex: 1, minHeight: "100vh", overflowX: "hidden" }}>
+      <main className="fp-main" style={{ marginLeft: collapsed ? 64 : 220, flex: 1, minHeight: "100vh", overflowX: "hidden", transition: "margin-left 0.2s ease" }}>
         <div key={location.pathname} className="fp-page-enter">
           {children}
         </div>
