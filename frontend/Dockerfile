@@ -45,4 +45,4 @@ ENV BACKEND_HOST=api
 EXPOSE 80
 
 # At startup: auto-detect DNS resolver, render nginx template, start nginx
-CMD ["/bin/sh", "-c", "export DNS_RESOLVER=$(grep nameserver /etc/resolv.conf | head -1 | awk '{print $2}'); export DNS_RESOLVER=${DNS_RESOLVER:-8.8.8.8}; envsubst '$PORT $BACKEND_URL $BACKEND_HOST $DNS_RESOLVER' < /etc/nginx/nginx.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
+CMD ["/bin/sh", "-c", "DNS_RESOLVER=$(grep nameserver /etc/resolv.conf | head -1 | awk '{print $2}'); case \"$DNS_RESOLVER\" in *:*) DNS_RESOLVER=\"[$DNS_RESOLVER]\";; esac; export DNS_RESOLVER=${DNS_RESOLVER:-8.8.8.8}; envsubst '$PORT $BACKEND_URL $BACKEND_HOST $DNS_RESOLVER' < /etc/nginx/nginx.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
