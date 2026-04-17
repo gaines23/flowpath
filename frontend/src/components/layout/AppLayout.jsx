@@ -1,15 +1,60 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useTheme } from "../../hooks/useTheme";
 
-const NAV = [
-  { to: "/dashboard",    label: "Dashboard",     icon: "◈" },
-  { to: "/generate",     label: "Generate",       icon: "✨" },
-  { to: "/projects",     label: "Projects",       icon: "◎" },
-  { to: "/tasks",        label: "Tasks",          icon: "✓" },
-  { to: "/projects/new", label: "New Project",    icon: "+" },
+const MAIN_NAV = [
+  { to: "/dashboard", label: "Dashboard",  icon: "dashboard" },
+  { to: "/generate",  label: "Generate",   icon: "generate" },
+  { to: "/projects",  label: "Projects",   icon: "projects" },
+  { to: "/tasks",     label: "Tasks",      icon: "tasks" },
 ];
+const QUICK_NAV = [
+  { to: "/projects/new", label: "New Project", icon: "plus" },
+];
+
+function NavIcon({ name, size = 18, color }) {
+  const s = { width: size, height: size, display: "block" };
+  switch (name) {
+    case "dashboard": return (
+      <svg style={s} viewBox="0 0 20 20" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="6" height="6" rx="1.5"/><rect x="11" y="3" width="6" height="6" rx="1.5"/>
+        <rect x="3" y="11" width="6" height="6" rx="1.5"/><rect x="11" y="11" width="6" height="6" rx="1.5"/>
+      </svg>
+    );
+    case "generate": return (
+      <svg style={s} viewBox="0 0 20 20" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M10 2v4M10 14v4M2 10h4M14 10h4M4.93 4.93l2.83 2.83M12.24 12.24l2.83 2.83M15.07 4.93l-2.83 2.83M7.76 12.24l-2.83 2.83"/>
+      </svg>
+    );
+    case "projects": return (
+      <svg style={s} viewBox="0 0 20 20" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 7V15a2 2 0 002 2h10a2 2 0 002-2V7"/><path d="M3 7V5.5A1.5 1.5 0 014.5 4H8l1.5 2h6a1.5 1.5 0 011.5 1.5V7"/>
+      </svg>
+    );
+    case "tasks": return (
+      <svg style={s} viewBox="0 0 20 20" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="14" height="14" rx="2.5"/><path d="M7 10l2 2 4-4"/>
+      </svg>
+    );
+    case "plus": return (
+      <svg style={s} viewBox="0 0 20 20" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round">
+        <path d="M10 5v10M5 10h10"/>
+      </svg>
+    );
+    case "settings": return (
+      <svg style={s} viewBox="0 0 20 20" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="10" cy="10" r="2.5"/><path d="M10 2.5v2M10 15.5v2M17.5 10h-2M4.5 10h-2M15.3 4.7l-1.4 1.4M6.1 13.9l-1.4 1.4M15.3 15.3l-1.4-1.4M6.1 6.1L4.7 4.7"/>
+      </svg>
+    );
+    case "logout": return (
+      <svg style={s} viewBox="0 0 20 20" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 13.5l4-3.5-4-3.5M16 10H7.5"/><path d="M13 4H5.5A1.5 1.5 0 004 5.5v9A1.5 1.5 0 005.5 16H13"/>
+      </svg>
+    );
+    default: return null;
+  }
+}
 
 const F = "'Plus Jakarta Sans', sans-serif";
 
@@ -60,6 +105,16 @@ export default function AppLayout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) setUserMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleLogout = () => { logout(); navigate("/login"); };
 
@@ -69,42 +124,77 @@ export default function AppLayout({ children }) {
     : to === "/tasks"    ? location.pathname === "/tasks"
     : location.pathname.startsWith(to);
 
-  const NavLink = ({ item }) => (
-    <Link to={item.to} onClick={() => setMobileOpen(false)} style={{
-      display: "flex", alignItems: "center", gap: 10, padding: "9px 12px",
-      borderRadius: 8, marginBottom: 2, textDecoration: "none",
-      background: isActive(item.to) ? theme.navActiveBg : "transparent",
-      color: isActive(item.to) ? theme.navActiveText : theme.navInactiveText,
-      fontFamily: F, fontSize: 13,
-      fontWeight: isActive(item.to) ? 700 : 500,
-      transition: "all 0.15s",
-    }}>
-      <span style={{ fontSize: 14, width: 18, textAlign: "center" }}>{item.icon}</span>
-      {item.label}
-    </Link>
-  );
+  const NavLink = ({ item }) => {
+    const active = isActive(item.to);
+    return (
+      <Link to={item.to} onClick={() => setMobileOpen(false)} style={{
+        display: "flex", alignItems: "center", gap: 12, padding: "10px 14px",
+        borderRadius: 10, marginBottom: 2, textDecoration: "none",
+        background: active ? theme.navActiveBg : "transparent",
+        color: active ? theme.navActiveText : theme.navInactiveText,
+        fontFamily: F, fontSize: 14, fontWeight: active ? 600 : 500,
+        transition: "all 0.15s",
+      }}>
+        <NavIcon name={item.icon} size={18} color={active ? theme.navActiveText : theme.navInactiveText} />
+        {item.label}
+      </Link>
+    );
+  };
+
+  const userInitial = user?.first_name ? user.first_name.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || "?";
+  const userName = user?.first_name ? `${user.first_name}`.trim() : user?.email;
 
   const SidebarFooter = () => (
-    <div style={{ padding: "12px 14px", borderTop: `1px solid ${theme.borderSubtle}` }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: theme.textSec, fontFamily: F, marginBottom: 2 }}>
-            {user?.first_name ? `${user.first_name} ${user.last_name}`.trim() : user?.email}
-          </div>
-          <div style={{ fontSize: 11, color: theme.textFaint, fontFamily: F, textTransform: "capitalize" }}>
-            {user?.role}
-          </div>
+    <div ref={userMenuRef} style={{ position: "relative", padding: "0 10px 10px", marginBottom: 10 }}>
+      {userMenuOpen && (
+        <div style={{
+          position: "absolute", bottom: 0, left: "100%", marginLeft: 6, width: 180,
+          background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 10,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.12)", overflow: "hidden", zIndex: 10,
+        }}>
+          <Link to="/settings" onClick={() => { setUserMenuOpen(false); setMobileOpen(false); }}
+            style={{
+              display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
+              textDecoration: "none", color: theme.text, fontFamily: F, fontSize: 13, fontWeight: 500,
+              transition: "background 0.12s",
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = theme.surfaceAlt}
+            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+            <NavIcon name="settings" size={16} color={theme.textMuted} />
+            Settings
+          </Link>
+          <div style={{ height: 1, background: theme.borderSubtle, margin: "0 14px" }} />
+          <button onClick={() => { setUserMenuOpen(false); handleLogout(); }}
+            style={{
+              display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", width: "100%",
+              background: "none", border: "none", cursor: "pointer", color: theme.text,
+              fontFamily: F, fontSize: 13, fontWeight: 500, textAlign: "left",
+              transition: "background 0.12s",
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = theme.surfaceAlt}
+            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+            <NavIcon name="logout" size={16} color={theme.textMuted} />
+            Log out
+          </button>
         </div>
-        <ThemeToggle mode={mode} onToggle={toggle} theme={theme} />
-      </div>
-      <div style={{ display: "flex", gap: 6 }}>
-        <Link to="/settings" style={{ flex: 1, padding: "7px 10px", background: "transparent", border: `1px solid ${theme.borderInput}`, borderRadius: 7, color: theme.textMuted, fontSize: 12, fontWeight: 500, fontFamily: F, cursor: "pointer", textAlign: "center", textDecoration: "none" }}>
-          Settings
-        </Link>
-        <button onClick={handleLogout} style={{ flex: 1, padding: "7px 10px", background: "transparent", border: `1px solid ${theme.borderInput}`, borderRadius: 7, color: theme.textMuted, fontSize: 12, fontWeight: 500, fontFamily: F, cursor: "pointer" }}>
-          Sign out
-        </button>
-      </div>
+      )}
+      <button onClick={() => setUserMenuOpen(o => !o)} style={{
+        display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", width: "100%",
+        borderTop: `1px solid ${theme.borderSubtle}`, background: "none", border: "none",
+        borderTopWidth: 1, borderTopStyle: "solid", borderTopColor: theme.borderSubtle,
+        cursor: "pointer", textAlign: "left",
+      }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: "50%", background: "#7C3AED",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 15, fontWeight: 700, color: "#fff", fontFamily: F, flexShrink: 0,
+        }}>{userInitial}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, fontFamily: F }}>{userName}</div>
+          <div style={{ fontSize: 11, color: theme.textFaint, fontFamily: F, textTransform: "capitalize" }}>{user?.role}</div>
+        </div>
+        <span style={{ fontSize: 16, color: theme.textFaint, flexShrink: 0, transition: "transform 0.2s", transform: userMenuOpen ? "rotate(90deg)" : "none" }}>›</span>
+      </button>
     </div>
   );
 
@@ -128,7 +218,9 @@ export default function AppLayout({ children }) {
           </Link>
         </div>
         <nav className="fp-sidebar-nav" style={{ flex: 1, padding: "12px 10px", overflowY: "auto" }}>
-          {NAV.map(item => <NavLink key={item.to} item={item} />)}
+          {MAIN_NAV.map(item => <NavLink key={item.to} item={item} />)}
+          <div style={{ height: 1, background: theme.borderSubtle, margin: "10px 14px" }} />
+          {QUICK_NAV.map(item => <NavLink key={item.to} item={item} />)}
         </nav>
         <div className="fp-sidebar-footer"><SidebarFooter /></div>
       </aside>
@@ -162,15 +254,11 @@ export default function AppLayout({ children }) {
               <button onClick={() => setMobileOpen(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: theme.textMuted }}>✕</button>
             </div>
             <nav style={{ flex: 1, padding: "12px 10px" }}>
-              {NAV.map(item => <NavLink key={item.to} item={item} />)}
-              <NavLink item={{ to: "/settings", label: "Settings", icon: "⚙️" }} />
+              {MAIN_NAV.map(item => <NavLink key={item.to} item={item} />)}
+              <div style={{ height: 1, background: theme.borderSubtle, margin: "10px 14px" }} />
+              {QUICK_NAV.map(item => <NavLink key={item.to} item={item} />)}
             </nav>
-            <div style={{ padding: "12px 14px", borderTop: `1px solid ${theme.borderSubtle}` }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: theme.textSec, fontFamily: F }}>{user?.email}</div>
-              <button onClick={handleLogout} style={{ marginTop: 10, width: "100%", padding: 10, border: `1px solid ${theme.borderInput}`, borderRadius: 8, background: "transparent", color: theme.textMuted, fontFamily: F, fontSize: 13, cursor: "pointer" }}>
-                Sign out
-              </button>
-            </div>
+            <SidebarFooter />
           </div>
         </>
       )}
