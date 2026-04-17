@@ -803,7 +803,7 @@ function StepAudit({ caseName, setCaseName, hideRawPrompt, intakeData, setIntake
               onFocus={() => setPromptFocused(true)}
               onBlur={() => setPromptFocused(false)}
               onKeyDown={handleKeyDown}
-              placeholder="Type your prompt here... (Press Enter to send, Shift+Enter for new line)"
+              placeholder="e.g. We're a 12-person marketing agency using ClickUp and HubSpot. Our project handoffs keep falling through the cracks and nothing is automated — we need a system that connects intake to delivery so clients stop slipping through."
               rows={5}
               style={{
                 width:"100%", boxSizing:"border-box", fontFamily:F, fontSize:14, color:theme.text,
