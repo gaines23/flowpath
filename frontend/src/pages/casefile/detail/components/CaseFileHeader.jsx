@@ -42,7 +42,7 @@ export default function CaseFileHeader({
     const name = (cf.name || cf.workflow_type || "Case_File").replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_]/g, "");
     const date = new Date().toISOString().slice(0, 10);
     const prev = document.title;
-    document.title = `${name}_${date}_Flowpath`;
+    document.title = `${name}_${date}_Patternly`;
     flushSync(() => setIsPrinting(true));
     window.onafterprint = () => { document.title = prev; window.onafterprint = null; setIsPrinting(false); };
     window.print();
@@ -86,9 +86,9 @@ export default function CaseFileHeader({
             {/* Status badge */}
             <span style={{
               fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20,
-              background: cf.status === "closed" ? "#ECFDF5" : "#EFF6FF",
-              border: `1px solid ${cf.status === "closed" ? "#6EE7B7" : "#BFDBFE"}`,
-              color: cf.status === "closed" ? "#065F46" : "#1D4ED8",
+              background: cf.status === "closed" ? "#ECFDF5" : "#EEEAF8",
+              border: `1px solid ${cf.status === "closed" ? "#6EE7B7" : "#C8C2E8"}`,
+              color: cf.status === "closed" ? "#065F46" : "#7B72B8",
               fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em",
             }}>
               {cf.status === "closed" ? "Closed" : "Open"}

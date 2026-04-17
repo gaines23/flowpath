@@ -1,7 +1,7 @@
 /**
  * CaseFileForm.jsx
  *
- * The full 6-step Flowpath intake form.
+ * The full 6-step Patternly intake form.
  * Receives onSubmit(formData, enteredBy) and isSaving props.
  * Internally manages all form state; calls onSubmit when user hits "Save Project".
  *
@@ -162,7 +162,7 @@ const DEFAULT_STATE = {
 
 //  ── Primitive UI components (self-contained, no external deps) ────────────────
 const F = "'Plus Jakarta Sans', sans-serif";
-const BLUE = "#2563EB";
+const BLUE = "#9B93E8";
 
 function useWidth() {
   const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 800);
@@ -176,7 +176,7 @@ function useWidth() {
 
 function AiBadge() {
   return (
-    <span style={{ fontSize:10, fontWeight:700, fontFamily:F, color:"#60A5FA", background:"#60A5FA18", border:"1px solid #60A5FA30", borderRadius:6, padding:"2px 6px", marginLeft:6, letterSpacing:"0.04em", verticalAlign:"middle" }}>
+    <span style={{ fontSize:10, fontWeight:700, fontFamily:F, color:"#9B93E8", background:"#9B93E818", border:"1px solid #9B93E830", borderRadius:6, padding:"2px 6px", marginLeft:6, letterSpacing:"0.04em", verticalAlign:"middle" }}>
       AI
     </span>
   );
@@ -781,16 +781,16 @@ function StepAudit({ caseName, setCaseName, hideRawPrompt, intakeData, setIntake
       </Card>
 
       {!hideRawPrompt && (
-        <div style={{ border:`1px solid #60A5FA30`, borderRadius:14, padding:0, overflow:"hidden", marginBottom:14 }}>
+        <div style={{ border:`1px solid #9B93E830`, borderRadius:14, padding:0, overflow:"hidden", marginBottom:14 }}>
           {/* AI Assistant header */}
-          <div style={{ display:"flex", alignItems:"center", gap:12, padding:"16px 20px", borderBottom:`1px solid #60A5FA30` }}>
-            <div style={{ width:36, height:36, borderRadius:"50%", background:"#60A5FA", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12, padding:"16px 20px", borderBottom:`1px solid #9B93E830` }}>
+            <div style={{ width:36, height:36, borderRadius:"50%", background:"#9B93E8", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
               <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M10 2v4M10 14v4M2 10h4M14 10h4M4.93 4.93l2.83 2.83M12.24 12.24l2.83 2.83M15.07 4.93l-2.83 2.83M7.76 12.24l-2.83 2.83"/>
               </svg>
             </div>
             <div>
-              <p style={{ margin:0, fontSize:15, fontWeight:700, color:theme.text, fontFamily:F }}>AI Assistant <span style={{ fontSize:10, fontWeight:700, color:"#60A5FA", background:"#60A5FA18", border:"1px solid #60A5FA30", borderRadius:6, padding:"2px 6px", marginLeft:6, letterSpacing:"0.04em", verticalAlign:"middle" }}>AI</span></p>
+              <p style={{ margin:0, fontSize:15, fontWeight:700, color:theme.text, fontFamily:F }}>AI Assistant <span style={{ fontSize:10, fontWeight:700, color:"#9B93E8", background:"#9B93E818", border:"1px solid #9B93E830", borderRadius:6, padding:"2px 6px", marginLeft:6, letterSpacing:"0.04em", verticalAlign:"middle" }}>AI</span></p>
               <p style={{ margin:0, fontSize:12, color:theme.textFaint, fontFamily:F }}>Describe the client and their situation — AI will extract all the details</p>
             </div>
           </div>
@@ -807,23 +807,23 @@ function StepAudit({ caseName, setCaseName, hideRawPrompt, intakeData, setIntake
               rows={5}
               style={{
                 width:"100%", boxSizing:"border-box", fontFamily:F, fontSize:14, color:theme.text,
-                background:theme.bg, border:`1.5px solid ${promptFocused ? "#60A5FA" : theme.borderInput}`,
+                background:theme.bg, border:`1.5px solid ${promptFocused ? "#9B93E8" : theme.borderInput}`,
                 borderRadius:10, padding:"12px 14px", outline:"none", resize:"vertical", lineHeight:1.6,
                 transition:"border-color 0.15s, box-shadow 0.15s",
-                boxShadow: promptFocused ? "0 0 0 3px #60A5FA18" : "none",
+                boxShadow: promptFocused ? "0 0 0 3px #9B93E818" : "none",
               }}
             />
 
             {/* Hint + Send button */}
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:10 }}>
-              <span style={{ fontSize:12, color: promptVal.trim().length > 0 ? "#60A5FA" : theme.textFaint, fontFamily:F, fontWeight: promptVal.trim().length > 0 ? 600 : 400 }}>
+              <span style={{ fontSize:12, color: promptVal.trim().length > 0 ? "#9B93E8" : theme.textFaint, fontFamily:F, fontWeight: promptVal.trim().length > 0 ? 600 : 400 }}>
                 {promptVal.trim().length > 0 ? `✦ ${checkedCount}/${CHECKLIST.length} details detected` : "Describe the client's situation, tools, and goals"}
               </span>
               <button type="button" onClick={onAiParse} disabled={!canParse || isParsing}
                 style={{
                   display:"flex", alignItems:"center", gap:6, padding:"8px 18px", borderRadius:8,
                   fontSize:13, fontWeight:700, fontFamily:F, border:"none", cursor: canParse && !isParsing ? "pointer" : "not-allowed",
-                  background: canParse ? "#60A5FA" : theme.borderInput, color: canParse ? "#fff" : theme.textFaint,
+                  background: canParse ? "#9B93E8" : theme.borderInput, color: canParse ? "#fff" : theme.textFaint,
                   opacity: isParsing ? 0.7 : 1, transition:"all 0.15s",
                 }}>
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -847,19 +847,19 @@ function StepAudit({ caseName, setCaseName, hideRawPrompt, intakeData, setIntake
               <button key={qa.label} type="button" onClick={() => applyQuickAction(qa.text)}
                 style={{
                   padding:"5px 12px", borderRadius:8, fontSize:12, fontWeight:500, fontFamily:F,
-                  background:"#60A5FA08", border:"1px solid #60A5FA30", color:theme.textSec,
+                  background:"#9B93E808", border:"1px solid #9B93E830", color:theme.textSec,
                   cursor:"pointer", transition:"all 0.12s",
                 }}
-                onMouseEnter={e => { e.currentTarget.style.background = "#60A5FA18"; e.currentTarget.style.borderColor = "#60A5FA"; e.currentTarget.style.color = "#60A5FA"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "#60A5FA08"; e.currentTarget.style.borderColor = "#60A5FA30"; e.currentTarget.style.color = theme.textSec; }}>
+                onMouseEnter={e => { e.currentTarget.style.background = "#9B93E818"; e.currentTarget.style.borderColor = "#9B93E8"; e.currentTarget.style.color = "#9B93E8"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "#9B93E808"; e.currentTarget.style.borderColor = "#9B93E830"; e.currentTarget.style.color = theme.textSec; }}>
                 {qa.label}
               </button>
             ))}
           </div>
 
           {/* Checklist */}
-          <div style={{ padding:"14px 20px", borderTop:`1px solid #60A5FA30`, background:"#60A5FA08" }}>
-            <p style={{ margin:"0 0 10px", fontSize:11, fontWeight:700, color:"#60A5FA", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>
+          <div style={{ padding:"14px 20px", borderTop:`1px solid #9B93E830`, background:"#9B93E808" }}>
+            <p style={{ margin:"0 0 10px", fontSize:11, fontWeight:700, color:"#9B93E8", fontFamily:F, textTransform:"uppercase", letterSpacing:"0.06em" }}>
               ✦ Information checklist — {checkedCount}/{CHECKLIST.length} detected
             </p>
             <div style={{ display:"grid", gridTemplateColumns: w >= 560 ? "1fr 1fr" : "1fr", gap:"6px 16px" }}>
@@ -870,14 +870,14 @@ function StepAudit({ caseName, setCaseName, hideRawPrompt, intakeData, setIntake
                     <span style={{
                       width:18, height:18, borderRadius:5, flexShrink:0, marginTop:1,
                       display:"flex", alignItems:"center", justifyContent:"center",
-                      border: done ? "2px solid #60A5FA" : `2px solid ${theme.borderInput}`,
-                      background: done ? "#60A5FA" : "transparent",
+                      border: done ? "2px solid #9B93E8" : `2px solid ${theme.borderInput}`,
+                      background: done ? "#9B93E8" : "transparent",
                       fontSize:10, color:"#fff", fontWeight:700, transition:"all 0.2s",
                     }}>
                       {done ? "✓" : ""}
                     </span>
                     <div>
-                      <span style={{ fontSize:12, fontWeight: done ? 600 : 500, color: done ? "#60A5FA" : theme.textMuted, fontFamily:F }}>{c.label}</span>
+                      <span style={{ fontSize:12, fontWeight: done ? 600 : 500, color: done ? "#9B93E8" : theme.textMuted, fontFamily:F }}>{c.label}</span>
                       {!done && <span style={{ fontSize:11, color:theme.textFaint, fontFamily:F, marginLeft:4 }}>— {c.hint}</span>}
                     </div>
                   </div>
@@ -948,7 +948,7 @@ const AI_FILLABLE_FIELDS = new Set(["teamSize", "workflowType", "industries", "p
 function AiInfoTip({ hasAiFields }) {
   const [hovered, setHovered] = useState(false);
   const { theme } = useTheme();
-  const color = "#60A5FA";
+  const color = "#9B93E8";
   const tip = hasAiFields
     ? { title:"AI pre-filled these fields", body:"Review each suggestion below — correct anything that looks off before saving." }
     : { title:"AI can pre-fill these fields", body:"Go back to Current State, fill out the guided form, and click 'Let AI parse this' to auto-fill the highlighted fields below." };
@@ -975,7 +975,7 @@ function SuggestedBuildsPanel({ builds, onApply }) {
   const { theme } = useTheme();
   const [previewIdx, setPreviewIdx] = useState(null);
   if (!builds?.length) return null;
-  const color = "#60A5FA";
+  const color = "#9B93E8";
   const COMPLEXITY_LABELS = ["", "Very simple", "Simple", "Moderate", "Complex", "Very complex"];
   const preview = previewIdx !== null ? builds[previewIdx] : null;
 
@@ -992,7 +992,7 @@ function SuggestedBuildsPanel({ builds, onApply }) {
           const { template, score, match_reasons } = result;
           const isActive = previewIdx === i;
           const scoreColor = score >= 70 ? { bg:"#ECFDF5", border:"#6EE7B7", text:"#059669" }
-            : score >= 40 ? { bg:"#EFF6FF", border:"#BFDBFE", text:"#1D4ED8" }
+            : score >= 40 ? { bg:"#EEEAF8", border:"#C8C2E8", text:"#7B72B8" }
             : { bg:theme.surfaceAlt, border:theme.border, text:theme.textFaint };
           return (
             <button key={i} type="button" onClick={() => setPreviewIdx(isActive ? null : i)}
@@ -1098,7 +1098,7 @@ function StepIntake({ data, set, w, hideRawPrompt, aiSuggestedFields = new Set()
         <CardTitle>Tools & pain points</CardTitle>
         <Field label="Tools currently in use" hint="select all" aiBadge={ai("tools")}><ChipGroup options={TOOLS} selected={data.tools} onChange={v=>set({...data,tools:v})} color={BLUE}/></Field>
         <HR label="pain points"/>
-        <Field label="Core pain points" aiBadge={ai("painPoints")}><ChipGroup options={PAIN_POINTS} selected={data.painPoints} onChange={v=>set({...data,painPoints:v})} color="#60A5FA"/></Field>
+        <Field label="Core pain points" aiBadge={ai("painPoints")}><ChipGroup options={PAIN_POINTS} selected={data.painPoints} onChange={v=>set({...data,painPoints:v})} color="#9B93E8"/></Field>
         <HR/>
         <Field label="What have they already tried that didn't work?" hint="optional"><TI rows={2} value={data.priorAttempts} onChange={v=>set({...data,priorAttempts:v})} placeholder="Previous tools, failed automations…"/></Field>
       </Card>
@@ -1523,7 +1523,7 @@ function StepBuild({ data, set, w, suggestedAutomations, auditData, suggestedBui
       {/* ── Mapped workflows ────────────────────────────────────────────────── */}
       <HR label="mapped workflows — what you're building"/>
       {workflows.length === 0 ? (
-        <div style={{ padding:"40px 24px", textAlign:"center", background:theme.surface, border:"1.5px dashed #BFDBFE", borderRadius:14, marginBottom:14 }}>
+        <div style={{ padding:"40px 24px", textAlign:"center", background:theme.surface, border:"1.5px dashed #C8C2E8", borderRadius:14, marginBottom:14 }}>
           <p style={{ margin:"0 0 16px", fontSize:14, color:theme.textMuted, fontFamily:F }}>No workflows yet. Add one to start mapping the build.</p>
           <button type="button" onClick={addWf} style={{ padding:"10px 24px", background:"#0284C7", border:"none", borderRadius:10, color:"#fff", fontSize:13, fontWeight:700, fontFamily:F, cursor:"pointer" }}>+ Add first workflow</button>
         </div>
@@ -1531,7 +1531,7 @@ function StepBuild({ data, set, w, suggestedAutomations, auditData, suggestedBui
         {workflows.map((wf,i) => (
           <WorkflowBuildCard key={i} wf={wf} wfIdx={i} onChange={v=>updWf(i,v)} onRemove={()=>remWf(i)} w={w} suggestedAutomations={suggestedAutomations} previousBuilds={builds} isMapActive={mapWfIndex===i} onToggleMap={()=>setMapWfIndex(mapWfIndex===i?null:i)}/>
         ))}
-        <button type="button" onClick={addWf} style={{ width:"100%", padding:"11px 0", background:"transparent", border:"1.5px dashed #BFDBFE", borderRadius:10, color:"#0284C7", fontSize:13, fontWeight:600, fontFamily:F, cursor:"pointer", marginBottom:14 }}>
+        <button type="button" onClick={addWf} style={{ width:"100%", padding:"11px 0", background:"transparent", border:"1.5px dashed #C8C2E8", borderRadius:10, color:"#0284C7", fontSize:13, fontWeight:600, fontFamily:F, cursor:"pointer", marginBottom:14 }}>
           + Add another workflow
         </button>
       </>)}

@@ -21,11 +21,11 @@ const LAYER_LABELS = {
 const PRIORITY_CONFIG = {
   high:   { label: "High",   bg: "#FEF2F2", border: "#FECACA", color: "#DC2626" },
   medium: { label: "Med",    bg: "#FFFBEB", border: "#FDE68A", color: "#D97706" },
-  low:    { label: "Low",    bg: "#EFF6FF", border: "#BFDBFE", color: "#2563EB" },
+  low:    { label: "Low",    bg: "#EEEAF8", border: "#C8C2E8", color: "#9B93E8" },
 };
 
 const STATUS_CONFIG = {
-  open:        { label: "Open",        bg: "#EFF6FF", border: "#BFDBFE", color: "#1D4ED8" },
+  open:        { label: "Open",        bg: "#EEEAF8", border: "#C8C2E8", color: "#7B72B8" },
   in_progress: { label: "In Progress", bg: "#FFFBEB", border: "#FDE68A", color: "#B45309" },
   done:        { label: "Done",        bg: "#ECFDF5", border: "#6EE7B7", color: "#065F46" },
 };

@@ -58,15 +58,24 @@ function NavIcon({ name, size = 18, color }) {
 
 const F = "'Plus Jakarta Sans', sans-serif";
 
-function FlowpathMark({ size = 32, blue }) {
+function PatternlyMark({ size = 32 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="36" height="36" rx="9" fill={blue} />
-      <circle cx="9" cy="20" r="4.5" fill="white" />
-      <circle cx="18" cy="13" r="3" fill="white" fillOpacity="0.55" />
-      <circle cx="27" cy="20" r="4.5" fill="white" />
-      <circle cx="27" cy="20" r="1.8" fill={blue} />
-      <path d="M13 17.5 Q18 9 23 17.5" stroke="white" strokeWidth="2" strokeLinecap="round" fill="none" />
+    <svg width={size} height={size} viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Patternly mark">
+      <rect x="3" y="3" width="38" height="38" rx="8" fill="#1E1B3A" />
+      <circle cx="8" cy="10" r="1.2" fill="#B8B0D9" opacity="0.3" />
+      <circle cx="37" cy="10" r="1.2" fill="#B8B0D9" opacity="0.3" />
+      <circle cx="8" cy="22" r="1.2" fill="#B8B0D9" opacity="0.3" />
+      <circle cx="38" cy="26" r="1.2" fill="#B8B0D9" opacity="0.3" />
+      <circle cx="23" cy="37" r="1.2" fill="#B8B0D9" opacity="0.3" />
+      <circle cx="35" cy="36" r="1.2" fill="#B8B0D9" opacity="0.3" />
+      <circle cx="7" cy="34" r="1.2" fill="#B8B0D9" opacity="0.3" />
+      <line x1="15" y1="35" x2="15" y2="22" stroke="#9B93E8" strokeWidth="2.6" strokeLinecap="round" />
+      <path d="M 15 22 L 25 22 A 6.5 6.5 0 0 0 25 9 L 15 9" stroke="#9B93E8" strokeWidth="2.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="15" cy="35" r="2.8" fill="#F5D76E" />
+      <circle cx="15" cy="22" r="2.8" fill="#F5D76E" />
+      <circle cx="15" cy="9" r="2.8" fill="#F5D76E" />
+      <circle cx="31.5" cy="15.5" r="2.8" fill="#F5D76E" />
+      <circle cx="25" cy="22" r="2.8" fill="#F5D76E" />
     </svg>
   );
 }
@@ -83,7 +92,7 @@ function ThemeToggle({ mode, onToggle, theme }) {
         width: 32,
         height: 32,
         borderRadius: 8,
-        border: `1px solid #c9d9ff`,
+        border: `1px solid #D4CFE8`,
         background: "transparent",
         color: theme.textMuted,
         fontSize: 15,
@@ -205,16 +214,8 @@ export default function AppLayout({ children }) {
       <aside className="fp-sidebar" style={{ width: 220, background: theme.surface, borderRight: `1px solid ${theme.border}`, display: "flex", flexDirection: "column", position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 20 }}>
         <div style={{ padding: "18px 16px 14px", borderBottom: `1px solid ${theme.borderSubtle}` }}>
           <Link to="/dashboard" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
-            <FlowpathMark size={32} blue={theme.blue} />
-            <div>
-              <div style={{ display: "flex", alignItems: "baseline" }}>
-                <span style={{ fontSize: 16, fontWeight: 800, color: theme.text, fontFamily: F, letterSpacing: "-0.04em" }}>flow</span>
-                <span style={{ fontSize: 16, fontWeight: 800, color: theme.blue, fontFamily: F, letterSpacing: "-0.04em" }}>path</span>
-              </div>
-              <div style={{ fontSize: 9, fontWeight: 700, color: theme.textFaint, letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: F }}>
-                Workflow Intelligence
-              </div>
-            </div>
+            <PatternlyMark size={32} />
+            <span style={{ fontSize: 16, fontWeight: 500, color: "#9B93E8", fontFamily: F, letterSpacing: "-0.03em" }}>Patternly</span>
           </Link>
         </div>
         <nav className="fp-sidebar-nav" style={{ flex: 1, padding: "12px 10px", overflowY: "auto" }}>
@@ -228,10 +229,8 @@ export default function AppLayout({ children }) {
       {/* Mobile header */}
       <div className="fp-mobile-header" style={{ display: "none", position: "fixed", top: 0, left: 0, right: 0, zIndex: 30, background: theme.surface, borderBottom: `1px solid ${theme.border}`, padding: "0 16px", height: 56, alignItems: "center", justifyContent: "space-between" }}>
         <Link to="/dashboard" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
-          <FlowpathMark size={28} blue={theme.blue} />
-          <span style={{ fontSize: 15, fontWeight: 800, color: theme.text, fontFamily: F, letterSpacing: "-0.04em" }}>
-            flow<span style={{ color: theme.blue }}>path</span>
-          </span>
+          <PatternlyMark size={28} />
+          <span style={{ fontSize: 15, fontWeight: 500, color: "#9B93E8", fontFamily: F, letterSpacing: "-0.03em" }}>Patternly</span>
         </Link>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <ThemeToggle mode={mode} onToggle={toggle} theme={theme} />
@@ -246,10 +245,8 @@ export default function AppLayout({ children }) {
           <div style={{ position: "fixed", top: 0, left: 0, bottom: 0, width: 260, background: theme.surface, zIndex: 50, display: "flex", flexDirection: "column" }}>
             <div style={{ padding: "18px 16px", borderBottom: `1px solid ${theme.borderSubtle}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <Link to="/dashboard" onClick={() => setMobileOpen(false)} style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
-                <FlowpathMark size={28} blue={theme.blue} />
-                <span style={{ fontSize: 15, fontWeight: 800, color: theme.text, fontFamily: F }}>
-                  flow<span style={{ color: theme.blue }}>path</span>
-                </span>
+                <PatternlyMark size={28} />
+                <span style={{ fontSize: 15, fontWeight: 500, color: "#9B93E8", fontFamily: F, letterSpacing: "-0.03em" }}>Patternly</span>
               </Link>
               <button onClick={() => setMobileOpen(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: theme.textMuted }}>✕</button>
             </div>
