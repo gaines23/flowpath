@@ -36,7 +36,6 @@ RUN rm -f /etc/nginx/conf.d/default.conf
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.railway.conf /etc/nginx/nginx.conf.template
-COPY docker-entrypoint.sh /docker-entrypoint.sh
 
 # Defaults work for docker-compose; Railway overrides via env vars
 ENV PORT=80
@@ -45,4 +44,6 @@ ENV BACKEND_HOST=api
 
 EXPOSE 80
 
-CMD ["/docker-entrypoint.sh"]
+# envsubst replaces ${PORT}, ${BACKEND_URL}, ${BACKEND_HOST} in the template,
+# writes the result to nginx.conf, then starts nginx.
+CMD ["/bin/sh", "-c", "envsubst '$PORT $BACKEND_URL $BACKEND_HOST' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && exec nginx -g 'daemon off;'"]
