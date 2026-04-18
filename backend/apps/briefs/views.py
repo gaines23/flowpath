@@ -791,21 +791,27 @@ def insights_list(request):
 def ingest_url(request):
     """
     POST /api/v1/briefs/ingest/
-    Frontend-facing ingestion endpoint. Accepts a URL, fetches it, sends to
-    Claude for extraction, and saves the results.
+    Frontend-facing ingestion endpoint.
 
-    Body: { "url": "...", "platform": "clickup", "ingest_type": "knowledge"|"case_file",
-            "content_type": "blog_post"|"platform_doc"|... }
+    Supports three modes:
+    - URL + case_file:  fetch URL → extract case file
+    - URL + knowledge:  fetch URL → extract platform knowledge + community insights
+    - content + prompt: paste raw text → auto-route to all data types
+
+    Body: { "url": "...", "content": "...", "platform": "clickup",
+            "ingest_type": "case_file"|"knowledge"|"prompt",
+            "content_type": "blog_post"|..., "source_attribution": "..." }
     """
     serializer = IngestRequestSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
 
-    url = serializer.validated_data["url"]
+    url = serializer.validated_data.get("url", "").strip()
+    content = serializer.validated_data.get("content", "").strip()
     platform = serializer.validated_data["platform"]
     ingest_type = serializer.validated_data["ingest_type"]
     content_type = serializer.validated_data["content_type"]
+    source_attribution = serializer.validated_data.get("source_attribution", "")
 
-    # Use the management command logic via Django's call_command
     from django.core.management import call_command
     from io import StringIO
 
@@ -813,7 +819,19 @@ def ingest_url(request):
     stderr = StringIO()
 
     try:
-        if ingest_type == "case_file":
+        if ingest_type == "prompt":
+            # Smart extract: raw content → auto-routes to all models
+            call_command(
+                "ingest_prompt",
+                platform=platform.slug,
+                content=content,
+                source_url=url,
+                source_attribution=source_attribution,
+                auto_approve=True,
+                stdout=stdout,
+                stderr=stderr,
+            )
+        elif ingest_type == "case_file":
             call_command(
                 "ingest_source",
                 url=url,
@@ -838,7 +856,7 @@ def ingest_url(request):
                 stderr=stderr,
             )
     except Exception as e:
-        logger.error("Ingestion failed for %s: %s", url, e)
+        logger.error("Ingestion failed: %s", e)
         return Response(
             {"detail": f"Ingestion failed: {str(e)}"},
             status=status.HTTP_502_BAD_GATEWAY,
@@ -857,6 +875,103 @@ def ingest_url(request):
         "status": "success",
         "ingest_type": ingest_type,
         "platform": platform.slug,
-        "url": url,
+        "url": url or None,
+        "output": output.strip(),
+    }, status=status.HTTP_201_CREATED)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def ingest_pdf(request):
+    """
+    POST /api/v1/briefs/ingest/pdf/
+    Upload a PDF file for extraction. Extracts text via PyMuPDF, then routes
+    through the ingest_prompt pipeline (auto-routes to all data types).
+
+    Multipart form data:
+        file: PDF file
+        platform: platform slug (required)
+        source_attribution: optional author/org name
+    """
+    import fitz  # PyMuPDF
+
+    pdf_file = request.FILES.get("file")
+    if not pdf_file:
+        return Response({"detail": "No file uploaded."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not pdf_file.name.lower().endswith(".pdf"):
+        return Response({"detail": "Only PDF files are supported."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if pdf_file.size > 10 * 1024 * 1024:
+        return Response({"detail": "File too large. Maximum 10 MB."}, status=status.HTTP_400_BAD_REQUEST)
+
+    platform_slug = request.data.get("platform", "").strip()
+    if not platform_slug:
+        return Response({"detail": "Platform is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    platform = Platform.objects.filter(slug=platform_slug).first()
+    if not platform:
+        return Response({"detail": f"Unknown platform: {platform_slug}"}, status=status.HTTP_400_BAD_REQUEST)
+
+    source_attribution = request.data.get("source_attribution", "")
+
+    try:
+        pdf_bytes = pdf_file.read()
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        pages = []
+        for page in doc:
+            pages.append(page.get_text())
+        doc.close()
+        content = "\n\n".join(pages).strip()
+    except Exception as e:
+        logger.error("PDF extraction failed: %s", e)
+        return Response(
+            {"detail": f"Failed to extract text from PDF: {str(e)}"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not content:
+        return Response(
+            {"detail": "No text could be extracted from this PDF. It may be image-based."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    from django.core.management import call_command
+    from io import StringIO
+
+    stdout = StringIO()
+    stderr = StringIO()
+
+    try:
+        call_command(
+            "ingest_prompt",
+            platform=platform.slug,
+            content=content,
+            source_url="",
+            source_attribution=source_attribution or pdf_file.name,
+            auto_approve=True,
+            stdout=stdout,
+            stderr=stderr,
+        )
+    except Exception as e:
+        logger.error("PDF ingestion failed: %s", e)
+        return Response(
+            {"detail": f"Ingestion failed: {str(e)}"},
+            status=status.HTTP_502_BAD_GATEWAY,
+        )
+
+    output = stdout.getvalue()
+    errors = stderr.getvalue()
+
+    if errors and "Failed" in errors:
+        return Response({"detail": errors.strip()}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response({
+        "status": "success",
+        "ingest_type": "prompt",
+        "platform": platform.slug,
+        "filename": pdf_file.name,
+        "pages_extracted": len(pages),
+        "characters_extracted": len(content),
         "output": output.strip(),
     }, status=status.HTTP_201_CREATED)

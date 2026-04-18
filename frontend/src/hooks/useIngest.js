@@ -13,11 +13,27 @@ export function usePlatforms(category) {
   });
 }
 
-// ── Submit a URL for ingestion ──────────────────────────────────────────────
+// ── Submit a URL or content for ingestion ───────────────────────────────────
 export function useIngestUrl() {
   return useMutation({
     mutationFn: async (payload) => {
       const { data } = await api.post("/v1/briefs/ingest/", payload);
+      return data;
+    },
+  });
+}
+
+// ── Upload a PDF for ingestion ──────────────────────────────────────────────
+export function useIngestPdf() {
+  return useMutation({
+    mutationFn: async ({ file, platform, sourceAttribution }) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("platform", platform);
+      if (sourceAttribution) formData.append("source_attribution", sourceAttribution);
+      const { data } = await api.post("/v1/briefs/ingest/pdf/", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
       return data;
     },
   });

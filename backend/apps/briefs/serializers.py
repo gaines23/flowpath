@@ -64,13 +64,15 @@ class CommunityInsightSerializer(serializers.ModelSerializer):
 
 class IngestRequestSerializer(serializers.Serializer):
     """Validates the frontend intake form submission."""
-    url = serializers.URLField()
+    url = serializers.URLField(required=False, allow_blank=True, default="")
+    content = serializers.CharField(required=False, allow_blank=True, default="")
     platform = serializers.SlugRelatedField(
         slug_field="slug", queryset=Platform.objects.all(),
     )
     ingest_type = serializers.ChoiceField(choices=[
         ("case_file", "Case File"),
         ("knowledge", "Platform Knowledge & Community Insights"),
+        ("prompt", "Smart Extract (auto-routes to all types)"),
     ])
     content_type = serializers.ChoiceField(
         choices=[
@@ -83,6 +85,14 @@ class IngestRequestSerializer(serializers.Serializer):
         ],
         default="blog_post",
     )
+    source_attribution = serializers.CharField(required=False, allow_blank=True, default="")
+
+    def validate(self, data):
+        url = data.get("url", "").strip()
+        content = data.get("content", "").strip()
+        if not url and not content:
+            raise serializers.ValidationError("Provide either a URL or content to ingest.")
+        return data
 
 
 class NestedLayerMixin:

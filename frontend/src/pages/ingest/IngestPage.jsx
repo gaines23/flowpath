@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useTheme } from "@hooks/useTheme";
-import { usePlatforms, useIngestUrl } from "../../hooks/useIngest";
+import { usePlatforms, useIngestUrl, useIngestPdf } from "../../hooks/useIngest";
 import PageHeader from "../../components/ui/PageHeader";
 import Card from "../../components/ui/Card";
 import Input from "../../components/ui/Input";
@@ -9,8 +9,14 @@ import Alert from "../../components/ui/Alert";
 
 const F = "'Plus Jakarta Sans', sans-serif";
 
-const INGEST_TYPES = [
-  { value: "knowledge", label: "Platform Knowledge & Community Insights", description: "Docs, guides, methodologies, limitations, best practices" },
+const INPUT_MODES = [
+  { value: "url", label: "URL" },
+  { value: "prompt", label: "Paste Content" },
+  { value: "pdf", label: "Upload PDF" },
+];
+
+const INGEST_TYPES_URL = [
+  { value: "knowledge", label: "Platform Knowledge & Insights", description: "Docs, guides, methodologies, limitations, best practices" },
   { value: "case_file", label: "Case File", description: "A specific workflow implementation or build story" },
 ];
 
@@ -27,32 +33,68 @@ export default function IngestPage() {
   const { theme } = useTheme();
   const { data: platforms, isLoading: platformsLoading } = usePlatforms();
   const ingestMutation = useIngestUrl();
+  const pdfMutation = useIngestPdf();
 
+  const [inputMode, setInputMode] = useState("url");
   const [url, setUrl] = useState("");
+  const [content, setContent] = useState("");
+  const [pdfFile, setPdfFile] = useState(null);
   const [platformSlug, setPlatformSlug] = useState("");
   const [ingestType, setIngestType] = useState("knowledge");
   const [contentType, setContentType] = useState("blog_post");
+  const [sourceAttribution, setSourceAttribution] = useState("");
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const fileInputRef = useRef(null);
+
+  const isLoading = ingestMutation.isPending || pdfMutation.isPending;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setResult(null);
     setError(null);
 
-    if (!url.trim() || !platformSlug) return;
+    if (!platformSlug) return;
 
     try {
-      const data = await ingestMutation.mutateAsync({
-        url: url.trim(),
-        platform: platformSlug,
-        ingest_type: ingestType,
-        content_type: contentType,
-      });
+      let data;
+
+      if (inputMode === "pdf") {
+        if (!pdfFile) return;
+        data = await pdfMutation.mutateAsync({
+          file: pdfFile,
+          platform: platformSlug,
+          sourceAttribution,
+        });
+      } else {
+        const payload = {
+          platform: platformSlug,
+          ingest_type: inputMode === "prompt" ? "prompt" : ingestType,
+          content_type: contentType,
+          source_attribution: sourceAttribution,
+        };
+        if (inputMode === "url") {
+          if (!url.trim()) return;
+          payload.url = url.trim();
+        } else {
+          if (!content.trim()) return;
+          payload.content = content.trim();
+          if (url.trim()) payload.url = url.trim();
+        }
+        data = await ingestMutation.mutateAsync(payload);
+      }
+
       setResult(data);
-      setUrl("");
+      if (inputMode === "pdf") {
+        setPdfFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
     } catch (err) {
-      const detail = err.response?.data?.detail || err.response?.data?.url?.[0] || "Ingestion failed. Please try again.";
+      const detail =
+        err.response?.data?.detail ||
+        err.response?.data?.url?.[0] ||
+        err.response?.data?.non_field_errors?.[0] ||
+        "Ingestion failed. Please try again.";
       setError(detail);
     }
   };
@@ -86,7 +128,32 @@ export default function IngestPage() {
     display: "block",
   };
 
-  // Group platforms by category for the dropdown
+  const pillStyle = (active) => ({
+    padding: "7px 16px",
+    border: `1.5px solid ${active ? theme.blue : theme.borderInput}`,
+    borderRadius: 20,
+    background: active ? theme.blueLight : "transparent",
+    color: active ? theme.blue : theme.textMuted,
+    fontSize: 13,
+    fontWeight: 600,
+    fontFamily: F,
+    cursor: "pointer",
+    transition: "all 0.15s",
+  });
+
+  const cardButtonStyle = (active) => ({
+    flex: 1,
+    padding: "12px 14px",
+    border: `1.5px solid ${active ? theme.blue : theme.borderInput}`,
+    borderRadius: 10,
+    background: active ? theme.blueLight : theme.inputBg,
+    cursor: "pointer",
+    textAlign: "left",
+    fontFamily: F,
+    transition: "border-color 0.15s, background 0.15s",
+  });
+
+  // Group platforms by category
   const groupedPlatforms = {};
   if (platforms) {
     for (const p of platforms) {
@@ -105,58 +172,171 @@ export default function IngestPage() {
     other: "Other",
   };
 
+  const canSubmit =
+    platformSlug &&
+    !isLoading &&
+    (inputMode === "url" ? url.trim() : inputMode === "prompt" ? content.trim() : !!pdfFile);
+
   return (
     <div style={{ maxWidth: 640, margin: "0 auto" }}>
       <PageHeader
         title="Ingest Source"
-        subtitle="Add platform knowledge, community insights, or case files from public sources"
+        subtitle="Add platform knowledge, community insights, or case files from any source"
       />
 
       <Card>
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          {/* URL */}
-          <Input
-            label="Source URL"
-            type="url"
-            name="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://www.zenpilot.com/blog/..."
-            required
-            helper="Paste a blog post, documentation page, forum thread, or case study URL"
-          />
 
-          {/* Ingest type — radio cards */}
-          <div>
-            <span style={labelStyle}>What type of data is this?</span>
-            <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
-              {INGEST_TYPES.map((t) => (
-                <button
-                  key={t.value}
-                  type="button"
-                  onClick={() => setIngestType(t.value)}
+          {/* Input mode toggle */}
+          <div style={{ display: "flex", gap: 8 }}>
+            {INPUT_MODES.map((m) => (
+              <button
+                key={m.value}
+                type="button"
+                onClick={() => setInputMode(m.value)}
+                style={pillStyle(inputMode === m.value)}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+
+          {/* ── URL mode ─────────────────────────────────────────── */}
+          {inputMode === "url" && (
+            <Input
+              label="Source URL"
+              type="url"
+              name="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://www.zenpilot.com/blog/..."
+              required
+              helper="Blog post, documentation page, forum thread, or case study"
+            />
+          )}
+
+          {/* ── Paste content mode ───────────────────────────────── */}
+          {inputMode === "prompt" && (
+            <>
+              <Input
+                as="textarea"
+                label="Content"
+                name="content"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="Paste documentation, transcript, blog post content, notes, or any text about workflow tools..."
+                required
+                rows={10}
+                helper="The AI will extract platform knowledge, community insights, and case files from this content"
+              />
+              <div style={{ display: "flex", gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <Input
+                    label="Source URL (optional)"
+                    type="url"
+                    name="source_url"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    placeholder="https://..."
+                    helper="Where this content came from"
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Input
+                    label="Attribution (optional)"
+                    name="source_attribution"
+                    value={sourceAttribution}
+                    onChange={(e) => setSourceAttribution(e.target.value)}
+                    placeholder="e.g. ZenPilot, ClickUp Docs"
+                    helper="Author or organization"
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ── PDF upload mode ──────────────────────────────────── */}
+          {inputMode === "pdf" && (
+            <>
+              <div>
+                <span style={labelStyle}>
+                  PDF File <span style={{ color: "#DC2626" }}>*</span>
+                </span>
+                <div
+                  onClick={() => fileInputRef.current?.click()}
                   style={{
-                    flex: 1,
-                    padding: "12px 14px",
-                    border: `1.5px solid ${ingestType === t.value ? theme.blue : theme.borderInput}`,
+                    border: `2px dashed ${pdfFile ? theme.blue : theme.borderInput}`,
                     borderRadius: 10,
-                    background: ingestType === t.value ? theme.blueLight : theme.inputBg,
+                    padding: "24px 16px",
+                    textAlign: "center",
                     cursor: "pointer",
-                    textAlign: "left",
-                    fontFamily: F,
-                    transition: "border-color 0.15s, background 0.15s",
+                    background: pdfFile ? theme.blueLight : theme.inputBg,
+                    transition: "all 0.15s",
                   }}
                 >
-                  <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, marginBottom: 2 }}>
-                    {t.label}
-                  </div>
-                  <div style={{ fontSize: 12, color: theme.textMuted }}>
-                    {t.description}
-                  </div>
-                </button>
-              ))}
+                  {pdfFile ? (
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: theme.text, fontFamily: F }}>
+                        {pdfFile.name}
+                      </div>
+                      <div style={{ fontSize: 12, color: theme.textMuted, fontFamily: F, marginTop: 4 }}>
+                        {(pdfFile.size / 1024).toFixed(0)} KB — Click to change
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div style={{ fontSize: 24, marginBottom: 4 }}>+</div>
+                      <div style={{ fontSize: 13, color: theme.textMuted, fontFamily: F }}>
+                        Click to select a PDF file (max 10 MB)
+                      </div>
+                    </div>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf"
+                    style={{ display: "none" }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) setPdfFile(file);
+                    }}
+                  />
+                </div>
+              </div>
+              <Input
+                label="Attribution (optional)"
+                name="source_attribution"
+                value={sourceAttribution}
+                onChange={(e) => setSourceAttribution(e.target.value)}
+                placeholder="e.g. ZenPilot, ClickUp Docs"
+                helper="Author or organization name for this PDF"
+              />
+            </>
+          )}
+
+          {/* Ingest type — URL mode only */}
+          {inputMode === "url" && (
+            <div>
+              <span style={labelStyle}>What type of data is this?</span>
+              <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+                {INGEST_TYPES_URL.map((t) => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => setIngestType(t.value)}
+                    style={cardButtonStyle(ingestType === t.value)}
+                  >
+                    <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, marginBottom: 2 }}>
+                      {t.label}
+                    </div>
+                    <div style={{ fontSize: 12, color: theme.textMuted }}>
+                      {t.description}
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Platform */}
           <div>
@@ -182,31 +362,46 @@ export default function IngestPage() {
             </select>
           </div>
 
-          {/* Content type */}
-          <div>
-            <label style={labelStyle} htmlFor="content_type">Content Type</label>
-            <select
-              id="content_type"
-              value={contentType}
-              onChange={(e) => setContentType(e.target.value)}
-              style={selectStyle}
-            >
-              {CONTENT_TYPES.map((ct) => (
-                <option key={ct.value} value={ct.value}>{ct.label}</option>
-              ))}
-            </select>
-          </div>
+          {/* Content type (URL mode only) */}
+          {inputMode === "url" && (
+            <div>
+              <label style={labelStyle} htmlFor="content_type">Content Type</label>
+              <select
+                id="content_type"
+                value={contentType}
+                onChange={(e) => setContentType(e.target.value)}
+                style={selectStyle}
+              >
+                {CONTENT_TYPES.map((ct) => (
+                  <option key={ct.value} value={ct.value}>{ct.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Submit */}
           <Button
             type="submit"
-            loading={ingestMutation.isPending}
-            disabled={!url.trim() || !platformSlug}
+            loading={isLoading}
+            disabled={!canSubmit}
             fullWidth
             size="lg"
           >
-            {ingestMutation.isPending ? "Extracting..." : "Ingest Source"}
+            {isLoading
+              ? "Extracting..."
+              : inputMode === "pdf"
+                ? "Upload & Extract"
+                : inputMode === "prompt"
+                  ? "Extract & Store"
+                  : "Ingest Source"}
           </Button>
+
+          {(inputMode === "prompt" || inputMode === "pdf") && (
+            <p style={{ fontSize: 12, color: theme.textMuted, fontFamily: F, margin: 0, textAlign: "center" }}>
+              The AI will automatically classify each piece of information as platform knowledge,
+              community insight, or case file and store it in the correct place.
+            </p>
+          )}
         </form>
 
         {/* Results */}
@@ -220,7 +415,9 @@ export default function IngestPage() {
           <Alert variant="success" onDismiss={() => setResult(null)} style={{ marginTop: 16 }}>
             <strong>Ingested successfully.</strong>
             <br />
-            Platform: {result.platform} | Type: {result.ingest_type}
+            Platform: {result.platform}
+            {result.filename && <> | File: {result.filename}</>}
+            {result.pages_extracted != null && <> | {result.pages_extracted} pages, {result.characters_extracted?.toLocaleString()} chars extracted</>}
             {result.output && (
               <pre style={{
                 marginTop: 8,
