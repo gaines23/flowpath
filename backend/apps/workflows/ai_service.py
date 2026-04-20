@@ -194,6 +194,11 @@ AUTOMATION RULES:
 - Use ONLY these trigger types: Task Created, Task Status Changed, Task Completed, Task Moved, Task Assigned, Task Unassigned, Task Due Date Arrives, Task Start Date Arrives, Task Due Date Changed, Task Priority Changed, Custom Field Changed, Custom Field Is, Comment Posted, Attachment Added, Tag Added, Tag Removed, Task Type Is, Checklist Item Completed, Time Estimate Changed, Dependency Resolved, Form Submitted, Recurring Task Due
 - Use ONLY these action types: Change Status, Assign To, Unassign From, Set Priority, Set Due Date, Set Start Date, Move to List, Add to List, Create List, Copy Task, Create Subtask, Create Task, Post Comment, Send Email, Add Tag, Remove Tag, Set Custom Field, Start Time Tracking, Stop Time Tracking, Change Task Type, Apply Template, Archive Task, Send Webhook
 
+AGENT INSTRUCTIONS RULES:
+- The "instructions" field is ONLY for automations that require an AI agent or custom prompt text — for example: creating lists dynamically, applying list templates, complex conditional logic, or multi-step orchestration that goes beyond a simple trigger→action pair
+- For standard ClickUp automations (e.g. "when status changes → assign to"), leave "instructions" as an empty string ""
+- When instructions ARE needed (e.g. a ClickUp AI agent that creates a list and applies a template), write clear step-by-step prompt text the agent should follow
+
 CRITICAL RULES:
 - Be specific and actionable — someone should be able to build exactly this in ClickUp
 - Each suggestion must include reasoning explaining WHY this approach fits
@@ -235,8 +240,17 @@ Return ONLY valid JSON — an array of suggestion objects. Schema:
                 "pipeline_phase": "Phase name if applicable",
                 "triggers": [{{"type": "Task Status Changed", "detail": "When status changes to Review"}}],
                 "actions": [{{"type": "Assign To", "detail": "Assign to team lead for review"}}],
-                "instructions": "Human-readable description of what this automation does",
+                "instructions": "",
                 "map_description": "Short label for workflow visualization"
+              }},
+              {{
+                "platform": "clickup",
+                "automation_mode": "standalone",
+                "pipeline_phase": "",
+                "triggers": [{{"type": "Task Status Changed", "detail": "When task status changes to Approved"}}],
+                "actions": [{{"type": "Create List", "detail": "Create new list in Project Space with task name"}}],
+                "instructions": "1. Get the approved task name from the trigger\\n2. Create a new list in the Project Space using the task name\\n3. Apply the 'List Template' template to the new list\\n4. Post a comment on the original task confirming the list was created",
+                "map_description": "Auto-provision project list with template"
               }}
             ]
           }}

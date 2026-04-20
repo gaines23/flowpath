@@ -408,7 +408,12 @@ export default function AgentCompilerPanel({ onApplyBuild, existingPrompt = "" }
               border: "1px solid #FECACA", borderRadius: 9, fontSize: 12,
               color: "#DC2626", fontFamily: F,
             }}>
-              {compileMutation.error?.response?.data?.error || "Compilation failed. Check that ANTHROPIC_API_KEY is set."}
+              {compileMutation.error?.response?.data?.error
+                || (compileMutation.error?.response?.status === 504
+                  ? "Request timed out — the AI is still generating. Try again or reduce the number of suggestions."
+                  : compileMutation.error?.response?.status >= 500
+                  ? "Server error. Please try again in a moment."
+                  : "Compilation failed. Please try again.")}
             </div>
           )}
 

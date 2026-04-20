@@ -1516,8 +1516,8 @@ function StepBuild({ data, set, w, suggestedAutomations, auditData, suggestedBui
     const buildState = compiledSuggestionToBuildState(suggestion);
     set({
       ...data,
-      buildNotes: buildState.buildNotes || data.buildNotes,
-      workflows: buildState.workflows,
+      buildNotes: [data.buildNotes, buildState.buildNotes].filter(Boolean).join("\n\n"),
+      workflows: [...workflows, ...buildState.workflows],
     });
   };
 
