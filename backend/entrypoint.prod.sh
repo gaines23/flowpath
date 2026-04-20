@@ -4,6 +4,12 @@ set -e
 echo "==> Running database migrations..."
 python manage.py migrate --noinput
 
+echo "==> Loading platform fixtures..."
+python manage.py loaddata platforms
+
+echo "==> Loading training data..."
+python manage.py loaddata training_data || echo "  (no training data fixture found — skipping)"
+
 echo "==> Collecting static files..."
 python manage.py collectstatic --noinput
 
