@@ -1,3 +1,4 @@
+from django.conf import settings
 from rest_framework import serializers
 from .models import (
     CaseFile, AuditLayer, CurrentBuild,
@@ -308,6 +309,10 @@ class CaseFileWriteSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if request and request.user.is_authenticated:
             validated_data["logged_by"] = request.user
+
+        # In production, user-created projects feed the recommendation engine
+        if not settings.DEBUG:
+            validated_data.setdefault("is_training_data", True)
 
         case_file = CaseFile.objects.create(**validated_data)
 
