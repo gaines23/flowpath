@@ -229,10 +229,20 @@ class Command(BaseCommand):
             self.stdout.write(json.dumps(data, indent=2))
 
     def _fetch_content(self, url):
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/125.0.0.0 Safari/537.36"
+            ),
+        }
+
+        # Reddit blocks bots — use their public JSON API instead
+        if "reddit.com" in url:
+            return self._fetch_reddit(url, headers)
+
         try:
-            resp = httpx.get(url, timeout=30, follow_redirects=True, headers={
-                "User-Agent": "Flowpath Ingestion Bot/1.0",
-            })
+            resp = httpx.get(url, timeout=30, follow_redirects=True, headers=headers)
             resp.raise_for_status()
         except httpx.HTTPError as e:
             self.stderr.write(f"HTTP error: {e}")
@@ -244,6 +254,38 @@ class Command(BaseCommand):
         text = unescape(text)
         text = re.sub(r"\s+", " ", text).strip()
         return text
+
+    def _fetch_reddit(self, url, headers):
+        """Fetch Reddit post content via the public JSON API."""
+        json_url = url.rstrip("/") + ".json"
+        try:
+            resp = httpx.get(json_url, timeout=30, follow_redirects=True, headers=headers)
+            resp.raise_for_status()
+            data = resp.json()
+        except (httpx.HTTPError, ValueError) as e:
+            self.stderr.write(f"Reddit fetch error: {e}")
+            return None
+
+        parts = []
+        try:
+            post = data[0]["data"]["children"][0]["data"]
+            parts.append(f"Title: {post.get('title', '')}")
+            if post.get("selftext"):
+                parts.append(post["selftext"])
+        except (IndexError, KeyError, TypeError):
+            self.stderr.write("Could not parse Reddit post data.")
+            return None
+
+        try:
+            comments = data[1]["data"]["children"]
+            for c in comments[:20]:
+                body = c.get("data", {}).get("body", "")
+                if body:
+                    parts.append(f"Comment: {body}")
+        except (IndexError, KeyError, TypeError):
+            pass
+
+        return "\n\n".join(parts).strip() or None
 
     def _save_all(self, data, url, platform_slug):
         meta = data.get("meta", {})

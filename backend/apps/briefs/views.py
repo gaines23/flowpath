@@ -1036,7 +1036,8 @@ def ingest_youtube(request):
 
     # Fetch transcript
     try:
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+        ytt_api = YouTubeTranscriptApi()
+        transcript_list = ytt_api.list(video_id)
         # Prefer manually created, fall back to auto-generated
         try:
             transcript = transcript_list.find_manually_created_transcript(['en'])

@@ -321,10 +321,20 @@ class Command(BaseCommand):
 
     def _fetch_content(self, url):
         """Fetch and convert HTML to plain text."""
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/125.0.0.0 Safari/537.36"
+            ),
+        }
+
+        # Reddit blocks bots — use their public JSON API instead
+        if "reddit.com" in url:
+            return self._fetch_reddit(url, headers)
+
         try:
-            resp = httpx.get(url, timeout=30, follow_redirects=True, headers={
-                "User-Agent": "Flowpath Ingestion Bot/1.0",
-            })
+            resp = httpx.get(url, timeout=30, follow_redirects=True, headers=headers)
             resp.raise_for_status()
         except httpx.HTTPError as e:
             self.stderr.write(f"HTTP error: {e}")
@@ -337,6 +347,40 @@ class Command(BaseCommand):
         text = unescape(text)
         text = re.sub(r"\s+", " ", text).strip()
         return text
+
+    def _fetch_reddit(self, url, headers):
+        """Fetch Reddit post content via the public JSON API."""
+        json_url = url.rstrip("/") + ".json"
+        try:
+            resp = httpx.get(json_url, timeout=30, follow_redirects=True, headers=headers)
+            resp.raise_for_status()
+            data = resp.json()
+        except (httpx.HTTPError, ValueError) as e:
+            self.stderr.write(f"Reddit fetch error: {e}")
+            return None
+
+        parts = []
+        # Post data is in data[0].data.children[0].data
+        try:
+            post = data[0]["data"]["children"][0]["data"]
+            parts.append(f"Title: {post.get('title', '')}")
+            if post.get("selftext"):
+                parts.append(post["selftext"])
+        except (IndexError, KeyError, TypeError):
+            self.stderr.write("Could not parse Reddit post data.")
+            return None
+
+        # Top-level comments are in data[1].data.children
+        try:
+            comments = data[1]["data"]["children"]
+            for c in comments[:20]:
+                body = c.get("data", {}).get("body", "")
+                if body:
+                    parts.append(f"Comment: {body}")
+        except (IndexError, KeyError, TypeError):
+            pass
+
+        return "\n\n".join(parts).strip() or None
 
     def _clean_case_data(self, case_data):
         """Normalise Claude output to match model constraints."""
@@ -458,6 +502,8 @@ class Command(BaseCommand):
         # Layer 6: Outcome
         outcome_data = case_data.get("outcome_layer")
         if outcome_data:
+            # Remove None values so model defaults apply (e.g. satisfaction=3)
+            outcome_data = {k: v for k, v in outcome_data.items() if v is not None}
             OutcomeLayer.objects.create(case_file=case_file, **outcome_data)
 
         # Denormalise outcome signals
@@ -469,5 +515,12 @@ class Command(BaseCommand):
         case_file.save(update_fields=[
             "satisfaction_score", "built_outcome", "roadblock_count",
         ])
+
+        # Auto-promote to WorkflowTemplate if the case file has build structure
+        try:
+            from apps.workflows.signals import promote_to_template
+            promote_to_template(case_file)
+        except Exception:
+            pass  # template promotion is best-effort
 
         return case_file

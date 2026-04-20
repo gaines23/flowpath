@@ -428,11 +428,20 @@ class Command(BaseCommand):
 
         outcome_data = cf_data.get("outcome_layer")
         if outcome_data:
+            # Remove None values so model defaults apply (e.g. satisfaction=3)
+            outcome_data = {k: v for k, v in outcome_data.items() if v is not None}
             OutcomeLayer.objects.create(case_file=case_file, **outcome_data)
             case_file.satisfaction_score = outcome_data.get("satisfaction")
             case_file.built_outcome = outcome_data.get("built", "")
 
         case_file.roadblock_count = len(roadblocks)
         case_file.save(update_fields=["satisfaction_score", "built_outcome", "roadblock_count"])
+
+        # Auto-promote to WorkflowTemplate if the case file has build structure
+        try:
+            from apps.workflows.signals import promote_to_template
+            promote_to_template(case_file)
+        except Exception:
+            pass  # template promotion is best-effort
 
         return case_file
