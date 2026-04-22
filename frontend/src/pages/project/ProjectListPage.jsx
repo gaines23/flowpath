@@ -6,6 +6,7 @@ import { useProjects, useDeleteProject, useProjectStats } from "@hooks/useProjec
 import { useTheme } from "../../hooks/useTheme";
 import { formatDate } from "../../utils/transforms";
 import DeleteConfirmModal from "../../components/DeleteConfirmModal";
+import PageActionButton from "../../components/ui/PageActionButton";
 
 const F = "'Plus Jakarta Sans', sans-serif";
 
@@ -272,15 +273,7 @@ export default function CaseFileListPage() {
             {statsLoading ? "—" : totalCount} build{totalCount !== 1 ? "s" : ""} documented
           </p>
         </div>
-        <Link to="/projects/new">
-          <button style={{
-            display: "flex", alignItems: "center", gap: 6, padding: "10px 20px",
-            background: theme.blue, border: "none", borderRadius: 10,
-            color: "#fff", fontSize: 13, fontWeight: 700, fontFamily: F, cursor: "pointer",
-          }}>
-            + New Project
-          </button>
-        </Link>
+        <PageActionButton to="/projects/new">New Project</PageActionButton>
       </div>
 
       {/* Metric cards */}

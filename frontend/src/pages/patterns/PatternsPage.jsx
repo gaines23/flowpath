@@ -1,9 +1,12 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "../../hooks/useTheme";
 import {
   usePlatforms, usePlatformKnowledge, useCommunityInsights,
   useTrainingCaseFiles,
 } from "../../hooks/useIngest";
+import IngestForm from "../ingest/IngestForm";
+import PageActionButton from "../../components/ui/PageActionButton";
 
 const F = "'Plus Jakarta Sans', sans-serif";
 
@@ -42,6 +45,7 @@ function TabBar({ tabs, active, onChange, theme }) {
     <div style={{ display: "flex", gap: 2, marginBottom: 24, borderBottom: `1px solid ${theme.border}`, paddingBottom: 0 }}>
       {tabs.map(tab => {
         const isActive = tab.id === active;
+        const suffix = tab.loading ? "…" : Number.isFinite(tab.count) ? ` (${tab.count})` : "";
         return (
           <button
             key={tab.id}
@@ -55,7 +59,7 @@ function TabBar({ tabs, active, onChange, theme }) {
               marginBottom: -1, cursor: "pointer", transition: "all 0.15s", borderRadius: 0,
             }}
           >
-            {tab.label}
+            {tab.label}{suffix}
           </button>
         );
       })}
@@ -97,32 +101,92 @@ const INSIGHT_TYPE_OPTIONS = [
 
 export default function PatternsPage() {
   const { theme } = useTheme();
+  const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState("knowledge");
   const [knowledgeFilters, setKnowledgeFilters] = useState({ platform: "", category: "", knowledge_type: "" });
   const [insightFilters, setInsightFilters] = useState({ platform: "", type: "" });
   const [expandedId, setExpandedId] = useState(null);
+  const [showAddForm, setShowAddForm] = useState(false);
 
   const platforms = usePlatforms();
   const knowledge = usePlatformKnowledge(knowledgeFilters);
   const insights = useCommunityInsights(insightFilters);
   const trainingCases = useTrainingCaseFiles();
 
+  // Backend returns {count, results} for knowledge/insights, paginated for cases.
+  const knowledgeItems = Array.isArray(knowledge.data?.results)
+    ? knowledge.data.results
+    : Array.isArray(knowledge.data)
+    ? knowledge.data
+    : [];
+  const knowledgeCount = Number.isFinite(knowledge.data?.count)
+    ? knowledge.data.count
+    : knowledgeItems.length;
+
+  const insightItems = Array.isArray(insights.data?.results)
+    ? insights.data.results
+    : Array.isArray(insights.data)
+    ? insights.data
+    : [];
+  const insightCount = Number.isFinite(insights.data?.count)
+    ? insights.data.count
+    : insightItems.length;
+
+  const caseItems = Array.isArray(trainingCases.data?.results)
+    ? trainingCases.data.results
+    : Array.isArray(trainingCases.data)
+    ? trainingCases.data
+    : [];
+  const caseCount = Number.isFinite(trainingCases.data?.count)
+    ? trainingCases.data.count
+    : caseItems.length;
+
   const platformOptions = (platforms.data || []).map(p => ({ value: p.slug, label: p.name }));
 
+  const handleIngestSuccess = () => {
+    qc.invalidateQueries({ queryKey: ["platformKnowledge"] });
+    qc.invalidateQueries({ queryKey: ["communityInsights"] });
+    qc.invalidateQueries({ queryKey: ["trainingCaseFiles"] });
+  };
+
   const tabs = [
-    { id: "knowledge", label: `Platform Knowledge${knowledge.data ? ` (${knowledge.data.length})` : ""}` },
-    { id: "insights", label: `Community Insights${insights.data ? ` (${insights.data.length})` : ""}` },
-    { id: "cases", label: `Training Cases${trainingCases.data?.results ? ` (${trainingCases.data.results.length})` : ""}` },
+    { id: "knowledge", label: "Platform Knowledge", count: knowledge.isSuccess ? knowledgeCount : null, loading: knowledge.isLoading },
+    { id: "insights", label: "Community Insights", count: insights.isSuccess ? insightCount : null, loading: insights.isLoading },
+    { id: "cases", label: "Training Cases", count: trainingCases.isSuccess ? caseCount : null, loading: trainingCases.isLoading },
   ];
 
   return (
     <div className="fp-page-wrap" style={{ padding: "32px 32px 80px", maxWidth: 860 }}>
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ margin: "0 0 6px", fontSize: 26, fontFamily: "'Fraunces', serif" }}>Patterns</h1>
-        <p style={{ margin: 0, fontSize: 14, color: theme.textMuted, fontFamily: F }}>
-          Browse platform knowledge, community insights, and training case files from ingestion.
-        </p>
+      <div style={{ marginBottom: 28, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 240 }}>
+          <h1 style={{ margin: "0 0 6px", fontSize: 26, fontFamily: "'Fraunces', serif" }}>Patterns</h1>
+          <p style={{ margin: 0, fontSize: 14, color: theme.textMuted, fontFamily: F }}>
+            Browse platform knowledge, community insights, and training case files from ingestion.
+          </p>
+        </div>
+        <PageActionButton
+          onClick={() => setShowAddForm(s => !s)}
+          toggled={showAddForm}
+        >
+          Ingest source
+        </PageActionButton>
       </div>
+
+      {showAddForm && (
+        <div style={{
+          marginBottom: 24, padding: "22px 24px",
+          background: theme.blueLight, border: `1.5px solid ${theme.blueBorder}`,
+          borderRadius: 12,
+        }}>
+          <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: theme.text, fontFamily: F }}>
+            Add a new source
+          </h2>
+          <p style={{ margin: "0 0 18px", fontSize: 13, color: theme.textMuted, fontFamily: F }}>
+            The AI will classify each piece as platform knowledge, community insight, or case file and route it to the right tab.
+          </p>
+          <IngestForm wrapInCard={true} onSuccess={handleIngestSuccess} />
+        </div>
+      )}
 
       <TabBar tabs={tabs} active={activeTab} onChange={setActiveTab} theme={theme} />
 
@@ -135,11 +199,15 @@ export default function PatternsPage() {
             <SelectFilter value={knowledgeFilters.knowledge_type} onChange={v => setKnowledgeFilters(f => ({ ...f, knowledge_type: v }))} options={KNOWLEDGE_TYPE_OPTIONS} placeholder="All types" theme={theme} />
           </div>
           {knowledge.isLoading && <p style={{ fontSize: 13, color: theme.textFaint, fontFamily: F }}>Loading...</p>}
-          {knowledge.isError && <p style={{ fontSize: 13, color: "#DC2626", fontFamily: F }}>Failed to load knowledge data.</p>}
-          {knowledge.data?.length === 0 && <p style={{ fontSize: 13, color: theme.textFaint, fontFamily: F }}>No records match the current filters.</p>}
-          {knowledge.data?.length > 0 && (
+          {knowledge.isError && (
+            <div style={{ padding: "10px 14px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 9, fontSize: 12, color: "#DC2626", fontFamily: F }}>
+              Failed to load knowledge data: {knowledge.error?.response?.data?.detail || knowledge.error?.message || "Unknown error"}
+            </div>
+          )}
+          {!knowledge.isLoading && !knowledge.isError && knowledgeItems.length === 0 && <p style={{ fontSize: 13, color: theme.textFaint, fontFamily: F }}>No records match the current filters.</p>}
+          {knowledgeItems.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {knowledge.data.map(item => {
+              {knowledgeItems.map(item => {
                 const isOpen = expandedId === item.id;
                 return (
                   <div
@@ -196,11 +264,15 @@ export default function PatternsPage() {
             <SelectFilter value={insightFilters.type} onChange={v => setInsightFilters(f => ({ ...f, type: v }))} options={INSIGHT_TYPE_OPTIONS} placeholder="All types" theme={theme} />
           </div>
           {insights.isLoading && <p style={{ fontSize: 13, color: theme.textFaint, fontFamily: F }}>Loading...</p>}
-          {insights.isError && <p style={{ fontSize: 13, color: "#DC2626", fontFamily: F }}>Failed to load insights.</p>}
-          {insights.data?.length === 0 && <p style={{ fontSize: 13, color: theme.textFaint, fontFamily: F }}>No insights match the current filters.</p>}
-          {insights.data?.length > 0 && (
+          {insights.isError && (
+            <div style={{ padding: "10px 14px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 9, fontSize: 12, color: "#DC2626", fontFamily: F }}>
+              Failed to load insights: {insights.error?.response?.data?.detail || insights.error?.message || "Unknown error"}
+            </div>
+          )}
+          {!insights.isLoading && !insights.isError && insightItems.length === 0 && <p style={{ fontSize: 13, color: theme.textFaint, fontFamily: F }}>No insights match the current filters.</p>}
+          {insightItems.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {insights.data.map(item => {
+              {insightItems.map(item => {
                 const isOpen = expandedId === item.id;
                 return (
                   <div
@@ -254,11 +326,15 @@ export default function PatternsPage() {
       {activeTab === "cases" && (
         <>
           {trainingCases.isLoading && <p style={{ fontSize: 13, color: theme.textFaint, fontFamily: F }}>Loading...</p>}
-          {trainingCases.isError && <p style={{ fontSize: 13, color: "#DC2626", fontFamily: F }}>Failed to load training cases.</p>}
-          {trainingCases.data?.results?.length === 0 && <p style={{ fontSize: 13, color: theme.textFaint, fontFamily: F }}>No training case files yet.</p>}
-          {trainingCases.data?.results?.length > 0 && (
+          {trainingCases.isError && (
+            <div style={{ padding: "10px 14px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 9, fontSize: 12, color: "#DC2626", fontFamily: F }}>
+              Failed to load training cases: {trainingCases.error?.response?.data?.detail || trainingCases.error?.message || "Unknown error"}
+            </div>
+          )}
+          {!trainingCases.isLoading && !trainingCases.isError && caseItems.length === 0 && <p style={{ fontSize: 13, color: theme.textFaint, fontFamily: F }}>No training case files yet.</p>}
+          {caseItems.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {trainingCases.data.results.map(cf => {
+              {caseItems.map(cf => {
                 const isOpen = expandedId === cf.id;
                 return (
                   <div
@@ -317,6 +393,7 @@ export default function PatternsPage() {
           )}
         </>
       )}
+
     </div>
   );
 }

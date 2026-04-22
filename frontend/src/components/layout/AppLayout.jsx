@@ -11,7 +11,6 @@ const WORK_NAV = [
 const INTEL_NAV = [
   { to: "/patterns",  label: "Patterns",       icon: "patterns" },
   { to: "/generate",  label: "Generate brief",  icon: "generate" },
-  { to: "/ingest",    label: "Ingest",          icon: "ingest" },
 ];
 const QUICK_NAV = [
   { to: "/projects/new", label: "New case file", icon: "plus", shortcut: "N" },
