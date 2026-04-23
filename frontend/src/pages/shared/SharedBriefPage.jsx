@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import publicApi from "../../api/publicClient";
 import ProjectDetailHeader from "../../components/ProjectDetailHeader";
+import { WorkflowMapPanel } from "../../components/WorkflowMapPanel";
 
 const F = "'Plus Jakarta Sans', sans-serif";
 const BLUE = "#9B93E8";
@@ -79,7 +80,7 @@ function TagList({ items, color = BLUE }) {
 }
 
 function CurrentBuildCard({ build, index }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const urgColors = { low: "#10B981", medium: "#F59E0B", high: "#F97316", critical: "#EF4444" };
   const uc = urgColors[build.urgency?.toLowerCase()] || "#9CA3AF";
   return (
@@ -120,8 +121,8 @@ function CurrentBuildCard({ build, index }) {
   );
 }
 
-function CollapsibleCard({ title, badge, children }) {
-  const [open, setOpen] = useState(true);
+function CollapsibleCard({ title, badge, action, children }) {
+  const [open, setOpen] = useState(false);
   return (
     <div style={{ border: "1px solid #BAE6FD", borderRadius: 12, marginBottom: 14, background: "#0284C710", overflow: "hidden" }}>
       <div
@@ -130,6 +131,11 @@ function CollapsibleCard({ title, badge, children }) {
       >
         {badge}
         <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: "#111827", fontFamily: F }}>{title}</span>
+        {action && (
+          <span onClick={e => e.stopPropagation()} style={{ display: "inline-flex" }}>
+            {action}
+          </span>
+        )}
         <span style={{ fontSize: 11, color: "#0284C7", opacity: 0.6 }}>{open ? "▲" : "▼"}</span>
       </div>
       {open && (
@@ -173,6 +179,7 @@ function RoadblockCard({ rb, index }) {
 
 export default function SharedBriefPage() {
   const { shareToken } = useParams();
+  const [mapWfIndex, setMapWfIndex] = useState(null);
 
   const { data: cf, isLoading, isError, error } = useQuery({
     queryKey: ["publicBrief", shareToken],
@@ -371,6 +378,21 @@ export default function SharedBriefPage() {
                     key={wi}
                     title={wf.name || `Workflow ${wi + 1}`}
                     badge={<span style={{ width: 24, height: 24, borderRadius: 6, background: "#0284C7", color: "#fff", fontSize: 12, fontWeight: 700, fontFamily: F, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{wi + 1}</span>}
+                    action={
+                      <button
+                        onClick={() => setMapWfIndex(mapWfIndex === wi ? null : wi)}
+                        style={{
+                          fontSize: 11, fontWeight: 600, fontFamily: F,
+                          color: mapWfIndex === wi ? "#fff" : "#0284C7",
+                          background: mapWfIndex === wi ? "#0284C7" : "#E0F2FE",
+                          border: "1px solid #BAE6FD",
+                          borderRadius: 6, padding: "3px 10px",
+                          cursor: "pointer", lineHeight: 1.4,
+                        }}
+                      >
+                        {mapWfIndex === wi ? "✕ Map" : "Map ↗"}
+                      </button>
+                    }
                   >
                     {wf.notes && <p style={{ margin: "0 0 12px", fontSize: 13, color: "#374151", fontFamily: F, lineHeight: 1.6, fontStyle: "italic" }}>{wf.notes}</p>}
                     {wf.lists?.map((l, li) => (
@@ -496,6 +518,15 @@ export default function SharedBriefPage() {
           </p>
         </div>
       </div>
+
+      {/* Workflow map modal */}
+      {mapWfIndex !== null && build?.workflows?.[mapWfIndex] && (
+        <WorkflowMapPanel
+          workflow={build.workflows[mapWfIndex]}
+          onClose={() => setMapWfIndex(null)}
+          asModal
+        />
+      )}
     </div>
   );
 }
