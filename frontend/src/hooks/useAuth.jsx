@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import api from "../api/client";
 
 const AuthContext = createContext(null);
@@ -6,6 +7,7 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true); // true on first mount
+  const queryClient = useQueryClient();
 
   // On mount: if tokens exist, fetch current user
   useEffect(() => {
@@ -25,6 +27,10 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = useCallback(async (email, password) => {
+    // Drop any cached queries from the previous session before fetching the
+    // new user's data — otherwise components briefly render the old user's
+    // projects/stats/todos from cache until the refetch resolves.
+    queryClient.clear();
     const { data } = await api.post("/v1/auth/token/", { email, password });
     localStorage.setItem("access_token", data.access);
     localStorage.setItem("refresh_token", data.refresh);
@@ -32,13 +38,14 @@ export function AuthProvider({ children }) {
     const me = await api.get("/v1/users/me/");
     setUser(me.data);
     return me.data;
-  }, []);
+  }, [queryClient]);
 
   const logout = useCallback(() => {
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
     setUser(null);
-  }, []);
+    queryClient.clear();
+  }, [queryClient]);
 
   const register = useCallback(async (payload) => {
     await api.post("/v1/users/register/", payload);
