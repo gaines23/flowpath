@@ -27,11 +27,14 @@ ENV BACKEND_HOST=patternly.railway.internal
 
 EXPOSE 80
 
-# At startup: substitute env vars into the nginx template, then start nginx.
-# The resolver (127.0.0.11:53) is hardcoded in the template — it is Docker's
-# embedded DNS server and is always available in Railway's environment.
-CMD ["/bin/sh", "-c", \
-  "echo \"nginx startup: PORT=${PORT} BACKEND_URL=${BACKEND_URL} BACKEND_HOST=${BACKEND_HOST}\" && \
-   envsubst '$PORT $BACKEND_URL $BACKEND_HOST' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && \
-   nginx -t && \
-   exec nginx -g 'daemon off;'"]
+# At startup: read the container's DNS resolver from /etc/resolv.conf
+# (Railway provisions its own resolver address, not the Docker Compose
+# default 127.0.0.11), bracket IPv6 addresses for nginx, then substitute
+# env vars into the nginx template and start nginx.
+CMD ["/bin/sh", "-c", "\
+  NGINX_RESOLVER=$(awk '/^nameserver/ {print $2; exit}' /etc/resolv.conf); \
+  case \"$NGINX_RESOLVER\" in *:*) NGINX_RESOLVER=\"[$NGINX_RESOLVER]\" ;; esac; \
+  export NGINX_RESOLVER; \
+  echo \"nginx startup: PORT=${PORT} BACKEND_URL=${BACKEND_URL} BACKEND_HOST=${BACKEND_HOST} NGINX_RESOLVER=${NGINX_RESOLVER}\"; \
+  envsubst '$PORT $BACKEND_URL $BACKEND_HOST $NGINX_RESOLVER' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf; \
+  nginx -t && exec nginx -g 'daemon off;'"]
