@@ -38,7 +38,18 @@ class CaseFileListCreateView(generics.ListCreateAPIView):
     """
     permission_classes = [IsAuthenticated]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ["workflow_type", "industries", "tools", "logged_by_name"]
+    # todos__title / todos__description surface a case file when the match is
+    # on one of its todos. The JOIN this adds means we must .distinct() the
+    # queryset to avoid duplicate case-file rows for multi-matching todos.
+    search_fields = [
+        "name",
+        "workflow_type",
+        "industries",
+        "tools",
+        "logged_by_name",
+        "todos__title",
+        "todos__description",
+    ]
     ordering_fields = ["created_at", "satisfaction_score", "roadblock_count"]
     ordering = ["-created_at"]
 
@@ -96,7 +107,8 @@ class CaseFileListCreateView(generics.ListCreateAPIView):
         if project_status in (ProjectStatus.OPEN, ProjectStatus.CLOSED):
             qs = qs.filter(status=project_status)
 
-        return qs
+        # Dedup: searching across the todos relation joins and can repeat rows.
+        return qs.distinct()
 
     def get_serializer_class(self):
         if self.request.method == "POST":
@@ -345,79 +357,123 @@ def stats(request):
     """
     GET /api/v1/briefs/stats/
     Dashboard stats — totals, satisfaction, roadblock analytics, scope creep signals.
+    Non-admins see only stats derived from their own case files. Admins see all.
     """
     from django.db import connection
     from django.db.models import Avg, Count
 
-    totals = CaseFile.objects.filter(is_training_data=False).aggregate(
+    user = request.user
+    try:
+        is_admin = getattr(user, "role", None) == "admin" or user.is_staff
+    except AttributeError:
+        is_admin = False
+
+    # Base querysets — non-admins only see their own case files (and roadblocks
+    # attached to them). Mirrors the scoping on CaseFileListCreateView.
+    case_file_qs = CaseFile.objects.filter(is_training_data=False)
+    roadblock_qs = Roadblock.objects.filter(time_cost_hours__isnull=False)
+    sat_wf_qs = CaseFile.objects.exclude(workflow_type="").exclude(
+        satisfaction_score__isnull=True
+    )
+    if not is_admin:
+        case_file_qs = case_file_qs.filter(logged_by=user)
+        roadblock_qs = roadblock_qs.filter(delta__case_file__logged_by=user)
+        sat_wf_qs = sat_wf_qs.filter(logged_by=user)
+
+    totals = case_file_qs.aggregate(
         total=Count("id"),
         avg_satisfaction=Avg("satisfaction_score"),
         total_roadblocks=Count("delta__roadblocks"),
     )
 
-    time_cost_agg = Roadblock.objects.filter(
-        time_cost_hours__isnull=False
-    ).aggregate(avg=Avg("time_cost_hours"))
+    time_cost_agg = roadblock_qs.aggregate(avg=Avg("time_cost_hours"))
 
     sat_by_workflow = list(
-        CaseFile.objects.exclude(workflow_type="")
-        .exclude(satisfaction_score__isnull=True)
-        .values("workflow_type")
+        sat_wf_qs.values("workflow_type")
         .annotate(avg_sat=Avg("satisfaction_score"), count=Count("id"))
         .order_by("-avg_sat")[:10]
     )
 
+    # Parameterised user-scope clauses for the raw SQL below. For admins these
+    # stay empty (no WHERE addition); for non-admins they bind the user id.
+    cf_scope_sql = "" if is_admin else " AND logged_by_id = %s"
+    cf_alias_scope_sql = "" if is_admin else " AND cf.logged_by_id = %s"
+    rb_join_scope_sql = (
+        ""
+        if is_admin
+        else (
+            " AND rb.delta_id IN ("
+            "SELECT dl.id FROM delta_layers dl "
+            "JOIN case_files cf ON cf.id = dl.case_file_id "
+            "WHERE cf.logged_by_id = %s"
+            ")"
+        )
+    )
+    scope_params = () if is_admin else (user.id,)
+
     with connection.cursor() as cursor:
         # Top tools — unnest the tools JSON array at the DB level
-        cursor.execute("""
+        cursor.execute(
+            f"""
             SELECT tool, COUNT(*) AS cnt
             FROM case_files,
                  jsonb_array_elements_text(tools) AS tool
-            WHERE jsonb_array_length(tools) > 0
+            WHERE jsonb_array_length(tools) > 0{cf_scope_sql}
             GROUP BY tool
             ORDER BY cnt DESC
             LIMIT 5
-        """)
+            """,
+            scope_params,
+        )
         top_5_tools = cursor.fetchall()
 
         # Roadblock types with per-type tool breakdown — one DB round-trip
-        cursor.execute("""
+        cursor.execute(
+            f"""
             SELECT rb.type, tool, COUNT(*) AS cnt
             FROM roadblocks rb
             CROSS JOIN LATERAL jsonb_array_elements_text(rb.tools_affected) AS tool
-            WHERE rb.type != ''
+            WHERE rb.type != ''{rb_join_scope_sql}
             GROUP BY rb.type, tool
             ORDER BY rb.type, cnt DESC
-        """)
+            """,
+            scope_params,
+        )
         rb_tool_rows = cursor.fetchall()
 
         # Satisfaction by industry — unnest industries JSON array at the DB level
-        cursor.execute("""
+        cursor.execute(
+            f"""
             SELECT industry,
                    ROUND(AVG(satisfaction_score)::numeric, 2) AS avg_sat,
                    COUNT(*) AS cnt
             FROM case_files,
                  jsonb_array_elements_text(industries) AS industry
             WHERE satisfaction_score IS NOT NULL
-              AND jsonb_array_length(industries) > 0
+              AND jsonb_array_length(industries) > 0{cf_scope_sql}
             GROUP BY industry
             ORDER BY avg_sat DESC
             LIMIT 10
-        """)
+            """,
+            scope_params,
+        )
         sat_by_industry_rows = cursor.fetchall()
 
         # Tools most associated with scope-creep / diverged cases
-        cursor.execute("""
+        cursor.execute(
+            f"""
             SELECT tool, COUNT(*) AS cnt
             FROM case_files cf
             JOIN delta_layers dl ON dl.case_file_id = cf.id
             CROSS JOIN LATERAL jsonb_array_elements_text(cf.tools) AS tool
             WHERE dl.diverged = true
-              AND jsonb_array_length(cf.tools) > 0
+              AND jsonb_array_length(cf.tools) > 0{cf_alias_scope_sql}
             GROUP BY tool
             ORDER BY cnt DESC
             LIMIT 8
-        """)
+            """,
+            scope_params,
+        )
         scope_creep_rows = cursor.fetchall()
 
     # Reshape roadblock rows (rb_type, tool, cnt) into nested structure
