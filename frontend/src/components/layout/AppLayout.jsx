@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useTheme } from "../../hooks/useTheme";
+import TopBar from "./TopBar";
 
 const WORK_NAV = [
   { to: "/dashboard", label: "Overview",    icon: "dashboard" },
@@ -362,7 +363,8 @@ export default function AppLayout({ children }) {
       )}
 
       {/* Main content */}
-      <main className="fp-main" style={{ marginLeft: collapsed ? 64 : 220, flex: 1, minHeight: "100vh", overflowX: "hidden", transition: "margin-left 0.2s ease" }}>
+      <main className="fp-main" style={{ marginLeft: collapsed ? 64 : 220, flex: 1, minHeight: "100vh", overflowX: "clip", transition: "margin-left 0.2s ease" }}>
+        {!location.pathname.startsWith("/settings") && <TopBar />}
         <div key={location.pathname} className="fp-page-enter">
           {children}
         </div>

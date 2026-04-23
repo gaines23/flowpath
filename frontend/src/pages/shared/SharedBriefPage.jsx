@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import publicApi from "../../api/publicClient";
+import ProjectDetailHeader from "../../components/ProjectDetailHeader";
 
 const F = "'Plus Jakarta Sans', sans-serif";
 const BLUE = "#9B93E8";
@@ -217,37 +218,9 @@ export default function SharedBriefPage() {
         </span>
       </div>
 
-      <div style={{ maxWidth: 780, margin: "0 auto", padding: "36px 24px 80px" }}>
-        {/* Header */}
-        <div style={{ marginBottom: 28 }}>
-          <h1 style={{ margin: "0 0 6px", fontSize: 28, fontFamily: "'Fraunces', serif", color: "#111827" }}>
-            {cf.name || cf.workflow_type || "Workspace Blueprint"}
-          </h1>
-          {cf.name && cf.workflow_type && (
-            <p style={{ margin: "0 0 10px", fontSize: 15, color: "#6B7280", fontFamily: F }}>{cf.workflow_type}</p>
-          )}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, fontSize: 13, color: "#6B7280", fontFamily: F }}>
-            {cf.logged_by_name && (
-              <span>Prepared by <strong style={{ color: "#374151" }}>{cf.logged_by_name}</strong></span>
-            )}
-            {cf.team_size && <><span>·</span><span>{cf.team_size} team</span></>}
-          </div>
-        </div>
-
-        {/* Meta chips */}
-        {(cf.industries?.length > 0 || cf.tools?.length > 0 || cf.process_frameworks?.length > 0) && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 32 }}>
-            {cf.industries?.map(i => (
-              <span key={i} style={{ fontSize: 12, padding: "4px 12px", borderRadius: 12, background: "#EEEAF8", border: "1px solid #C8C2E8", color: BLUE, fontFamily: F, fontWeight: 500 }}>{i}</span>
-            ))}
-            {cf.tools?.slice(0, 8).map(t => (
-              <span key={t} style={{ fontSize: 12, padding: "4px 12px", borderRadius: 12, background: "#F3F4F6", border: "1px solid #E5E7EB", color: "#6B7280", fontFamily: F }}>{t}</span>
-            ))}
-            {cf.process_frameworks?.slice(0, 4).map(f => (
-              <span key={f} style={{ fontSize: 12, padding: "4px 12px", borderRadius: 12, background: "#F5F3FF", border: "1px solid #DDD6FE", color: "#7C3AED", fontFamily: F }}>{f}</span>
-            ))}
-          </div>
-        )}
+      <div style={{ maxWidth: 900, margin: "0 auto", padding: "24px 32px 80px" }}>
+        {/* Header (shared component) */}
+        <ProjectDetailHeader cf={cf} />
 
         {/* Progress Overview & Key Updates (AI summary) */}
         {cf.updates_summary && (
