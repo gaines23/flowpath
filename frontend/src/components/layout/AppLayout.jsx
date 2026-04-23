@@ -280,7 +280,7 @@ export default function AppLayout({ children }) {
           {!collapsed ? (
             <div style={{ padding: "6px 0 0" }}>
               <Link to="/projects/new" onClick={() => setMobileOpen(false)} style={{
-                display: "flex", alignItems: "center", justifyContent: "space-between",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                 padding: "10px 14px", borderRadius: 10, textDecoration: "none",
                 background: "#9B93E8", color: "#fff",
                 fontFamily: F, fontSize: 13, fontWeight: 600,
@@ -288,11 +288,8 @@ export default function AppLayout({ children }) {
               }}
               onMouseEnter={e => e.currentTarget.style.opacity = "0.85"}
               onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M8 3v10M3 8h10"/></svg>
                 <span>New Project</span>
-                <span style={{ display: "flex", gap: 4, alignItems: "center", fontSize: 11, opacity: 0.6 }}>
-                  <kbd style={{ padding: "1px 5px", borderRadius: 4, border: "1px solid rgba(255,255,255,0.3)", fontSize: 11, fontFamily: F }}>&#8984;</kbd>
-                  <kbd style={{ padding: "1px 5px", borderRadius: 4, border: "1px solid rgba(255,255,255,0.3)", fontSize: 11, fontFamily: F }}>N</kbd>
-                </span>
               </Link>
             </div>
           ) : (

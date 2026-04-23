@@ -5,6 +5,20 @@ const F = "'Plus Jakarta Sans', sans-serif";
 const DISPLAY = "'Plus Jakarta Sans', sans-serif";
 const MONO = "'JetBrains Mono', 'Fira Code', monospace";
 
+// Trim free text to at most `max` sentences. Sentences end at . ! or ?.
+// Falls back to the original string if the text has no sentence punctuation.
+function truncateToSentences(text, max) {
+  if (!text) return "";
+  let count = 0;
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === "." || text[i] === "!" || text[i] === "?") {
+      count++;
+      if (count >= max) return text.slice(0, i + 1).trim();
+    }
+  }
+  return text.trim();
+}
+
 // Fallback palette for public / print pages that don't have the app's theme context.
 const LIGHT_THEME = {
   text:       "#1A1A1F",
@@ -123,11 +137,15 @@ export default function ProjectDetailHeader({
   const { label: durationLabel, range: durationRange } =
     computeBuildDuration(cf.created_at, cf.updated_at);
 
-  // Summary lede: prefer intake.raw_prompt → outcome.what_worked → reasoning.why_structure
-  const summary = cf.intake?.raw_prompt
-    || cf.outcome?.what_worked
-    || cf.reasoning?.why_structure
-    || "";
+  // Summary lede: prefer intake.raw_prompt → outcome.what_worked → reasoning.why_structure.
+  // Cap at 3 sentences so the header stays compact regardless of source length.
+  const summary = truncateToSentences(
+    cf.intake?.raw_prompt
+      || cf.outcome?.what_worked
+      || cf.reasoning?.why_structure
+      || "",
+    3,
+  );
 
   const caseFileLabel = cf.short_id
     || cf.case_number

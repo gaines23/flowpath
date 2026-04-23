@@ -105,7 +105,7 @@ function StatCard({ label, value, sub, delta, deltaDir, theme }) {
       borderRadius: 10, padding: "16px 18px",
     }}>
       <p style={{ margin: 0, fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.12em", color: theme.textFaint, fontWeight: 600, fontFamily: F }}>{label}</p>
-      <p style={{ margin: "6px 0 0", fontSize: 28, fontWeight: 500, fontFamily: F, letterSpacing: "-0.02em", color: theme.text }}>{value}</p>
+      <p style={{ margin: "6px 0 0", fontSize: 28, fontWeight: 500, fontFamily: F, letterSpacing: "-0.02em", color: "#9B93E8" }}>{value}</p>
       {sub && <p style={{ margin: "2px 0 0", fontSize: 11.5, color: theme.textFaint, fontFamily: F }}>{sub}</p>}
       {delta && (
         <p style={{
@@ -322,7 +322,7 @@ export default function DashboardPage() {
                 <Link to="/projects/new" style={{
                   display: "inline-flex", alignItems: "center", gap: 8,
                   padding: "9px 16px", borderRadius: 8,
-                  background: theme.text, color: theme.bg,
+                  background: "#9B93E8", color: "#fff",
                   fontWeight: 600, fontSize: 13, fontFamily: F, textDecoration: "none",
                 }}>
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M8 3v10M3 8h10"/></svg>

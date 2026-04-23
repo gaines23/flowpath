@@ -231,6 +231,19 @@ class CaseFile(models.Model):
     def __str__(self):
         return f"CaseFile {self.id} — {self.workflow_type or 'Unknown'} ({self.created_at.date()})"
 
+    def save(self, *args, **kwargs):
+        # Keep Todo.case_file_name (a denormalized char column used by the
+        # Tasks page display, project filter, and todo search) in sync with
+        # the live project name. Without this, renaming a project would
+        # leave stale labels on every attached todo until each one was
+        # edited and re-saved.
+        super().save(*args, **kwargs)
+        if self.pk:
+            expected = self.name or self.workflow_type or ""
+            self.todos.exclude(case_file_name=expected).update(
+                case_file_name=expected
+            )
+
 
 # ── Layer 1: Audit ────────────────────────────────────────────────────────────
 
