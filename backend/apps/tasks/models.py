@@ -31,9 +31,12 @@ class Todo(models.Model):
     description = models.TextField(blank=True)
 
     # ── Client project link ───────────────────────────────────────────────────
+    # CASCADE: deleting a case file removes its todos. Todos can still be
+    # created without a case file (null=True), which is why the FK remains
+    # nullable even with cascade delete.
     case_file = models.ForeignKey(
         "briefs.CaseFile",
-        on_delete=models.SET_NULL,
+        on_delete=models.CASCADE,
         null=True, blank=True,
         related_name="todos",
     )

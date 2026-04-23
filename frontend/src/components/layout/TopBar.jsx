@@ -78,10 +78,13 @@ export default function TopBar() {
   // Close dropdown on route change
   useEffect(() => { setOpen(false); setQuery(""); }, [location.pathname]);
 
-  // Fetch search results (projects endpoint searches workflow_type, industries, tools, logged_by_name)
+  // Fetch search results — briefs (name, workflow_type, industries, tools,
+  // logged_by_name, and related todo text) plus todos (title, description,
+  // case_file_name) so searching a project name surfaces both the project
+  // and the todos attached to it.
   const trimmed = query.trim();
-  const { data } = useQuery({
-    queryKey: ["globalSearch", trimmed],
+  const { data: briefData } = useQuery({
+    queryKey: ["globalSearch", "briefs", trimmed],
     queryFn: async () => {
       const { data } = await api.get(`/v1/briefs/?search=${encodeURIComponent(trimmed)}`);
       return data;
@@ -90,24 +93,56 @@ export default function TopBar() {
     staleTime: 30_000,
   });
 
-  const results = useMemo(() => {
-    const items = data?.results || [];
-    return items.slice(0, 8).map(cf => ({
+  const { data: todoData } = useQuery({
+    queryKey: ["globalSearch", "todos", trimmed],
+    queryFn: async () => {
+      const { data } = await api.get(`/v1/todos/?search=${encodeURIComponent(trimmed)}`);
+      return data;
+    },
+    enabled: trimmed.length >= 2,
+    staleTime: 30_000,
+  });
+
+  const projectResults = useMemo(() => {
+    const items = briefData?.results || [];
+    return items.slice(0, 6).map(cf => ({
+      kind: "project",
       id: cf.id,
+      to: `/projects/${cf.id}`,
       title: cf.name || cf.workflow_type || "Untitled",
       sub: [cf.logged_by_name, cf.workflow_type && cf.name ? cf.workflow_type : null, cf.industries?.[0]]
         .filter(Boolean).join(" · "),
       tools: (cf.tools || []).slice(0, 3),
       status: cf.status,
     }));
-  }, [data]);
+  }, [briefData]);
+
+  const todoResults = useMemo(() => {
+    const items = (todoData?.results || todoData || []);
+    return items.slice(0, 6).map(t => ({
+      kind: "todo",
+      id: t.id,
+      to: t.case_file ? `/projects/${t.case_file}` : "/tasks",
+      title: t.title,
+      sub: [t.case_file_name || null, t.assigned_to_name || null, t.due_date ? `Due ${t.due_date}` : null]
+        .filter(Boolean).join(" · "),
+      status: t.status,
+      priority: t.priority,
+    }));
+  }, [todoData]);
+
+  // Flat list drives keyboard focus across both sections.
+  const results = useMemo(
+    () => [...projectResults, ...todoResults],
+    [projectResults, todoResults],
+  );
 
   useEffect(() => { setFocusIdx(0); }, [results.length]);
 
   const selectResult = (idx) => {
     const r = results[idx];
     if (!r) return;
-    navigate(`/projects/${r.id}`);
+    navigate(r.to);
     setOpen(false);
     setQuery("");
     inputRef.current?.blur();
@@ -179,12 +214,6 @@ export default function TopBar() {
               fontSize: 12.5, fontFamily: F, color: theme.text,
             }}
           />
-          <span style={{
-            fontFamily: MONO, fontSize: 10.5, color: theme.textMuted,
-            background: theme.surfaceAlt, padding: "2px 6px", borderRadius: 4, flexShrink: 0,
-          }}>
-            ⌘ K
-          </span>
         </div>
 
         {/* Results dropdown */}
@@ -202,64 +231,123 @@ export default function TopBar() {
               </div>
             ) : (
               <>
-                <div style={{
-                  padding: "8px 14px", fontSize: 10.5, fontWeight: 600, color: theme.textFaint,
-                  fontFamily: F, textTransform: "uppercase", letterSpacing: "0.1em",
-                  borderBottom: `1px solid ${theme.borderSubtle}`,
-                }}>
-                  Projects & people
-                </div>
-                {results.map((r, i) => (
-                  <button
-                    key={r.id}
-                    onMouseEnter={() => setFocusIdx(i)}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => selectResult(i)}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 12, width: "100%",
-                      padding: "10px 14px", border: "none", cursor: "pointer",
-                      background: i === focusIdx ? theme.surfaceAlt : "transparent",
-                      textAlign: "left", transition: "background 0.1s",
-                    }}
-                  >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        fontSize: 13, fontWeight: 600, color: theme.text, fontFamily: F,
-                        whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                      }}>
-                        {r.title}
-                      </div>
-                      {r.sub && (
+                {projectResults.length > 0 && (
+                  <div style={{
+                    padding: "8px 14px", fontSize: 10.5, fontWeight: 600, color: theme.textFaint,
+                    fontFamily: F, textTransform: "uppercase", letterSpacing: "0.1em",
+                    borderBottom: `1px solid ${theme.borderSubtle}`,
+                  }}>
+                    Projects
+                  </div>
+                )}
+                {projectResults.map((r, i) => {
+                  const idx = i;
+                  return (
+                    <button
+                      key={`p-${r.id}`}
+                      onMouseEnter={() => setFocusIdx(idx)}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => selectResult(idx)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 12, width: "100%",
+                        padding: "10px 14px", border: "none", cursor: "pointer",
+                        background: idx === focusIdx ? theme.surfaceAlt : "transparent",
+                        textAlign: "left", transition: "background 0.1s",
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{
-                          fontSize: 11.5, color: theme.textMuted, fontFamily: F, marginTop: 1,
+                          fontSize: 13, fontWeight: 600, color: theme.text, fontFamily: F,
                           whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                         }}>
-                          {r.sub}
+                          {r.title}
                         </div>
-                      )}
-                    </div>
-                    <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                      {r.tools.map(t => (
-                        <span key={t} style={{
-                          fontFamily: MONO, fontSize: 10, color: theme.textSec,
-                          background: theme.surfaceAlt, border: `1px solid ${theme.border}`,
-                          borderRadius: 4, padding: "1px 6px",
+                        {r.sub && (
+                          <div style={{
+                            fontSize: 11.5, color: theme.textMuted, fontFamily: F, marginTop: 1,
+                            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                          }}>
+                            {r.sub}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                        {r.tools.map(t => (
+                          <span key={t} style={{
+                            fontFamily: MONO, fontSize: 10, color: theme.textSec,
+                            background: theme.surfaceAlt, border: `1px solid ${theme.border}`,
+                            borderRadius: 4, padding: "1px 6px",
+                          }}>
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                      <span style={{
+                        fontFamily: MONO, fontSize: 9.5, fontWeight: 600,
+                        padding: "2px 6px", borderRadius: 4, flexShrink: 0,
+                        background: r.status === "closed" ? "#E8F1EB" : "#EEEBFB",
+                        color: r.status === "closed" ? "#204A33" : "#3B2F9C",
+                        textTransform: "uppercase", letterSpacing: "0.1em",
+                      }}>
+                        {r.status === "closed" ? "Closed" : "Open"}
+                      </span>
+                    </button>
+                  );
+                })}
+
+                {todoResults.length > 0 && (
+                  <div style={{
+                    padding: "8px 14px", fontSize: 10.5, fontWeight: 600, color: theme.textFaint,
+                    fontFamily: F, textTransform: "uppercase", letterSpacing: "0.1em",
+                    borderTop: projectResults.length > 0 ? `1px solid ${theme.borderSubtle}` : "none",
+                    borderBottom: `1px solid ${theme.borderSubtle}`,
+                  }}>
+                    Tasks
+                  </div>
+                )}
+                {todoResults.map((r, i) => {
+                  const idx = projectResults.length + i;
+                  return (
+                    <button
+                      key={`t-${r.id}`}
+                      onMouseEnter={() => setFocusIdx(idx)}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => selectResult(idx)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 12, width: "100%",
+                        padding: "10px 14px", border: "none", cursor: "pointer",
+                        background: idx === focusIdx ? theme.surfaceAlt : "transparent",
+                        textAlign: "left", transition: "background 0.1s",
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          fontSize: 13, fontWeight: 600, color: theme.text, fontFamily: F,
+                          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                         }}>
-                          {t}
-                        </span>
-                      ))}
-                    </div>
-                    <span style={{
-                      fontFamily: MONO, fontSize: 9.5, fontWeight: 600,
-                      padding: "2px 6px", borderRadius: 4, flexShrink: 0,
-                      background: r.status === "closed" ? "#E8F1EB" : "#EEEBFB",
-                      color: r.status === "closed" ? "#204A33" : "#3B2F9C",
-                      textTransform: "uppercase", letterSpacing: "0.1em",
-                    }}>
-                      {r.status === "closed" ? "Closed" : "Open"}
-                    </span>
-                  </button>
-                ))}
+                          {r.title}
+                        </div>
+                        {r.sub && (
+                          <div style={{
+                            fontSize: 11.5, color: theme.textMuted, fontFamily: F, marginTop: 1,
+                            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                          }}>
+                            {r.sub}
+                          </div>
+                        )}
+                      </div>
+                      <span style={{
+                        fontFamily: MONO, fontSize: 9.5, fontWeight: 600,
+                        padding: "2px 6px", borderRadius: 4, flexShrink: 0,
+                        background: r.status === "done" ? "#E8F1EB" : "#EEEBFB",
+                        color: r.status === "done" ? "#204A33" : "#3B2F9C",
+                        textTransform: "uppercase", letterSpacing: "0.1em",
+                      }}>
+                        {r.status === "done" ? "Done" : r.status === "in_progress" ? "In Progress" : "Open"}
+                      </span>
+                    </button>
+                  );
+                })}
               </>
             )}
           </div>

@@ -38,7 +38,18 @@ class CaseFileListCreateView(generics.ListCreateAPIView):
     """
     permission_classes = [IsAuthenticated]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ["workflow_type", "industries", "tools", "logged_by_name"]
+    # todos__title / todos__description surface a case file when the match is
+    # on one of its todos. The JOIN this adds means we must .distinct() the
+    # queryset to avoid duplicate case-file rows for multi-matching todos.
+    search_fields = [
+        "name",
+        "workflow_type",
+        "industries",
+        "tools",
+        "logged_by_name",
+        "todos__title",
+        "todos__description",
+    ]
     ordering_fields = ["created_at", "satisfaction_score", "roadblock_count"]
     ordering = ["-created_at"]
 
@@ -96,7 +107,8 @@ class CaseFileListCreateView(generics.ListCreateAPIView):
         if project_status in (ProjectStatus.OPEN, ProjectStatus.CLOSED):
             qs = qs.filter(status=project_status)
 
-        return qs
+        # Dedup: searching across the todos relation joins and can repeat rows.
+        return qs.distinct()
 
     def get_serializer_class(self):
         if self.request.method == "POST":
