@@ -4,6 +4,7 @@ import PrintRow from "./PrintRow";
 import PrintTagList from "./PrintTagList";
 import PrintBuildCard from "./PrintBuildCard";
 import PrintRoadblockCard from "./PrintRoadblockCard";
+import { formatMinutes, totalUpdatesDuration } from "@utils/transforms";
 
 /**
  * Full-page print layout that mirrors SharedBriefPage.
@@ -21,9 +22,7 @@ export default function PrintView({ cf }) {
 
       {/* Branded top bar */}
       <div style={{ background: "#fff", borderBottom: "1px solid #E5E7EB", padding: "14px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
-        <span style={{ fontFamily: "'Fraunces', serif", fontSize: 20, color: "#111827", fontWeight: 700, letterSpacing: "-0.02em" }}>
-          Patternly
-        </span>
+        <img src="/mega-x-blk.png" alt="MEGAX" style={{ height: 28, display: "block" }} />
         <span style={{ fontSize: 12, color: "#9CA3AF", fontFamily: PF, background: "#F3F4F6", border: "1px solid #E5E7EB", borderRadius: 8, padding: "4px 12px" }}>
           Read-only · Client brief
         </span>
@@ -62,15 +61,23 @@ export default function PrintView({ cf }) {
 
       {/* Project Updates */}
       {project_updates?.length > 0 && (
-        <PrintSection title="Project Updates" color="#0284C7">
+        <PrintSection
+          title="Project Updates"
+          subtitle={totalUpdatesDuration(project_updates) ? `Total time spent: ${totalUpdatesDuration(project_updates)}` : null}
+          color="#0284C7"
+        >
           {[...project_updates].sort((a, b) => (b.created_at || "").localeCompare(a.created_at || "")).map((pu, i) => {
             const dateLabel = pu.created_at
               ? (() => { const [y, m, d] = pu.created_at.slice(0, 10).split("-"); return new Date(+y, +m - 1, +d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); })()
               : "—";
+            const durationLabel = formatMinutes(pu.minutes_spent);
             return (
               <div key={pu.id || i} style={{ border: "1.5px solid #BAE6FD", borderRadius: 10, marginBottom: 10, overflow: "hidden" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "#F0F9FF", borderBottom: "1px solid #BAE6FD" }}>
                   <span style={{ fontSize: 13, fontWeight: 700, color: "#0284C7", fontFamily: PF }}>{dateLabel}</span>
+                  {durationLabel && (
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#0284C7", background: "#E0F2FE", border: "1px solid #BAE6FD", borderRadius: 8, padding: "2px 8px", fontFamily: PF }}>⏱ {durationLabel}</span>
+                  )}
                   {pu.attachments?.length > 0 && (
                     <span style={{ fontSize: 11, fontWeight: 700, color: "#0284C7", background: "#E0F2FE", border: "1px solid #BAE6FD", borderRadius: 8, padding: "2px 8px", fontFamily: PF }}>📎 {pu.attachments.length}</span>
                   )}

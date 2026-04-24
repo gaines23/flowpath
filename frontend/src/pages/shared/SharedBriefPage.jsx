@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import publicApi from "../../api/publicClient";
 import ProjectDetailHeader from "../../components/ProjectDetailHeader";
 import { WorkflowMapPanel } from "../../components/WorkflowMapPanel";
+import { formatMinutes, totalUpdatesDuration } from "../../utils/transforms";
 
 const F = "'Plus Jakarta Sans', sans-serif";
 const BLUE = "#9B93E8";
@@ -13,6 +14,7 @@ function UpdateItem({ pu }) {
   const dateLabel = pu.created_at
     ? (() => { const [y,m,d] = pu.created_at.slice(0,10).split("-"); return new Date(+y,+m-1,+d).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); })()
     : "—";
+  const durationLabel = formatMinutes(pu.minutes_spent);
   return (
     <div style={{ border: "1.5px solid #BAE6FD", borderRadius: 10, marginBottom: 10, overflow: "hidden" }}>
       <div
@@ -20,6 +22,9 @@ function UpdateItem({ pu }) {
         style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "#F0F9FF", borderBottom: open ? "1px solid #BAE6FD" : "none", cursor: "pointer", userSelect: "none" }}
       >
         <span style={{ fontSize: 13, fontWeight: 700, color: "#0284C7", fontFamily: F }}>{dateLabel}</span>
+        {durationLabel && (
+          <span style={{ fontSize: 11, fontWeight: 700, color: "#0284C7", background: "#E0F2FE", border: "1px solid #BAE6FD", borderRadius: 8, padding: "2px 8px", fontFamily: F }}>⏱ {durationLabel}</span>
+        )}
         {pu.attachments?.length > 0 && (
           <span style={{ fontSize: 11, fontWeight: 700, color: "#0284C7", background: "#E0F2FE", border: "1px solid #BAE6FD", borderRadius: 8, padding: "2px 8px", fontFamily: F }}>📎 {pu.attachments.length}</span>
         )}
@@ -252,9 +257,7 @@ export default function SharedBriefPage() {
     <div style={{ minHeight: "100vh", background: "#F8FAFC" }}>
       {/* Branded top bar */}
       <div style={{ background: "#fff", borderBottom: "1px solid #E5E7EB", padding: "14px 32px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontFamily: "'Fraunces', serif", fontSize: 20, color: "#111827", fontWeight: 700, letterSpacing: "-0.02em" }}>
-          Patternly
-        </span>
+        <img src="/mega-x-blk.png" alt="MEGAX" style={{ height: 28, display: "block" }} />
         <span style={{ fontSize: 12, color: "#9CA3AF", fontFamily: F, background: "#F3F4F6", border: "1px solid #E5E7EB", borderRadius: 8, padding: "4px 12px" }}>
           Read-only · Client brief
         </span>
@@ -291,7 +294,11 @@ export default function SharedBriefPage() {
 
         {/* Project Updates */}
         {project_updates?.length > 0 && (
-          <Section title="Project Updates" color="#0284C7">
+          <Section
+            title="Project Updates"
+            subtitle={totalUpdatesDuration(project_updates) ? `Total time spent: ${totalUpdatesDuration(project_updates)}` : null}
+            color="#0284C7"
+          >
             {[...project_updates]
               .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""))
               .map((pu, i) => <UpdateItem key={pu.id || i} pu={pu} />)
