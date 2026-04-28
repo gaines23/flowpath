@@ -24,6 +24,9 @@ import ClientBriefPage from "./pages/shared/ClientBriefPage";
 import TasksPage from "./pages/tasks/TasksPage";
 import IngestPage from "./pages/ingest/IngestPage";
 import PatternsPage from "./pages/patterns/PatternsPage";
+import LibraryPage from "./pages/library/LibraryPage";
+import LibraryNewPage from "./pages/library/LibraryNewPage";
+import LibraryDetailPage from "./pages/library/LibraryDetailPage";
 
 function Protected({ children }) {
   return (
@@ -67,6 +70,9 @@ export default function App() {
           <Route path="/tasks" element={<Protected><TasksPage /></Protected>} />
           <Route path="/ingest" element={<Protected><IngestPage /></Protected>} />
           <Route path="/patterns" element={<Protected><PatternsPage /></Protected>} />
+          <Route path="/library" element={<Protected><LibraryPage /></Protected>} />
+          <Route path="/library/new" element={<Protected><LibraryNewPage /></Protected>} />
+          <Route path="/library/:id" element={<Protected><LibraryDetailPage /></Protected>} />
           <Route path="/settings" element={<Protected><SettingsPage /></Protected>} />
 
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

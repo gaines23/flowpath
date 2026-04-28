@@ -4,6 +4,7 @@ import CollapsibleCard from "../components/CollapsibleCard";
 import DetailRow from "../components/DetailRow";
 import ViewAutoCard from "../components/ViewAutoCard";
 import EditButton from "../components/EditButton";
+import PromoteToLibraryButton from "../../../library/PromoteToLibraryButton";
 
 /**
  * Layer 3 — Build Documentation
@@ -19,7 +20,7 @@ import EditButton from "../components/EditButton";
  *   mapWfIndex     — currently-selected workflow index for the map panel (or null)
  *   setMapWfIndex  — setter to toggle the workflow map
  */
-export default function BuildSection({ build, isPrinting, theme, mapWfIndex, setMapWfIndex, layerTodos = [], onEdit }) {
+export default function BuildSection({ build, isPrinting, theme, mapWfIndex, setMapWfIndex, layerTodos = [], onEdit, caseFileId }) {
   if (!build) return null;
 
   return (
@@ -55,19 +56,36 @@ export default function BuildSection({ build, isPrinting, theme, mapWfIndex, set
               }
               forceOpen={isPrinting}
               action={
-                <button
-                  onClick={() => setMapWfIndex(mapWfIndex === wi ? null : wi)}
-                  style={{
-                    fontSize: 11, fontWeight: 600, fontFamily: F,
-                    color: mapWfIndex === wi ? "#fff" : "#0284C7",
-                    background: mapWfIndex === wi ? "#0284C7" : "#E0F2FE",
-                    border: "1px solid #BAE6FD",
-                    borderRadius: 6, padding: "3px 10px",
-                    cursor: "pointer", lineHeight: 1.4,
-                  }}
-                >
-                  {mapWfIndex === wi ? "✕ Map" : "Map ↗"}
-                </button>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  {caseFileId && (
+                    <PromoteToLibraryButton
+                      caseFileId={caseFileId}
+                      sourceLayer="build.workflows"
+                      sourcePath={`build.workflows[${wi}]`}
+                      suggestedKind="template"
+                      suggestedName={wf.name ? `${wf.name} — Template` : `Workflow ${wi + 1} Template`}
+                      suggestedBody={{
+                        summary: wf.notes || "",
+                        steps: (wf.lists || []).map((l, idx) => `${idx + 1}. ${l.name || "List"}${l.statuses ? ` — statuses: ${l.statuses}` : ""}`).join("\n"),
+                      }}
+                      suggestedTags={[wf.name].filter(Boolean)}
+                      label="↑ Save workflow"
+                    />
+                  )}
+                  <button
+                    onClick={() => setMapWfIndex(mapWfIndex === wi ? null : wi)}
+                    style={{
+                      fontSize: 11, fontWeight: 600, fontFamily: F,
+                      color: mapWfIndex === wi ? "#fff" : "#0284C7",
+                      background: mapWfIndex === wi ? "#0284C7" : "#E0F2FE",
+                      border: "1px solid #BAE6FD",
+                      borderRadius: 6, padding: "3px 10px",
+                      cursor: "pointer", lineHeight: 1.4,
+                    }}
+                  >
+                    {mapWfIndex === wi ? "✕ Map" : "Map ↗"}
+                  </button>
+                </div>
               }
             >
               {wf.notes && (
@@ -91,7 +109,20 @@ export default function BuildSection({ build, isPrinting, theme, mapWfIndex, set
 
                   {l.custom_fields && (
                     <div style={{ padding: "8px 0", borderBottom: `1px solid ${theme.borderSubtle}` }}>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: theme.textFaint, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 5 }}>Custom fields</span>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: theme.textFaint, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em" }}>Custom fields</span>
+                        {caseFileId && (
+                          <PromoteToLibraryButton
+                            caseFileId={caseFileId}
+                            sourceLayer="build.custom_fields"
+                            sourcePath={`build.workflows[${wi}].lists[${li}].custom_fields`}
+                            suggestedKind="custom_field_set"
+                            suggestedName={l.name ? `${l.name} — Custom Fields` : `Custom Fields ${li + 1}`}
+                            suggestedBody={{ fields_text: l.custom_fields }}
+                            suggestedTags={[wf.name, l.name].filter(Boolean)}
+                          />
+                        )}
+                      </div>
                       <pre style={{ margin: 0, fontSize: 12, color: theme.textSec, fontFamily: "monospace", background: theme.surfaceAlt, padding: "8px 10px", borderRadius: 7, whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
                         {l.custom_fields}
                       </pre>
@@ -102,6 +133,25 @@ export default function BuildSection({ build, isPrinting, theme, mapWfIndex, set
                     const pipeline = l.automations.map((a, i) => ({ a, i })).filter(({ a }) => (a.automation_mode || "pipeline") !== "standalone");
                     const standalone = l.automations.map((a, i) => ({ a, i })).filter(({ a }) => a.automation_mode === "standalone");
                     const hasMix = pipeline.length > 0 && standalone.length > 0;
+                    const promoteBtn = caseFileId ? (
+                      <PromoteToLibraryButton
+                        caseFileId={caseFileId}
+                        sourceLayer="build.automations"
+                        sourcePath={`build.workflows[${wi}].lists[${li}].automations`}
+                        suggestedKind="automation"
+                        suggestedName={l.name ? `${l.name} — Automations` : `Automations ${li + 1}`}
+                        suggestedBody={{
+                          notes: l.automations.map((a, i) => {
+                            const lines = [`Automation ${i + 1} (${a.platform || "clickup"}${a.automation_mode === "standalone" ? ", standalone" : ""})`];
+                            if (a.triggers?.length) lines.push("Triggers: " + a.triggers.map(t => [t.type, t.detail].filter(Boolean).join(" — ")).join("; "));
+                            if (a.actions?.length) lines.push("Actions: " + a.actions.map(t => [t.type, t.detail].filter(Boolean).join(" — ")).join("; "));
+                            if (a.instructions) lines.push("Instructions:\n" + a.instructions);
+                            return lines.join("\n");
+                          }).join("\n\n"),
+                        }}
+                        suggestedTags={[wf.name, l.name].filter(Boolean)}
+                      />
+                    ) : null;
 
                     return (
                       <div style={{ padding: "8px 0" }}>
@@ -112,6 +162,7 @@ export default function BuildSection({ build, isPrinting, theme, mapWfIndex, set
                                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
                                   <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#0284C7" }} />
                                   <span style={{ fontSize: 10, fontWeight: 700, color: "#0284C7", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em" }}>Pipeline</span>
+                                  <span style={{ marginLeft: "auto" }}>{promoteBtn}</span>
                                 </div>
                                 <div style={{ borderLeft: "2px dashed #BAE6FD", paddingLeft: 12 }}>
                                   {pipeline.map(({ a, i }) => <ViewAutoCard key={i} auto={a} autoIdx={i} forceOpen={isPrinting} />)}
@@ -130,9 +181,12 @@ export default function BuildSection({ build, isPrinting, theme, mapWfIndex, set
                           </>
                         ) : (
                           <>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: theme.textFaint, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 8 }}>
-                              {standalone.length > 0 ? "Standalone automations" : "Automations"}
-                            </span>
+                            <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
+                              <span style={{ fontSize: 11, fontWeight: 600, color: theme.textFaint, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                                {standalone.length > 0 ? "Standalone automations" : "Automations"}
+                              </span>
+                              <span style={{ marginLeft: "auto" }}>{promoteBtn}</span>
+                            </div>
                             {l.automations.map((auto, ai) => <ViewAutoCard key={ai} auto={auto} autoIdx={ai} forceOpen={isPrinting} />)}
                           </>
                         )}

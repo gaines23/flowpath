@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { useTheme } from "../../hooks/useTheme";
 import {
   useUpdateMe, useChangePassword, useCreateInvite,
   useAuditLogs, useSignOutAll, useAdminUsers, useAdminUpdateUser,
+  useMyTeam, useUpdateMyTeam,
 } from "../../hooks/useUsers";
 import {
   usePlatforms, usePlatformKnowledge, useCommunityInsights,
@@ -270,9 +271,74 @@ function SecurityTab({ user, theme, changePassword, passwords, setPasswords, pas
   );
 }
 
-function TeamTab({ user, theme, createInvite, inviteLink, setInviteLink, inviteCopied, setInviteCopied, handleCreateInvite, handleCopyInvite, isAdmin, adminUsers, adminUpdateUser }) {
+function TeamTab({ user, theme, createInvite, inviteLink, setInviteLink, inviteCopied, setInviteCopied, handleCreateInvite, handleCopyInvite, isAdmin, adminUsers, adminUpdateUser, myTeam, updateMyTeam }) {
+  const [teamName, setTeamName] = useState("");
+  const [teamMsg, setTeamMsg] = useState(null);
+
+  useEffect(() => {
+    if (myTeam?.data?.name) setTeamName(myTeam.data.name);
+  }, [myTeam?.data?.name]);
+
+  const handleTeamSave = async (e) => {
+    e.preventDefault();
+    setTeamMsg(null);
+    const name = teamName.trim();
+    if (!name) {
+      setTeamMsg({ type: "error", message: "Team name is required." });
+      return;
+    }
+    try {
+      await updateMyTeam.mutateAsync({ name });
+      setTeamMsg({ type: "success", message: "Team updated." });
+    } catch (err) {
+      const msg = err.response?.data?.detail || "Failed to update team.";
+      setTeamMsg({ type: "error", message: msg });
+    }
+  };
+
   return (
     <>
+      <Card title="Team profile" sub="Your team's display name. Library items and shared content live under this team." theme={theme}>
+        {myTeam?.isLoading ? (
+          <p style={{ fontSize: 13, color: theme.textFaint, fontFamily: F, padding: "8px 0" }}>Loading…</p>
+        ) : (
+          <form onSubmit={handleTeamSave} style={{ paddingTop: 4 }}>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: theme.text, fontFamily: F, marginBottom: 6 }}>Team name</label>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                value={teamName}
+                onChange={(e) => setTeamName(e.target.value)}
+                disabled={!isAdmin || updateMyTeam.isPending}
+                placeholder="e.g. Acme Solutions"
+                style={{
+                  flex: 1, padding: "9px 13px",
+                  border: `1.5px solid ${theme.borderInput}`, borderRadius: 9,
+                  fontFamily: F, fontSize: 14, color: theme.text,
+                  background: isAdmin ? theme.inputBg : theme.inputBgDisabled,
+                  outline: "none", boxSizing: "border-box",
+                  cursor: isAdmin ? "text" : "not-allowed",
+                }}
+              />
+              {isAdmin && (
+                <Btn
+                  type="submit"
+                  pending={updateMyTeam.isPending}
+                  label="Save"
+                  pendingLabel="Saving…"
+                  theme={theme}
+                />
+              )}
+            </div>
+            {!isAdmin && (
+              <p style={{ margin: "8px 0 0", fontSize: 12, color: theme.textFaint, fontFamily: F }}>
+                Only admins can rename the team.
+              </p>
+            )}
+            {teamMsg && <Alert type={teamMsg.type} message={teamMsg.message} />}
+          </form>
+        )}
+      </Card>
+
       <Card title="Invite a user" sub="Generate a one-time invite link. It expires after 2 days." theme={theme}>
         <div style={{ paddingTop: 4 }}>
           <Btn onClick={handleCreateInvite} disabled={createInvite.isPending} pending={createInvite.isPending} label="Generate invite link" pendingLabel="Generating…" theme={theme} />
@@ -664,6 +730,8 @@ export default function SettingsPage() {
   const signOutAll = useSignOutAll();
   const adminUsers = useAdminUsers();
   const adminUpdateUser = useAdminUpdateUser();
+  const myTeam = useMyTeam();
+  const updateMyTeam = useUpdateMyTeam();
 
   const isAdmin = user?.role === "admin" || user?.is_staff;
 
@@ -776,6 +844,7 @@ export default function SettingsPage() {
           inviteCopied={inviteCopied} setInviteCopied={setInviteCopied}
           handleCreateInvite={handleCreateInvite} handleCopyInvite={handleCopyInvite}
           adminUsers={adminUsers} adminUpdateUser={adminUpdateUser}
+          myTeam={myTeam} updateMyTeam={updateMyTeam}
         />
       )}
 

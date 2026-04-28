@@ -84,3 +84,27 @@ export function useAdminUpdateUser() {
     },
   });
 }
+
+export function useMyTeam() {
+  return useQuery({
+    queryKey: ["my-team"],
+    queryFn: async () => {
+      const { data } = await api.get("/v1/users/me/team/");
+      return data;
+    },
+  });
+}
+
+export function useUpdateMyTeam() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload) => {
+      const { data } = await api.patch("/v1/users/me/team/", payload);
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["my-team"], data);
+      queryClient.invalidateQueries({ queryKey: ["me"] });
+    },
+  });
+}
