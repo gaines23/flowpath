@@ -343,21 +343,41 @@ export default function LibraryDetailPage() {
         ))}
       </div>
 
-      {item.source_case_file && (
-        <Card variant="default" padding="14px 16px" style={{ marginBottom: 16, background: theme.surfaceAlt }}>
-          <p style={{ margin: 0, fontSize: 12.5, color: theme.textMuted, fontFamily: F }}>
-            Promoted from project{" "}
-            <Link to={`/projects/${item.source_case_file}`} style={{ color: theme.blue, fontWeight: 600, textDecoration: "none" }}>
-              {item.source_case_file_name || "View project"}
-            </Link>
-            {item.source_layer && (
-              <span style={{ marginLeft: 6, color: theme.textFaint }}>
-                · {SOURCE_LAYER_LABELS[item.source_layer] || item.source_layer}
-              </span>
-            )}
-          </p>
-        </Card>
-      )}
+      {item.source_case_file && (() => {
+        const parsed = parseSourcePath(item.source_path);
+        const editHref = buildEditDeepLink(item.source_case_file, parsed);
+        return (
+          <Card variant="default" padding="14px 16px" style={{ marginBottom: 16, background: theme.surfaceAlt }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <p style={{ margin: 0, fontSize: 12.5, color: theme.textMuted, fontFamily: F }}>
+                Promoted from project{" "}
+                <Link to={`/projects/${item.source_case_file}`} style={{ color: theme.blue, fontWeight: 600, textDecoration: "none" }}>
+                  {item.source_case_file_name || "View project"}
+                </Link>
+                {item.source_layer && (
+                  <span style={{ marginLeft: 6, color: theme.textFaint }}>
+                    · {SOURCE_LAYER_LABELS[item.source_layer] || item.source_layer}
+                  </span>
+                )}
+              </p>
+              {editHref && (
+                <Link
+                  to={editHref}
+                  style={{
+                    fontSize: 11.5, fontWeight: 600, fontFamily: F,
+                    color: "#6D28D9", background: "#F5F3FF",
+                    border: "1px solid #DDD6FE", borderRadius: 6,
+                    padding: "4px 10px", textDecoration: "none",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  ↗ Edit in project
+                </Link>
+              )}
+            </div>
+          </Card>
+        );
+      })()}
 
       <Card variant="default" padding="20px" style={{ marginBottom: 16 }}>
         {editing ? (
@@ -386,6 +406,27 @@ export default function LibraryDetailPage() {
       </Card>
     </div>
   );
+}
+
+function parseSourcePath(path) {
+  if (!path || typeof path !== "string") return null;
+  const m = path.match(/workflows\[(\d+)\](?:\.lists\[(\d+)\](?:\.(automations|custom_fields)(?:\[(\d+)\])?)?)?/);
+  if (!m) return null;
+  return {
+    workflow: Number(m[1]),
+    list: m[2] !== undefined ? Number(m[2]) : null,
+    section: m[3] || null,            // "automations" | "custom_fields" | null
+    automation: m[4] !== undefined ? Number(m[4]) : null,
+  };
+}
+
+function buildEditDeepLink(caseFileId, parsed) {
+  if (!caseFileId || !parsed) return null;
+  const params = new URLSearchParams();
+  params.set("workflow", String(parsed.workflow));
+  if (parsed.list !== null) params.set("list", String(parsed.list));
+  if (parsed.automation !== null) params.set("automation", String(parsed.automation));
+  return `/projects/${caseFileId}/edit?${params.toString()}`;
 }
 
 function stringifyBody(kind, body) {
