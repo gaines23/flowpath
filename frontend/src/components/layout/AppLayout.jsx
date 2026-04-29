@@ -7,8 +7,11 @@ import TopBar from "./TopBar";
 const WORK_NAV = [
   { to: "/dashboard",    label: "Overview",     icon: "dashboard" },
   { to: "/projects",     label: "My Projects",  icon: "projects" },
-  { to: "/all-projects", label: "All Projects", icon: "allProjects" },
   { to: "/tasks",        label: "Tasks",        icon: "tasks" },
+];
+const TEAM_NAV = [
+  { to: "/all-projects", label: "All Projects", icon: "allProjects" },
+  { to: "/library",      label: "Library",      icon: "library" },
 ];
 const INTEL_NAV = [
   { to: "/patterns",  label: "Patterns",       icon: "patterns" },
@@ -55,6 +58,11 @@ function NavIcon({ name, size = 18, color }) {
     case "patterns": return (
       <svg style={s} viewBox="0 0 20 20" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="10" cy="10" r="7"/><path d="M7 10l2.5-3L13 10M7 13h6"/>
+      </svg>
+    );
+    case "library": return (
+      <svg style={s} viewBox="0 0 20 20" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 4h3v12H4zM8.5 4h3v12h-3zM13 5l3 .8L13 16"/>
       </svg>
     );
     case "plus": return (
@@ -308,6 +316,9 @@ export default function AppLayout({ children }) {
               <NavIcon name="plus" size={18} color="#fff" />
             </Link>
           )}
+          {!collapsed && <p style={{ margin: "14px 0 6px", padding: "0 14px", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: theme.textFaint, fontFamily: F }}>Team</p>}
+          {collapsed && <div style={{ height: 1, background: theme.borderSubtle, margin: "10px 4px" }} />}
+          {TEAM_NAV.map(item => <NavLink key={item.to} item={item} isCollapsed={collapsed} />)}
           {!collapsed && <p style={{ margin: "14px 0 6px", padding: "0 14px", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: theme.textFaint, fontFamily: F }}>Intelligence</p>}
           {collapsed && <div style={{ height: 1, background: theme.borderSubtle, margin: "10px 4px" }} />}
           {INTEL_NAV.map(item => <NavLink key={item.to} item={item} isCollapsed={collapsed} />)}
@@ -358,6 +369,8 @@ export default function AppLayout({ children }) {
             <nav style={{ flex: 1, padding: "12px 10px" }}>
               <p style={{ margin: "0 0 6px", padding: "0 14px", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: theme.textFaint, fontFamily: F }}>Work</p>
               {WORK_NAV.map(item => <NavLink key={item.to} item={item} />)}
+              <p style={{ margin: "14px 0 6px", padding: "0 14px", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: theme.textFaint, fontFamily: F }}>Team</p>
+              {TEAM_NAV.map(item => <NavLink key={item.to} item={item} />)}
               <p style={{ margin: "14px 0 6px", padding: "0 14px", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: theme.textFaint, fontFamily: F }}>Intelligence</p>
               {INTEL_NAV.map(item => <NavLink key={item.to} item={item} />)}
             </nav>

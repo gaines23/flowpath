@@ -12,7 +12,7 @@ from datetime import timedelta
 
 from .audit import log_action
 from .models import (
-    User, Invitation, PasswordResetToken, AuditLog,
+    User, Invitation, PasswordResetToken, AuditLog, Team,
     ACTION_LOGIN, ACTION_LOGIN_FAILED, ACTION_PASSWORD_CHANGE,
     ACTION_PASSWORD_RESET_REQUEST, ACTION_PASSWORD_RESET_CONFIRM,
     ACTION_PROFILE_UPDATE, ACTION_INVITE_SENT, ACTION_ACCOUNT_CREATED,
@@ -20,7 +20,7 @@ from .models import (
 from .serializers import (
     UserSerializer, UserAdminSerializer, RegisterSerializer, ChangePasswordSerializer,
     InviteSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer,
-    AuditLogSerializer, EmailTokenObtainPairSerializer,
+    AuditLogSerializer, EmailTokenObtainPairSerializer, TeamSerializer,
 )
 
 
@@ -131,6 +131,44 @@ def sign_out_all(request):
     for token in tokens:
         BlacklistedToken.objects.get_or_create(token=token)
     return Response({"detail": "Signed out of all devices."})
+
+
+class MyTeamView(generics.RetrieveUpdateAPIView):
+    """
+    GET   /api/v1/users/me/team/  — return the current user's team.
+    PATCH /api/v1/users/me/team/  — update team (admin only).
+    """
+    serializer_class = TeamSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        team = self.request.user.team
+        if team is None:
+            team, _ = Team.objects.get_or_create(slug="default", defaults={"name": "Default Team"})
+        return team
+
+    def update(self, request, *args, **kwargs):
+        user = request.user
+        if not (user.role == "admin" or user.is_staff):
+            return Response(
+                {"detail": "Only admins can edit the team."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().update(request, *args, **kwargs)
+
+
+class TeamMembersView(generics.ListAPIView):
+    """
+    GET /api/v1/users/me/team/members/  — list members of the current user's team.
+    """
+    serializer_class = UserAdminSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        team = self.request.user.team
+        if team is None:
+            return User.objects.none()
+        return User.objects.filter(team=team).order_by("-created_at")
 
 
 class UserListView(generics.ListAPIView):

@@ -2,7 +2,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.exceptions import AuthenticationFailed
 from django.contrib.auth import authenticate
-from .models import User, Invitation, PasswordResetToken, AuditLog
+from .models import User, Invitation, PasswordResetToken, AuditLog, Team
 
 
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -46,13 +46,21 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
         return data
 
 
+class TeamSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Team
+        fields = ["id", "name", "slug", "created_at"]
+        read_only_fields = ["id", "slug", "created_at"]
+
+
 class UserSerializer(serializers.ModelSerializer):
     full_name = serializers.ReadOnlyField()
+    team = TeamSerializer(read_only=True)
 
     class Meta:
         model = User
-        fields = ["id", "email", "first_name", "last_name", "full_name", "role", "created_at"]
-        read_only_fields = ["id", "created_at"]
+        fields = ["id", "email", "first_name", "last_name", "full_name", "role", "team", "created_at"]
+        read_only_fields = ["id", "created_at", "team"]
 
 
 class RegisterSerializer(serializers.ModelSerializer):
